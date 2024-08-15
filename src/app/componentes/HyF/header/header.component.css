@@ -1,0 +1,25 @@
+.header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    background: linear-gradient(to right, darkgreen, orange);
+  }
+  
+  .titulo {
+    width: 100%;
+    font-size: 50px;
+    text-align: center ;
+  }
+  
+  .buscador {
+    position: absolute;
+    right: 30px ;
+    padding-right: 30px ;
+    
+  }
+
+  img{
+    width: 50px;
+  }

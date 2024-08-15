@@ -1,0 +1,30 @@
+<h1>Hello from {{ name }}!</h1>
+
+<div class="countdown">
+    <div class="time-unit">
+        @for (item of countdownArray; track $index) {
+        <div class="digit-pair">{{ item.value }}</div>
+        <div class="label">{{ item.label }}</div>
+  
+    }
+    </div>
+    
+    
+    
+  
+</div>
+<!-- <div class="unidades">
+        <div class="dias">
+       <label for="">Días</label> 
+    </div>
+    <div class="horas">
+        <label for="">Horas</label> 
+     </div>
+     <div class="minutos">
+        <label for="">Minutos</label> 
+     </div>
+     <div class="segundos">
+        <label for="">Segundos</label> 
+     </div>
+
+    </div> -->

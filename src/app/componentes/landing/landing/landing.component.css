@@ -1,0 +1,30 @@
+.countdown {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px; /* Espacio entre cada pareja de dígitos */
+    margin-top: 20px;
+  }
+  
+  .time-unit {
+    display: flex;
+    flex-direction:row;
+    align-items: center;
+  }
+  
+  .digit-pair {
+    font-size: 32px;
+    background-color: #f0f0f0;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    text-align: center;
+    width: 70px;
+  }
+  
+  .label {
+    font-size: 24px;
+    margin-top: 15px;
+    text-align:end;
+  }
+  

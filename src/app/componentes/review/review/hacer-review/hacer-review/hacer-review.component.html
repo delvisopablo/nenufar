@@ -1,0 +1,35 @@
+<div class="review-modal">
+    <button class="back-btn" (click)="volver()">Volver</button>
+    <div class="review-header">
+      <img src="../../../../../../imagenes/foto-perfil.jpeg" alt="foto-perfil">
+      <div class="review-details">
+        <h2>El Bar de todos</h2>
+        <p class="review-date">Fecha: <input type="date" formControlName="reviewDate"></p>
+        <div class="checkbox-group">
+          <input type="checkbox" formControlName="visitedBefore">
+          <label>He visitado este negocio antes</label>
+        </div>
+      </div>
+    </div>
+    <textarea placeholder="Añadir una reseña..." formControlName="reviewText"></textarea>
+    <div class="tags-rating">
+      <input type="text" placeholder="eg. servicio, calidad" formControlName="tags">
+      <div class="rating">
+        <label>Rating:</label>
+        
+            @for (star of stars; track $index) {
+                 <span (click)="puntuar($index + 1)">&#9733;</span>
+            }
+         
+
+       
+      </div>
+      <button class="like-btn">&#9829;</button>
+    </div>
+    <!-- <div class="checkbox-group">
+      <input type="checkbox" formControlName="containsSpoilers">
+      <label>Contiene spoilers</label>
+    </div> -->
+    <button class="save-btn" (click)="guardarReview()">GUARDAR</button>
+  </div>
+  

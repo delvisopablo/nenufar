@@ -1,0 +1,81 @@
+#reviews {
+    width: 800px;
+    margin: 5px;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    background-color: #abdeab;
+  }
+  
+  h1 {
+    color: #006400; /* Verde Nenúfar */
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  .review-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: flex-start; /* Alinea los elementos a la izquierda */
+    position: relative;
+  }
+  
+  .review {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    width: 90%;
+  }
+  
+  .review h2 {
+    margin: 0 0 10px 0;
+    color: #006400; /* Verde Nenúfar */
+  }
+  
+  .review-date,
+  .review-rating,
+  .review-local {
+    color: #000000;
+    font-size: 0.9em;
+    margin: 5px 0;
+  }
+  
+  .review-text {
+    color: #333;
+    margin: 10px 0;
+  }
+  
+  .like-btn {
+    background-color: #006400; /* Verde Nenúfar */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  
+  .like-btn:hover {
+    background-color: #004d00; /* Verde oscuro para hover */
+  }
+  
+  .floating-btn {
+    position: relative;
+    bottom: -10px;
+    left: 750px;
+    background-color: #006400; /* Verde Nenúfar */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  }
+  
+  .floating-btn:hover {
+    background-color: #004d00; /* Verde oscuro para hover */
+  }
+  

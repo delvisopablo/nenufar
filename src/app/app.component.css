@@ -1,0 +1,39 @@
+.container {
+    display: flex;
+  }
+  
+  app-sidebar {
+    flex: 0 0 250px; 
+  }
+  
+  .content {
+    flex: 1;
+    padding: 20px;
+  }
+  
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+  
+  body {
+    display: flex;
+    flex-direction: column;
+
+  }
+  
+  app-header, app-footer {
+    flex: 0 0 auto;
+  }
+  
+  .container {
+    flex: 1 1 auto;
+    display: flex;
+  }
+  
+  .content {
+    flex: 1 1 auto;
+    overflow: auto;
+  }
+  

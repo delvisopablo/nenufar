@@ -1,0 +1,42 @@
+footer {
+    background-color: green; 
+    color: #212529; 
+    text-align: center; 
+    padding: 20px 0; 
+
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    
+    border-top: 1px solid #dee2e6;
+    text-align: center; 
+    font-size: 14px; 
+    background: linear-gradient(to right, rgb(255, 166, 0), rgb(0, 98, 0));
+}
+
+footer span {
+    margin: 5px 0; 
+    font-size: 15px;
+    font-weight: bold;
+    
+}
+
+/* footer {
+    background-color: black;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 40px;
+    color: white;
+  } */
+
+html {
+    min-height: 100%;
+    position: relative;
+  }
+  body {
+    margin: 0;
+    margin-bottom: 40px;
+  }
+
+
