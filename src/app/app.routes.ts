@@ -11,11 +11,12 @@ import { PromocionComponent } from './componentes/promocion/promocion/promocion.
 import { LoginComponent } from './componentes/login/login/login.component';
 import { HacerReviewComponent } from './componentes/review/review/hacer-review/hacer-review/hacer-review.component';
 import { LandingComponent } from './componentes/landing/landing/landing.component';
+import { CountdownFinishedGuard } from './servicios/cuentaAtrasServicio/count-down-finished.guard';
 
 
 export const routes: Routes = [
     { path: '', component: PrincipalComponent },
-    { path: 'llegada', component: LandingComponent },
+    { path: 'holaaa', component: LandingComponent, canActivate: [CountdownFinishedGuard] },
     { path: 'login', component: LoginComponent },
     { path: 'usuario', component: UsuarioComponent },
     { path: 'reviews', component: ReviewComponent },
@@ -23,5 +24,6 @@ export const routes: Routes = [
     { path: 'likes', component: ReviewComponent },
     { path: 'promociones', component: PromocionComponent },
     { path: 'ajustes', component: AjustesComponent },
+    { path: '**', redirectTo: '/holaaa' }
 
 ];

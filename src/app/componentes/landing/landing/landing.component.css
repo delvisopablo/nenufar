@@ -1,30 +1,165 @@
-.countdown {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px; /* Espacio entre cada pareja de dígitos */
+body {
+    font-family: 'Roboto', sans-serif; /* Ejemplo con 'Roboto', puedes cambiarla */
+    font-weight: 400;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+h1 {
+    font-size: 36px;
+    text-align: center;
     margin-top: 20px;
   }
   
-  .time-unit {
+  .cuentaAtras {
     display: flex;
-    flex-direction:row;
+    justify-content: center;
     align-items: center;
+    margin: 20px 0;
   }
   
-  .digit-pair {
-    font-size: 32px;
+  .unidades {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px; /* Espacio entre cada unidad */
+  }
+  
+  .digitos {
+    font-size: 50px;
     background-color: #f0f0f0;
     border: 2px solid #ccc;
-    border-radius: 5px;
-    padding: 10px;
+    border-radius: 10px;
+    padding: 20px;
     text-align: center;
-    width: 70px;
+    width: 100px;
   }
   
-  .label {
+  .letras {
     font-size: 24px;
-    margin-top: 15px;
-    text-align:end;
+    margin-top: 10px;
+    text-align: center;
   }
+  .buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px; /* Espacio entre los botones */
+    margin-top: 30px;
+    width: 100%;
+  }
+  
+  .boton-container {
+    padding: 10px 20px; /* Añadimos padding para hacer el texto más visible */
+    margin: 0 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 500px; /* Asegura que el contenedor no sea demasiado ancho */
+    border: 3px solid #333; /* Borde grueso y liso */
+    border-radius: 5px; /* Bordes ligeramente redondeados */
+    background-color: white; /* Fondo blanco para resaltar el borde */
+  }
+  
+  .texto-izquierda {
+    margin-right: 10px;
+    font-size: 16px;
+    color: #333;
+  }
+  
+  .texto-derecha {
+    margin-left: 10px;
+    font-size: 16px;
+    color: #333;
+  }
+  
+  .boton {
+    width: 80%;
+    max-width: 300px;
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .boton.verde {
+    background-color: #28a745;
+  }
+  
+  .boton.rojo {
+    background-color: #dc3545;
+  }
+  
+  .boton.amarillo {
+    background-color: #ffc107;
+  }
+  
+  .boton:hover {
+    opacity: 0.9;
+  }
+  
+
+  /* Estilos para pantallas pequeñas (móviles) */
+@media (max-width: 768px) {
+    h1 {
+      font-size: 28px;
+    }
+  
+    .cuentaAtras {
+      flex-direction: column; /* Coloca la cuenta regresiva en columna */
+    }
+  
+    .unidades {
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+  
+    .digitos {
+      font-size: 40px;
+      width: 80px;
+    }
+  
+    .letras {
+      font-size: 20px;
+    }
+  
+    .buttons {
+      width: 100%; /* Asegura que los botones ocupen todo el ancho disponible */
+      gap: 15px;
+    }
+  
+    .boton {
+      width: 90%; /* Botones más anchos en móviles */
+      font-size: 16px;
+    }
+  
+    header, footer {
+      padding: 15px;
+    }
+
+    .boton-container {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+    
+      .texto-izquierda,
+      .texto-derecha {
+        margin: 10px 0;
+        margin-top: 10px;
+      }
+    
+      .boton {
+        width: 90%;
+        font-size: 16px;
+  }
+
+}
   

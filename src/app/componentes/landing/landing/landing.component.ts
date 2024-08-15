@@ -1,7 +1,7 @@
 import { CuentaAtrasService } from './../../../servicios/cuentaAtrasServicio/cuenta-atras.service';
 import { AsyncPipe } from '@angular/common';
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { interval, map, Observable } from 'rxjs';
 
 @Component({
@@ -14,17 +14,19 @@ import { interval, map, Observable } from 'rxjs';
 export class LandingComponent implements OnInit, OnDestroy {
   name = 'Nenúfar';
   countdownSubscription: any;
-  targetDay = new Date(2024, 7, 13, 12, 1,0).getTime(); // Octubre es 9
+  targetDay = new Date(2024, 9, 23, 23, 59, 59).getTime(); // Octubre es 9
   countdownArray: { value: string, label: string }[] = [];
   countdownObs$!: Observable<{ value: string, label: string }[]>;
 
-  constructor(private CuentaAtrasService: CuentaAtrasService) {}
+  constructor(private CuentaAtrasService: CuentaAtrasService, private router: Router) {}
 
   ngOnInit() {
     this.countdownObs$ = interval(1000).pipe(map(() => this.countdownTimer()));
     this.countdownSubscription = this.countdownObs$.subscribe(time => {
       if (!time.length) {
         this.CuentaAtrasService.finishCountdown();  // Llamar al servicio cuando la cuenta regresiva termine
+        this.router.navigate(['/']);   // Redirige a la nueva ruta principal
+
       } else {
         this.countdownArray = time;
       }
@@ -54,6 +56,27 @@ export class LandingComponent implements OnInit, OnDestroy {
       { value: formattedMinutes, label: 'Minutos' },
       { value: formattedSeconds, label: 'Segundos' }
     ];
+  }
+
+  formulario(){
+    window.open('');
+  }
+
+  noTocar(){
+    alert("!No toques!! Por qué tocas?!")    
+    window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
+  }
+
+  premio(){
+    const email = prompt("Por favor, introduce tu correo electrónico para obtener el premio:");
+    if (email) {
+      // Aquí podrías validar el email o enviarlo a un servidor
+      alert("¡Felicidades! Recibirás tu premio pronto en " + email);
+      // Ejemplo: redirigir a una página de premio
+      // this.router.navigate(['/premio']);
+    } else {
+      alert("Necesitas proporcionar un correo electrónico para obtener el premio.");
+    }
   }
 
   ngOnDestroy(): void {

@@ -1,30 +1,25 @@
-<h1>Hello from {{ name }}!</h1>
+<h1>Cuenta atrás para el lanzamiento!</h1>
 
-<div class="countdown">
-    <div class="time-unit">
+<div class="cuentaAtras">
+    <div class="unidades">
         @for (item of countdownArray; track $index) {
-        <div class="digit-pair">{{ item.value }}</div>
-        <div class="label">{{ item.label }}</div>
+        <div class="digitos">{{ item.value }}</div>
+        <div class="letras">{{ item.label }}</div>
   
     }
     </div>
-    
-    
-    
-  
 </div>
-<!-- <div class="unidades">
-        <div class="dias">
-       <label for="">Días</label> 
-    </div>
-    <div class="horas">
-        <label for="">Horas</label> 
-     </div>
-     <div class="minutos">
-        <label for="">Minutos</label> 
-     </div>
-     <div class="segundos">
-        <label for="">Segundos</label> 
-     </div>
 
-    </div> -->
+<div class="buttons">
+    <div class="boton-container">
+        <span class="texto-izquierda">Una breve encuesta para recoger datos para mi TFG 😁 </span>
+        <button (click)="formulario()" class="boton verde">Encuesta 📝</button>
+    </div>
+    <div class="boton-container">
+        <button (click)="premio()" class="boton amarillo">Premio 🏆</button>
+        <span class="texto-derecha">Una pequeña recompensa para todo aquel que visite la web antes del final de la cuenta atrás 😲 </span>
+    </div>
+    <div class="boton-container">
+        <button (click)="noTocar()" class="boton rojo">No me toques 🤬 </button>
+    </div>
+</div>
