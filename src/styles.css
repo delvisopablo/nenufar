@@ -1,3 +1,31 @@
 body{
     background-color: rgb(82, 183, 234);
 }
+
+/* Asegura que el body ocupe toda la altura de la ventana */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Asegura que el contenido principal tome todo el espacio disponible */
+  main {
+    flex: 1;
+  }
+  
+  /* Footer */
+  footer {
+    width: 100%;
+    background-color: #556b2f; /* Color de fondo del footer */
+    color: white;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+  }
+  
