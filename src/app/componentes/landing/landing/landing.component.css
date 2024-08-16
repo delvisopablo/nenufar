@@ -113,7 +113,7 @@ h1 {
     }
   
     .cuentaAtras {
-      flex-direction: column; /* Coloca la cuenta regresiva en columna */
+      flex-direction: row; /* Coloca la cuenta regresiva en columna */
     }
   
     .unidades {
