@@ -106,7 +106,7 @@ h1 {
   }
   
 
-  /* Estilos para pantallas pequeñas (móviles) */
+  /* Estilos para pantallas pequeñas (móviles)
 @media (max-width: 768px) {
   body {
     font-family: 'Roboto', sans-serif;
@@ -218,7 +218,7 @@ footer {
     text-align: center;
     padding: 10px 0;
     width: 100%;
-}
+} */
 
 /* Estilos específicos para dispositivos móviles */
 @media (max-width: 768px) {
@@ -227,13 +227,13 @@ footer {
     }
 
     .unidades {
-        gap: 15px; /* Menor espacio entre unidades en pantallas pequeñas */
+        gap: 5px; /* Menor espacio entre unidades en pantallas pequeñas */
     }
 
     .digitos {
-        font-size: 36px; /* Tamaño reducido de los dígitos */
-        padding: 10px; /* Padding ajustado */
-        width: 80px; /* Ancho ajustado */
+        font-size: 12px; /* Tamaño reducido de los dígitos */
+        padding: 5px; /* Padding ajustado */
+        width: 60px; /* Ancho ajustado */
     }
 
     .letras {
