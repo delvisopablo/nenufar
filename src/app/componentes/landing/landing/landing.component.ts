@@ -3,11 +3,13 @@ import { AsyncPipe } from '@angular/common';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { interval, map, Observable } from 'rxjs';
+import { HeaderComponent } from "../../HyF/header/header.component";
+import { FooterComponent } from "../../HyF/footer/footer.component";
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [RouterLink, AsyncPipe],
+  imports: [RouterLink, AsyncPipe, HeaderComponent, FooterComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.css' 
 })
@@ -59,7 +61,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   formulario(){
-    window.open('');
+    window.open('https://forms.gle/7HWTa2HieK5hTYmJ8', '_blank');
   }
 
   noTocar(){
