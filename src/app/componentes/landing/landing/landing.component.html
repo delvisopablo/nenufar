@@ -6,7 +6,6 @@
         @for (item of countdownArray; track $index) {
         <div class="digitos">{{ item.value }}</div>
         <div class="letras">{{ item.label }}</div>
-  
     }
     </div>
 </div>
@@ -16,17 +15,17 @@
         <span class="texto-izquierda">Una breve encuesta para recoger datos para mi TFG 😁 </span>
         <button (click)="formulario()" class="boton verde">Encuesta 📝</button>
     </div>
-    <div class="boton-container">
+    <!-- <div class="boton-container">
         <button (click)="premio()" class="boton amarillo">Premio 🏆</button>
         <span class="texto-derecha">Una pequeña recompensa para todo aquel que visite la web antes del final de la cuenta atrás 😲 </span>
     </div>
-    
+     -->
         <button (click)="noTocar()" class="boton rojo">No me toques 🤬 </button>
    
 </div>
+
 <footer>
-    
     <span>Pablo del Viso</span>
-    
-    <span>Nenufar</span>
+    <br>
+    <span>Nenúfar</span>
 </footer>
