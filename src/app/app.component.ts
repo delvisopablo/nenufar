@@ -13,7 +13,7 @@ import { LandingComponent } from './componentes/landing/landing/landing.componen
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, HeaderComponent, PrincipalComponent, JuegoComponent, MenuComponent, FooterComponent, LandingComponent],
+  imports: [RouterOutlet, HeaderComponent, MenuComponent, FooterComponent, LandingComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
