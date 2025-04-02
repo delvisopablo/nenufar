@@ -2,6 +2,12 @@ body{
     background-color: rgb(82, 183, 234);
 }
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 /* Asegura que el body ocupe toda la altura de la ventana */
 body {
     display: flex;
@@ -27,5 +33,12 @@ body {
     padding: 20px;
     text-align: center;
     position: relative;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
   }
   

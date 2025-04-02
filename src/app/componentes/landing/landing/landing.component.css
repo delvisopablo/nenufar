@@ -1,187 +1,143 @@
-body, html {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 400;
+* {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
-  height: 100%;
 }
 
-body {
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+}
+
+
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #66B6E4;
+  overflow-x: hidden;
+}
+
+.container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
 
-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-}
-
-h1 {
-  font-size: 28px;
-  text-align: center;
-  margin: 10px 0;
-}
-
-.cuentaAtras {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  margin: 10px 0;
-}
-
-.unidades {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 5px; /* Espacio más pequeño entre unidades */
-}
-
-.digitos {
-  font-size: 28px; /* Tamaño más pequeño para pantallas móviles */
-  background-color: #f0f0f0;
-  border: 2px solid #ccc;
-  border-radius: 10px;
-  padding: 10px;
-  text-align: center;
-  width: 50px; /* Ancho reducido para pantallas móviles */
-}
-
-.letras {
-  font-size: 16px; /* Tamaño de texto más pequeño */
-  margin-top: 5px;
-  text-align: center;
-}
-
-.buttons {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
-  margin-top: 15px;
+.header,
+.footer {
   width: 100%;
+  height: 100%;
+  padding: 1rem;
+  text-align: center;
+  color: black;
 }
 
-.boton-container {
-  padding: 10px 15px; /* Ajuste de padding */
-  margin: 0 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 400px; /* Ancho máximo ajustado para móviles */
-  border: 3px solid #333;
-  border-radius: 5px;
-  background-color: white;
-}
-
-.texto-izquierda,
-.texto-derecha {
-  font-size: 14px; /* Fuente más pequeña para móviles */
-  color: #333;
-}
-
-.boton {
-  width: 100%;
-  max-width: 300px;
-  padding: 10px 20px; /* Padding ajustado para móviles */
-  font-size: 16px;
+.header {
+  background: linear-gradient(to right, #6ab04c, #f6b93b);
+  font-size: 2.5em;
   font-weight: bold;
+}
+
+.main {
+  flex: 1;
+  background-color: #66B6E4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  width: 100%; /* <-- AÑADE esto para que no deje huecos laterales */
+  box-sizing: border-box;
+  padding-bottom: 2rem;
+}
+
+.countdown-title {
+  font-size: 1.9em;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.countdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 2rem;
+}
+
+.count-box {
+  background: white;
+  border: 3px solid #3498db;
+  border-radius: 15px;
+  padding: 1rem;
+  font-size: 1.2em;
+  text-align: center;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+.survey-box {
+  background: white;
+  padding: 1.2rem 1rem; /* Padding equilibrado */
+  border-radius: 12px;
+  border: 2px solid black;
+  width: 100%;
+  max-width: 500px;
+  box-sizing: border-box;
+  text-align: center;
+  font-size: 1em;
+  margin: 1rem auto;
+  overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  margin-bottom: 2rem;
+}
+
+
+
+.survey-button {
+  background-color: #019940;
   color: white;
+  padding: 0.6rem 1.5rem;
+  font-size: 1.1em;
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  margin-top: 0.8rem;
+  transition: background-color 0.3s ease;
 }
 
-.boton.verde {
-  background-color: #28a745;
+.survey-button:hover {
+  background-color: #27ae60;
 }
 
-.boton.rojo {
-  background-color: #dc3545;
-}
-
-.boton.amarillo {
-  background-color: #ffc107;
-}
-
-.boton:hover {
-  opacity: 0.9;
-}
-
-/* Estilos para pantallas pequeñas (móviles) */
-@media (max-width: 768px) {
-    h1 {
-        font-size: 24px; /* Tamaño reducido para pantallas pequeñas */
-    }
-
-    .cuentaAtras {
-        margin: 20px 0;
-    }
-
-    .unidades {
-        gap: 5px; /* Menor espacio entre unidades en pantallas pequeñas */
-    }
-
-    .digitos {
-        font-size: 24px; /* Tamaño reducido de los dígitos */
-        padding: 8px; /* Padding ajustado */
-        width: 30px; /* Ancho ajustado */
-    }
-
-    .letras {
-        font-size: 14px; /* Tamaño de texto más pequeño */
-    }
-
-    .boton-container {
-        max-width: 350px; /* Ajustar ancho máximo para móviles */
-    }
-
-    .texto-izquierda, .texto-derecha {
-        font-size: 12px; /* Fuente más pequeña para móviles */
-    }
-
-    .boton {
-        padding: 8px 16px; /* Padding ajustado para móviles */
-        font-size: 14px;
-    }
-}
-
-footer {
-  background-color: green; 
-  color: #212529; 
-  text-align: center; 
-  padding: 20px 0; 
-
-  position: absolute;
-  bottom: 0;
+.footer {
+  background: linear-gradient(to right, #f6b93b, #6ab04c);
+  text-align: center;
+  font-size: 0.9em;
+  font-weight: 500;
+  padding: 0.8rem;
   width: 100%;
-  
-  border-top: 1px solid #dee2e6;
-  text-align: center; 
-  font-size: 14px; 
-  background: linear-gradient(to right, rgb(255, 166, 0), rgb(0, 98, 0));
+  box-sizing: border-box;
 }
 
-footer span {
-  margin: 5px 0; 
-  font-size: 15px;
-  font-weight: bold;
-  
+.header, .footer {
+  width: 100%;
+  box-sizing: border-box;
 }
 
-footer html {
-  min-height: 100%;
-  position: relative;
+
+@media (max-width: 400px) {
+  .countdown {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .survey-button {
+    font-size: 1em;
+    padding: 0.5rem 1.2rem;
+  }
 }
-footer body {
-  margin: 0;
-  margin-bottom: 40px;
-}
+

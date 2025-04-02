@@ -1,28 +1,37 @@
-body{
+/* Asegúrate de que el body no tenga cosas raras */
+body {
+  margin: 0;
+  padding: 0;
   width: 100%;
-  position: relative;
+  font-family: sans-serif;
 }
 
-.header {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: relative;
-    background: linear-gradient(to right, darkgreen, orange);
-  }
-  
-  .titulo {
-    width: 100%;
-    font-size: 50px;
-    text-align: center ;
-  }
-  
-  .buscador {
-    position: absolute;
-    right: 30px ;
-    padding-right: 30px ;
-    
-  }
 
-  
+.header {
+  width: 100%;
+  background: linear-gradient(to right, darkgreen, orange);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 0;
+}
+
+.logo {
+  max-width: 390px;
+  height: auto;
+}
+
+
+
+.titulo {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+
+img {
+  max-width: 400px; /* o el tamaño que quieras */
+  height: auto;
+}

@@ -1,31 +1,35 @@
 <app-header></app-header>
-<h1>¡¡Cuenta atrás para el lanzamiento!!</h1>
 
-<div class="cuentaAtras">
-    <div class="unidades">
-        @for (item of countdownArray; track $index) {
-        <div class="digitos">{{ item.value }}</div>
-        <div class="letras">{{ item.label }}</div>
+<div class="main">
+
+  <div class="countdown-title">¡¡Cuenta atrás para el lanzamiento!!</div>
+
+  <div class="countdown">
+    @for (item of countdownArray; track $index) {
+      <div class="count-box">
+        <strong>{{ item.value }}</strong><br>
+        {{ item.label }}
+      </div>
     }
-    </div>
+  </div>
+
+  <div class="survey-box">
+    <span>Una breve encuesta para recoger datos para mi TFG 😁</span><br>
+    <button (click)="formulario()" class="survey-button">Encuesta 📝</button>
+  </div>
+
+  <!-- Si quieres usar esto más adelante, también puedes adaptarlo -->
+  <!-- 
+  <div class="survey-box">
+    <button (click)="premio()" class="boton amarillo">Premio 🏆</button><br>
+    <span>Una pequeña recompensa para todo aquel que visite la web antes del final de la cuenta atrás 😲</span>
+  </div>
+
+  <div class="survey-box">
+    <button (click)="noTocar()" class="boton rojo">No me toques 🤬</button>
+  </div>
+  -->
+
 </div>
 
-<div class="buttons">
-    <div class="boton-container">
-        <span class="texto-izquierda">Una breve encuesta para recoger datos para mi TFG 😁 </span>
-        <button (click)="formulario()" class="boton verde">Encuesta 📝</button>
-    </div>
-    <!-- <div class="boton-container">
-        <button (click)="premio()" class="boton amarillo">Premio 🏆</button>
-        <span class="texto-derecha">Una pequeña recompensa para todo aquel que visite la web antes del final de la cuenta atrás 😲 </span>
-    </div>
-     -->
-        <!-- <button (click)="noTocar()" class="boton rojo">No me toques 🤬 </button> -->
-   
-</div>
-
-<app-footer>
-    <!-- <span>Pablo del Viso</span>
-    <br>
-    <span>Nenúfar</span> -->
-</app-footer>
+<app-footer></app-footer>
