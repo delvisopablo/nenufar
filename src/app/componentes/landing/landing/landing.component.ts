@@ -64,6 +64,11 @@ export class LandingComponent implements OnInit, OnDestroy {
     window.open('https://forms.gle/7HWTa2HieK5hTYmJ8', '_blank');
   }
 
+  formulario2(){
+    window.open('https://forms.gle/KWngfaLery2fLDBG7', '_blank');
+  }
+ 
+
   noTocar(){
     alert("!No toques!! Por qué tocas?!")    
     window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
