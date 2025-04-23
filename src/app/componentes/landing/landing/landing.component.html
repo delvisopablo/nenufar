@@ -1,40 +1,45 @@
-<app-header></app-header>
 
-<div class="main">
+<body>
+  <div class="page-wrapper">
+    <app-header></app-header>
 
-  <div class="countdown-title">¡¡Cuenta atrás para el lanzamiento!!</div>
+    <main class="main-content">
+    <div class="countdown-title">¡¡Cuenta atrás para el lanzamiento!!</div>
 
-  <div class="countdown">
-    @for (item of countdownArray; track $index) {
-      <div class="count-box">
-        <strong>{{ item.value }}</strong><br>
-        {{ item.label }}
-      </div>
-    }
-  </div>
+    <div class="countdown">
+      @for (item of countdownArray; track $index) {
+        <div class="count-box">
+          <strong>{{ item.value }}</strong><br>
+          {{ item.label }}
+        </div>
+      }
+    </div> 
+    
+    <div class="survey-box">
+      <span>¿Tienes un negocio local o trabajas en uno? ¡En 3 minutos dinos cómo podemos ayudarte a crecer! 🚀</span><br>
+      <button (click)="formulario2()" class="survey-button">Encuesta 📝</button>
+    </div>
 
-  <div class="survey-box">
-    <span>¿Eres consumidor? ¡Cuéntanos en 3 minutos cómo apoyas y descubres negocios locales! 🌱</span><br>
-    <button (click)="formulario()" class="survey-button">Encuesta 📝</button>
-  </div>
+    <!-- <div class="survey-box">
+      <span>¿Eres consumidor? ¡Cuéntanos en 3 minutos cómo apoyas y descubres negocios locales! 🌱</span><br>
+      <button (click)="formulario()" class="survey-button">Encuesta 📝</button>
+    </div> -->
 
-  <div class="survey-box">
-    <span>¿Tienes un negocio local o trabajas en uno? ¡En 3 minutos dinos cómo podemos ayudarte a crecer! 🚀</span><br>
-    <button (click)="formulario2()" class="survey-button">Encuesta 📝</button>
-  </div>
+   
 
-  <!-- Si quieres usar esto más adelante, también puedes adaptarlo -->
-  <!-- 
-  <div class="survey-box">
-    <button (click)="premio()" class="boton amarillo">Premio 🏆</button><br>
-    <span>Una pequeña recompensa para todo aquel que visite la web antes del final de la cuenta atrás 😲</span>
-  </div>
+    <!-- Ejemplo adicional si lo necesitas más adelante -->
+    <!-- 
+    <div class="survey-box">
+      <button (click)="premio()" class="boton amarillo">Premio 🏆</button><br>
+      <span>Una pequeña recompensa para todo aquel que visite la web antes del final de la cuenta atrás 😲</span>
+    </div>
 
-  <div class="survey-box">
-    <button (click)="noTocar()" class="boton rojo">No me toques 🤬</button>
-  </div>
-  -->
+    <div class="survey-box">
+      <button (click)="noTocar()" class="boton rojo">No me toques 🤬</button>
+    </div>
+    -->
+  </main>
 
+  <!-- <app-footer></app-footer> -->
 </div>
-
-<app-footer></app-footer>
+</body>
