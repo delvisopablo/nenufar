@@ -106,7 +106,7 @@ html, body {
 .survey-box {
   align-self: center;
 
-  background: white;
+  background: #f5c870;
   padding: 1.2rem 1rem; /* Padding equilibrado */
   border-radius: 12px;
   border: 2px solid black;
@@ -122,6 +122,24 @@ html, body {
   margin-bottom: 2rem;
 }
 
+.survey-box2 {
+  align-self: center;
+
+  background: #a7e18e;
+  padding: 1.2rem 1rem; /* Padding equilibrado */
+  border-radius: 12px;
+  border: 2px solid black;
+  width: 100%;
+  max-width: 500px;
+  box-sizing: border-box;
+  text-align: center;
+  font-size: 1em;
+  margin: 1rem auto;
+  overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  margin-bottom: 2rem;
+}
 
 
 .survey-button {
@@ -157,6 +175,16 @@ html, body {
 
 app-footer {
   width: 100%;
+}
+
+.tfg-footer {
+  background-color: #347ca6;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #1d1d1d;
+  padding: 1rem;
+  border-top: 1px solid #66B6E4;
+  font-family: 'Inter', sans-serif;
 }
 
 
