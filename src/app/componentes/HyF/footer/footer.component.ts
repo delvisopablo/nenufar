@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 
@@ -11,10 +11,7 @@ import { Router, RouterLink } from '@angular/router';
 })
 export class FooterComponent {
 
-  private router: Router;
-  constructor(){
-    this.router = inject(Router)
-  }
+  constructor(private router: Router){}
   proyecto: string = 'Nenúfar';
   nombre: string = 'Pablo del Viso';
   universidad: string = 'Universidad Pontificia de Salamanca';

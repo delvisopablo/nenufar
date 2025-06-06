@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 @Component({
@@ -10,10 +10,6 @@ import { Router, RouterLink } from '@angular/router';
 })
 export class HeaderComponent {
 
-  private router: Router;
-
-  constructor(router: Router) {
-    this.router = inject(Router);
-  }
+  constructor(private router: Router) {}
 
 }
