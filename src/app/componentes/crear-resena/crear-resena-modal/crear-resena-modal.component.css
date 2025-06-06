@@ -1,0 +1,103 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal {
+  background: #a7e18e;
+  border-radius: 14px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 520px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  font-family: 'Segoe UI', sans-serif;
+  border: 2px solid #087b04;
+}
+
+input, textarea {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.6rem;
+  border: 2px solid #3498db;
+  border-radius: 10px;
+  font-size: 1rem;
+  background: #fff;
+}
+
+.sugerencias {
+  list-style: none;
+  padding: 0;
+  margin-top: -0.8rem;
+  margin-bottom: 1rem;
+  background-color: #f4ffe0;
+  border: 1px solid #087b04;
+  border-radius: 0 0 8px 8px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.sugerencias li {
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.sugerencias li:hover {
+  background-color: #d4f4b6;
+}
+
+.estrellas {
+  font-size: 1.5rem;
+  color: #ccc;
+  margin-bottom: 1rem;
+}
+
+.estrellas span {
+  cursor: pointer;
+}
+
+.estrellas span.activa {
+  color: #f6b93b;
+}
+
+.sello-switch {
+  padding: 0.5rem 1rem;
+  background-color: #ccc;
+  border-radius: 20px;
+  display: inline-block;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  transition: background-color 0.3s;
+}
+
+.sello-switch.activo {
+  background-color: #087b04;
+  color: white;
+}
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+button {
+  padding: 0.6rem 1.2rem;
+  background-color: #f6b93b;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #ffcc5c;
+}

@@ -1,16 +1,23 @@
-
-     <app-landing></app-landing>
-
-@if (countdownFinished) {
-  <app-header></app-header>
-
-<div class="container">
-  <app-menu></app-menu>
-  <div class="content">
-    <router-outlet></router-outlet>
+@if (!mostrarApp()) {
+  <!-- Landing pantalla completa -->
+  <div class="pantalla-landing">
+    <app-landing></app-landing>
   </div>
-</div>
+} @else {
+  @if (!ocultarLayout()) {
+    <app-header></app-header>
+  }
 
-<app-footer></app-footer>
+  <div class="container">
+    @if (!ocultarMenu()) {
+      <!-- <app-menu></app-menu> -->
+    }
+    <div class="content">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
 
+  @if (!ocultarLayout()) {
+    <!-- <app-footer></app-footer> -->
+  }
 }

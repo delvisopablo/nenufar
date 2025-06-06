@@ -14,5 +14,11 @@ export class CuentaAtrasService {
     this.countdownFinishedSubject.next(true);
   }
 
+  private accesoDesbloqueado$ = new BehaviorSubject<boolean>(false);
+  accesoDesbloqueadoObs$ = this.accesoDesbloqueado$.asObservable();
+  
+  desbloquearAcceso() {
+    this.accesoDesbloqueado$.next(true);}
+
   // constructor() { }
 }

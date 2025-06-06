@@ -1,1 +1,10 @@
-<p>promocion works!</p>
+<div class="promo-container">
+    <h3>🔥 Promociones destacadas</h3>
+  
+    <div class="promo-card" *ngFor="let promo of promociones; let i = index">
+      <h4>{{ promo.negocio }}</h4>
+      <p class="titulo">{{ promo.titulo }}</p>
+      <p class="desc">{{ promo.descripcion }}</p>
+    </div>
+  </div>
+  

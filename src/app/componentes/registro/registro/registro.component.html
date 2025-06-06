@@ -1,0 +1,25 @@
+<form [formGroup]="registroForm" (ngSubmit)="registrarUsuario()" class="formulario-nenu">
+  <h2>Crear Cuenta</h2>
+
+  <input type="text" formControlName="nombre" placeholder="Nombre completo" />
+  <input type="text" formControlName="usuario" placeholder="Nombre de usuario (@...)" />
+  <input type="email" formControlName="email" placeholder="Correo electrónico" />
+  <input type="password" formControlName="contrasena" placeholder="Contraseña" autocomplete="new-password" />
+  <input type="password" formControlName="confirmarContrasena" placeholder="Confirmar contraseña" autocomplete="new-password" />
+
+  <label>Rol:</label>
+  <select formControlName="rol">
+    <option value="usuario">Usuario</option>
+    <option value="negocio">Negocio</option>
+  </select>
+
+  <ng-container *ngIf="esNegocio()">
+    <input type="text" formControlName="nombreNegocio" placeholder="Nombre del negocio" />
+    <select formControlName="tipoNegocio">
+      <option value="">Selecciona tipo de negocio</option>
+      <option *ngFor="let tipo of tiposNegocio" [value]="tipo">{{ tipo }}</option>
+    </select>
+  </ng-container>
+
+  <button type="submit" [disabled]="registroForm.invalid">Registrarse</button>
+</form>

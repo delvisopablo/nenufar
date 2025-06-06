@@ -1,0 +1,59 @@
+.menu-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 2rem;
+    background-color: #087b04;
+    gap: 1rem;
+  }
+  
+  /* Botón Perfil - arriba derecha */
+  .perfil-boton {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  /* Botón Ajustes - abajo izquierda */
+  .ajustes-boton {
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+  }
+  
+  .perfil-usuario,
+  .buscar-button {
+    background-color: #f6b93b;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+  }
+  
+  .perfil-usuario:hover,
+  .buscar-button:hover {
+    background-color: #ffcc5c;
+  }
+  
+  .crear-resena-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background-color: #f6b93b;
+    color: white;
+    border: none;
+    padding: 1rem 1.2rem;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  .crear-resena-btn:hover {
+    background-color: #ffcc5c;
+  }
+  

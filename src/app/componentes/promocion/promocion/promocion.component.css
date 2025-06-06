@@ -1,0 +1,46 @@
+.promo-container {
+    position: fixed;
+    bottom: 4rem; /* Encima del botón de ajustes */
+    left: 1rem;
+    width: 280px;
+    background-color: #f6b93b;
+    padding: 1rem;
+    border-radius: 16px;
+    color: #1d1d1d;
+    font-family: 'Segoe UI', sans-serif;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+  }
+  
+  .promo-container h3 {
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    text-align: left;
+  }
+  
+  .promo-card {
+    background-color: #fff3d2;
+    border-left: 5px solid #ffcc5c;
+    padding: 0.8rem;
+    border-radius: 10px;
+    margin-bottom: 0.8rem;
+  }
+  
+  .promo-card h4 {
+    margin: 0;
+    color: #087b04;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  
+  .titulo {
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin: 0.4rem 0;
+  }
+  
+  .desc {
+    font-size: 0.85rem;
+    color: #333;
+  }
+  

@@ -1,3 +1,28 @@
+@import './styles.css';
+@import './base.css';
+
+:root {
+  --color-primario: #66B6E4;         /* azul claro - fondo principal */
+  --color-secundario: #f6b93b;       /* naranja (gradiente header/footer) */
+  --color-secundario-oscuro: #f5c870;/* naranja claro (fondos encuestas) */
+  --color-verde: #6ab04c;            /* verde brillante - parte del header/footer */
+  --color-verde-claro: #a7e18e;      /* verde claro (encuesta 2) */
+  --color-boton-verde: #019940;      /* verde botón */
+  --color-boton-verde-hover: #27ae60;
+  --color-borde: #3498db;            /* azul intenso - bordes y detalles */
+  --color-fondo-blanco: #ffffff;
+  --color-texto-negro: #1d1d1d;
+
+  /* Tipografía */
+  --fuente-principal: 'Segoe UI', sans-serif;
+  --fuente-secundaria: 'Inter', sans-serif;
+
+  /* Transiciones */
+  --transicion-suave: all 0.3s ease;
+}
+
+
+
 body{
     background-color: rgb(82, 183, 234);
 }

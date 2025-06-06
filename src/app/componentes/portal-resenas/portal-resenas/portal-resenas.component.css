@@ -1,0 +1,68 @@
+.resenas-container {
+  max-width: 700px;
+  margin: 2rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0 1rem;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.resena {
+  background-color: #a7e18e;
+  border: 2px solid #087b04;
+  border-radius: 12px;
+  padding: 1.2rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.resena:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.paginacion {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+
+button {
+  padding: 0.6rem 1.2rem;
+  background-color: #f6b93b;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: #ffcc5c;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+.estrellas {
+  margin-top: 0.5rem;
+  color: gold;
+  font-size: 1.1rem;
+}
+
+.sello-nenufar {
+  display: inline-block;
+  background-color: #f6b93b;
+  color: white;
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}

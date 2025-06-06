@@ -1,0 +1,42 @@
+<div class="modal-backdrop" *ngIf="visible">
+  <div class="modal">
+    <h2>Crear Reseña</h2>
+    <form [formGroup]="form" (ngSubmit)="enviar()">
+
+      <!-- Campo autocompletable de negocio -->
+      <input type="text" placeholder="Negocio" formControlName="negocio"
+             (focus)="mostrarLista.set(true)" 
+             (blur)="ocultarListaConRetraso()" />
+
+      <ul class="sugerencias" *ngIf="mostrarLista">
+        <li *ngFor="let negocio of negocios" (click)="seleccionarNegocio(negocio)">
+          {{ negocio }}
+        </li>
+      </ul>
+
+      <!-- Comentario -->
+      <textarea placeholder="Tu comentario..." formControlName="comentario"></textarea>
+
+      <!-- Estrellas 0 a 5 -->
+      <div class="estrellas">
+        <span *ngFor="let estrella of [1, 2, 3, 4, 5]" 
+              (click)="seleccionarEstrellas(estrella)"
+              [class.activa]="estrella <= estrellas()">★</span>
+        <span (click)="seleccionarEstrellas(estrellas())"></span>
+      </div>
+      <!-- Sello Nenúfar -->
+      <div class="sello-switch" 
+           [class.activo]="selloNenufar()"
+           (click)="toggleSello()"
+           title="El Sello Nenúfar destaca esta reseña como especialmente útil o relevante.">
+        🌿 Sello Nenúfar
+      </div>
+
+      <!-- Acciones -->
+      <div class="acciones">
+        <button type="submit" [disabled]="form.invalid">Publicar</button>
+        <button type="button" (click)="cerrar()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -187,6 +187,48 @@ app-footer {
   font-family: 'Inter', sans-serif;
 }
 
+form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+input[type="text"] {
+  padding: 0.6rem 1rem;
+  border: 2px solid #087b04;
+  border-radius: 10px;
+  font-size: 1rem;
+  width: 100%;
+  max-width: 300px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+button[type="submit"] {
+  background-color: #f6b93b;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+button[type="submit"]:hover {
+  background-color: #ffcc5c;
+}
+
+p {
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 0.95rem;
+  color: red;
+  margin-top: 0.5rem;
+}
+
+
 
 @media (max-width: 400px) {
   .countdown {

@@ -1,1 +1,24 @@
-<p>principal works!</p>
+
+<div class="menu-wrapper">
+  <div class="ajustes-boton">
+    <button class="buscar-button" routerLink="/ajustes">Ajustes</button>
+  </div>
+
+  <app-menu></app-menu>
+
+  <div class="perfil-boton">
+    <button class="perfil-usuario" routerLink="/perfil">Perfil</button>
+  </div>
+</div>
+
+<!-- Resto de contenido -->
+
+<app-portal-resenas></app-portal-resenas>
+
+<button class="crear-resena-btn" (click)="modalVisible = true">➕</button>
+<app-crear-resena-modal 
+  [visible]="modalVisible"
+  (reseñaCreada)="anadirResena($event)"> </app-crear-resena-modal>
+
+<!-- <app-portal-reseñas></app-portal-reseñas> -->
+

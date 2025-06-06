@@ -1,4 +1,5 @@
 import { CuentaAtrasService } from './../../../servicios/cuentaAtrasServicio/cuenta-atras.service';
+import { FormsModule } from '@angular/forms';
 import { AsyncPipe } from '@angular/common';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -9,7 +10,7 @@ import { FooterComponent } from "../../HyF/footer/footer.component";
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [HeaderComponent, FooterComponent],
+  imports: [HeaderComponent, FormsModule],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.css' 
 })
@@ -23,22 +24,32 @@ export class LandingComponent implements OnInit, OnDestroy {
   constructor(private CuentaAtrasService: CuentaAtrasService, private router: Router) {}
 
   ngOnInit() {
+    const accesoPermitido = localStorage.getItem('accesoPermitido');
+    if (accesoPermitido !== 'true') {
+      this.router.navigate(['/login']);
+    }
+    
     this.countdownObs$ = interval(1000).pipe(map(() => this.countdownTimer()));
     this.countdownSubscription = this.countdownObs$.subscribe(time => {
       if (!time.length) {
-        this.CuentaAtrasService.finishCountdown();  // Llamar al servicio cuando la cuenta regresiva termine
-        this.router.navigate(['/']);   // Redirige a la nueva ruta principal
-
+        this.CuentaAtrasService.finishCountdown();  // Por si quieres hacer algo más al terminar
+        this.router.navigate(['/login']);           // Aquí te manda al login directamente
+        localStorage.setItem('accesoPermitido', 'true');
       } else {
         this.countdownArray = time;
       }
+
     });
+
+    
+
   }
 
   countdownTimer(): { value: string, label: string }[] {
     const totalSeconds = Math.floor((this.targetDay - Date.now()) / 1000);
 
     if (totalSeconds <= 0) {
+      this.CuentaAtrasService.desbloquearAcceso();
       return [];  // Devuelve un array vacío para indicar que la cuenta atrás ha terminado
     }
 
@@ -85,6 +96,38 @@ export class LandingComponent implements OnInit, OnDestroy {
       alert("Necesitas proporcionar un correo electrónico para obtener el premio.");
     }
   }
+
+  accesoConcedido = false;
+  claveIngresada = '';
+  errorClave = false;
+  CLAVE_CORRECTA = 'nenufar2025';
+  
+  acceder() {
+    console.log('Intentando acceder con:', this.claveIngresada);
+
+    const clave = this.claveIngresada.trim().toLowerCase();
+    console.log('Clave ingresada:', clave); // DEBUG
+    if (clave === this.CLAVE_CORRECTA.toLowerCase()) {
+      localStorage.setItem('accesoPermitido', 'true');
+      this.CuentaAtrasService.desbloquearAcceso();
+
+      this.accesoConcedido = true;
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate(['/login']);
+      });
+      
+    } else {
+      this.errorClave = true;
+    }
+  }
+  
+  probarRedireccion() {
+    console.log('Redirección manual activada');
+    this.router.navigate(['/login']);
+  }
+  
+
+
 
   ngOnDestroy(): void {
     this.countdownSubscription.unsubscribe();

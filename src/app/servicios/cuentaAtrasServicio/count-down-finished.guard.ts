@@ -2,7 +2,7 @@ import { CanActivateFn } from '@angular/router';
 import { Injectable } from '@angular/core';
 import { CanActivate, Router } from '@angular/router';
 import { CuentaAtrasService } from './cuenta-atras.service';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 @Injectable({
@@ -24,4 +24,12 @@ export class CountdownFinishedGuard implements CanActivate{
       })
     );
   }
+
+  private accesoDesbloqueado$ = new BehaviorSubject<boolean>(false);
+accesoDesbloqueadoObs$ = this.accesoDesbloqueado$.asObservable();
+
+desbloquearAcceso() {
+  this.accesoDesbloqueado$.next(true);
+}
+
 };

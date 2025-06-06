@@ -1,0 +1,42 @@
+.formulario-nenu {
+    background: #a7e18e;
+    padding: 2rem;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 500px;
+    margin: 2rem auto;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .formulario-nenu h2 {
+    text-align: center;
+    color: #087b04;
+  }
+  
+  input, select {
+    padding: 0.8rem;
+    border-radius: 8px;
+    border: 2px solid #3498db;
+    font-size: 1rem;
+    background: #fff;
+  }
+  
+  button {
+    padding: 0.8rem;
+    background-color: #f6b93b;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  
+  button:hover {
+    background-color: #ffcc5c;
+  }
+  

@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 @Component({
   selector: 'app-hacer-review',
   standalone: true,
-  imports: [RouterLink],
+  imports: [],
   templateUrl: './hacer-review.component.html',
   styleUrl: './hacer-review.component.css'
 })

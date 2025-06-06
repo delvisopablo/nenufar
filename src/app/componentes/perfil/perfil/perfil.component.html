@@ -1,0 +1,45 @@
+<div class="perfil-contenedor" *ngIf="usuarioLogueado() as user">
+    <h2>Perfil de {{ user.nombre }}</h2>
+    <p><strong>Usuario:</strong> {{ user.usuario }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Rol:</strong> {{ user.rol === 'negocio' ? 'Negocio' : 'Usuario' }}</p>
+  
+    @if (user.biografia?.length) {
+        <p><strong>Biografía:</strong> {{ user.biografia }}</p>
+      } @else {
+        <p><strong>Biografía:</strong> Sin biografía</p>
+      }  
+    @if (user.rol === 'negocio') {
+      <div class="info-negocio">
+        <p><strong>Negocio:</strong> {{ user.negocio?.nombre }}</p>
+        <p><strong>Tipo:</strong> {{ user.negocio?.tipo }}</p>
+  
+        @if (user.negocio?.horario) {
+          <p><strong>Horario:</strong> {{ user.negocio.horario.apertura }} - {{ user.negocio.horario.cierre }}</p>
+        }
+      </div>
+  
+      <div class="zona-reservas">
+        <h3>Reservas del negocio</h3>
+        <p>(Aquí irán las reservas en el futuro)</p>
+      </div>
+    }
+  
+    <button (click)="modoEdicion.set(true)">✏️ Personalizar</button>
+  
+    @if (modoEdicion()) {
+      <div class="editor">
+        <h4>Editar biografía</h4>
+        <textarea [(ngModel)]="nuevaBio" rows="3"></textarea>
+  
+        @if (user.rol === 'negocio') {
+          <h4>Editar horario</h4>
+          <input type="text" placeholder="Apertura (ej: 09:00)" [(ngModel)]="nuevoHorario.apertura" />
+          <input type="text" placeholder="Cierre (ej: 18:00)" [(ngModel)]="nuevoHorario.cierre" />
+        }
+  
+        <button (click)="guardarCambios()">💾 Guardar</button>
+      </div>
+    }
+  </div>
+  

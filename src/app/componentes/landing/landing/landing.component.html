@@ -2,7 +2,20 @@
 <body>
   <div class="page-wrapper">
     <app-header></app-header>
-
+<!-- Formulario de acceso con contraseña -->
+    <form (submit)="acceder()">
+      <input
+        type="text"
+        placeholder="Introduce la clave secreta"
+        [(ngModel)]="claveIngresada"
+        name="clave"
+      />
+      <button type="submit">Entrar</button>
+    </form>
+    
+    @if (errorClave) {
+      <p style="color: red;">Clave incorrecta</p>
+    }
     <main class="main-content">
 
     <div class="countdown-title">¡¡Cuenta atrás para el lanzamiento!!</div>
@@ -39,6 +52,15 @@
       <button (click)="noTocar()" class="boton rojo">No me toques 🤬</button>
     </div>
     -->
+
+
+    
+    
+    <!-- <button (click)="probarRedireccion()">Probar login directo</button> -->
+
+
+
+
   </main>
   <div class="tfg-footer">
     <p>Proyecto desarrollado como Trabajo de Fin de Grado por Pablo del Viso. Universidad Pontificia de Salamanca, 2025.</p>
