@@ -1,13 +1,41 @@
-import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Router, RouterLink } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { NegocioService } from '../../../servicios/negocioService/negocio.service';
 
 @Component({
   selector: 'app-menu',
   standalone: true,
-  imports: [RouterLink],
   templateUrl: './menu.component.html',
-  styleUrl: './menu.component.css'
+  styleUrl: './menu.component.css',
+  imports: [CommonModule]
 })
 export class MenuComponent {
+  negocioService = inject(NegocioService);
+
+  resultados: any[] = [];
+
+constructor(private http: HttpClient, private router: Router) {}
+
+  
+  filtrarNegocios(event: Event) {
+    const valor = (event.target as HTMLInputElement).value;
+    console.log('Filtrando negocios con:', valor);
+    this.negocioService.buscarNegocios(valor).subscribe({
+      next: (res: any) => {
+        this.resultados = res;
+      },
+      error: err => {
+        console.error('Error buscando negocios', err);
+      }
+    });
+  }
+
+
+  irANegocio(id: number) {
+    this.router.navigate([`/negocio/${id}`]);
+    this.resultados = [];
+  }
 
 }

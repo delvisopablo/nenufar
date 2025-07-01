@@ -3,22 +3,22 @@
     <h2 class="text-xl">Iniciar sesión</h2>
 
     <form (ngSubmit)="iniciarSesion()" [formGroup]="loginForm">
-      <label for="usuario">Usuario</label>
-      <input id="usuario" type="text" formControlName="usuario" placeholder="Introduce tu usuario" />
+      <label for="email">Email</label>
+      <input id="email" type="text" formControlName="email" placeholder="Introduce tu email" />
 
-      <label for="contrasena">Contraseña</label>
-      <input type="password" formControlName="contrasena" placeholder="Contraseña" autocomplete="new-password" />
+      <label for="password">Contraseña</label>
+      <input type="password" formControlName="password" />
 
       @if (loginError()) {
-        <p class="error">Usuario o contraseña incorrectos</p>
+        <p class="error">Email o contraseña incorrectos</p>
       }
 
-      <button type="submit" [disabled]="loginForm.invalid">Entrar</button>
+      <button type="submit" >Entrar</button>
     </form>
 
     <div class="acciones">
       <button type="button" (click)="crearCuenta()">Crear cuenta</button>
-      <button type="button" (click)="recuperarClave()">He olvidado la contraseña</button>
+      <!-- <button type="button" (click)="recuperarClave()">He olvidado la contraseña</button> -->
     </div>
   </div>
 </div>

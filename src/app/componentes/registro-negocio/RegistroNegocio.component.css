@@ -1,0 +1,79 @@
+/* === Estilo general del formulario === */
+.formulario-negocio {
+  max-width: 600px;
+  margin: 2rem auto;
+  background: #fff8f0;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+  font-family: 'Segoe UI', sans-serif;
+  color: #333;
+}
+
+/* === Títulos === */
+.formulario-negocio h2 {
+  text-align: center;
+  color: #de7e5d;
+  margin-bottom: 1.5rem;
+}
+
+/* === Inputs y textareas === */
+.formulario-negocio input,
+.formulario-negocio textarea {
+  width: 100%;
+  padding: 0.75rem;
+  margin: 0.5rem 0 1rem;
+  border: 1px solid #e2cfc3;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.formulario-negocio input:focus,
+.formulario-negocio textarea:focus {
+  border-color: #de7e5d;
+  outline: none;
+}
+
+/* === Botón === */
+.formulario-negocio button[type="submit"] {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #de7e5d;
+  color: white;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.formulario-negocio button[type="submit"]:hover {
+  background-color: #c26d52;
+}
+
+/* === Lista de sugerencias === */
+ul {
+  list-style: none;
+  padding: 0;
+  margin: -0.5rem 0 1rem;
+  background: #fff;
+  border: 1px solid #e2cfc3;
+  border-radius: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+ul li {
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+ul li:hover {
+  background-color: #f9e7dc;
+}
+
+input.ng-touched.ng-invalid, textarea.ng-touched.ng-invalid {
+  border: 1px solid red;
+}

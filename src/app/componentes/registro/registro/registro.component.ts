@@ -40,62 +40,53 @@ export class RegistroComponent implements OnInit {
     'Otro...'
   ];
 
-  ngOnInit(): void {
-    this.registroForm = this.fb.group({
-      nombre: ['', Validators.required],
-      usuario: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]],
-      contrasena: ['', [Validators.required, Validators.minLength(6)]],
-      confirmarContrasena: ['', Validators.required],
-      rol: ['usuario', Validators.required],
-      nombreNegocio: [''],
-      tipoNegocio: ['']
-    });
+ ngOnInit(): void {
+  this.registroForm = this.fb.group({
+    nombre: ['', Validators.required],
+    nickname: ['', Validators.required],       // ✅ Añadido: nombre de usuario
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required, Validators.minLength(5)]],
+    confirmarContrasena: ['', Validators.required],
+      biografia: [''], // ✅ NUEVO CAMPO
 
-    this.registroForm.get('rol')?.valueChanges.subscribe(valor => {
-      this.esNegocio.set(valor === 'negocio');
-    });
-  }
+  });
+console.log('Datos que se mandan:', this.registroForm.value);
+
+
+  this.registroForm.get('rol')?.valueChanges.subscribe(valor => {
+    this.esNegocio.set(valor === 'negocio');
+  });
+}
+
 
   registrarUsuario() {
-    console.log('🧪 Formulario enviado');
-    if (this.registroForm.invalid) return;
+  if (this.registroForm.invalid) return;
 
-    const datos = this.registroForm.value;
+  const datos = this.registroForm.value;
 
-    if (datos.contrasena !== datos.confirmarContrasena) {
-      alert('Las contraseñas no coinciden');
-      return;
-    }
-
-    if (this.auth.usuarioExiste(datos.usuario, datos.email)) {
-      alert('Este nombre de usuario o correo ya está registrado.');
-      return;
-    }
-
-    const usuario = {
-      usuario_id: crypto.randomUUID(),
-      nombre: datos.nombre,
-      usuario: datos.usuario,
-      email: datos.email,
-      contraseña: datos.contrasena,
-      rol: datos.rol,
-      foto_perfil: '',
-      biografía: '',
-      seguidores: [],
-      seguidos: [],
-      me_gusta: [],
-      negocio: datos.rol === 'negocio' ? {
-        nombre: datos.nombreNegocio,
-        tipo: datos.tipoNegocio
-      } : null
-    };
-
-    const registrados = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-    registrados.push(usuario);
-    localStorage.setItem('usuariosRegistrados', JSON.stringify(registrados));
-    localStorage.setItem('usuarioLogueado', JSON.stringify(usuario));
-
-    this.router.navigate(['/inicio']);
+  if (datos.password !== datos.confirmarContrasena) {
+    alert('Las contraseñas no coinciden');
+    return;
   }
+
+  // 🚀 ENVÍA AL BACKEND REAL:
+  this.auth.register({
+    nombre: datos.nombre,
+    nickname: datos.nickname,             // ✅ Ahora sí se envía
+    email: datos.email,
+    password: datos.password,
+    biografia: datos.biografia,
+  }).subscribe({
+    next: (res: any) => {
+      console.log('✅ Registro OK', res);
+      localStorage.setItem('token', res.access_token);
+      this.router.navigate(['/inicio']);
+    },
+    error: err => {
+      console.error('❌ Error registrando', err);
+      alert('No se pudo registrar, revisa los datos o el correo ya existe');
+    }
+  });
+}
+
 }

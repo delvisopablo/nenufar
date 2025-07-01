@@ -1,15 +1,7 @@
-<div class="resenas-container">
-    <div class="resena" *ngFor="let resena of resenasPaginadas">
-      <h3>{{ resena.negocio }} – {{ resena.autor }}</h3>
-      <p>⭐ {{ resena.valoracion }} · {{ resena.fecha }}</p>
-      <p>{{ resena.comentario }}</p>
-      
-    </div>
-  
-    <div class="paginacion">
-      <button (click)="anteriorPagina()" [disabled]="paginaActual === 1">Anterior</button>
-      <span>Página {{ paginaActual }}</span>
-      <button (click)="siguientePagina()" [disabled]="paginaActual * resenasPorPagina >= todasResenas.length">Siguiente</button>
-    </div>
-  </div>
-  
+<div *ngFor="let r of resenasPaginadas()">
+  <p>{{ r.contenido }}</p>
+  <small>Puntuación: {{ r.puntuacion }}</small>
+</div>
+
+<button (click)="anteriorPagina()">Anterior</button>
+<button (click)="siguientePagina()">Siguiente</button>

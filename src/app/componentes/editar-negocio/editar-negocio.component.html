@@ -1,0 +1,52 @@
+<div>
+
+<h2>Editar Negocio</h2>
+
+<form [formGroup]="negocioForm" (ngSubmit)="guardarCambios()">
+  <input formControlName="nombre" placeholder="Nombre del negocio" />
+  <input formControlName="nickname" placeholder="Nickname del dueño" />
+  <input formControlName="direccion" placeholder="Dirección" />
+  <textarea formControlName="historia" placeholder="Historia del negocio"></textarea>
+  <input formControlName="categoria" placeholder="Categoría" />
+
+  <label>
+    <input type="checkbox" formControlName="aceptaReservas" />
+    ¿Acepta reservas?
+  </label>
+
+  <div *ngIf="negocioForm.get('aceptaReservas')?.value">
+    <div formGroupName="horario">
+      <label>Días abiertos:</label>
+      <div class="dias-checkboxes">
+        <label *ngFor="let dia of diasSemana">
+          <input type="checkbox" [checked]="diasAbre.value.includes(dia)" (change)="toggleDia(dia)" />
+          {{ dia }}
+        </label>
+      </div>
+
+      <input formControlName="apertura" placeholder="Hora de apertura (ej: 09:00)" />
+      <input formControlName="cierre" placeholder="Hora de cierre (ej: 18:00)" />
+
+      <label>Duración de reserva (minutos)</label>
+      <input type="number" formControlName="intervalo" min="10" step="5" />
+    </div>
+
+    <div class="horario-matriz">
+      <div class="fila-dia" *ngFor="let dia of diasSemana; let i = index">
+        <div class="nombre-dia">{{ dia }}</div>
+        <div class="slots-dia">
+          <button *ngFor="let slot of matrizHoraria[i]"
+                  [disabled]="slot.ocupado"
+                  [ngClass]="{ 'ocupado': slot.ocupado }"
+                  (click)="reservar(slot.hora)">
+            {{ slot.hora }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit">Guardar</button>
+</form>
+  
+</div>

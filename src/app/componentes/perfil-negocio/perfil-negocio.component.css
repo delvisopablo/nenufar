@@ -1,0 +1,206 @@
+body {
+  background-color: #fff0e0; /* naranja crema claro */
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* Contenedor principal */
+.negocio-container {
+  position: relative;
+  max-width: 1000px;
+  margin: 5rem auto 2rem;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  color: #333;
+}
+
+/* CABECERA DEL NEGOCIO */
+.cabecera-perfil {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.foto-negocio {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 20px;
+  border: 5px solid #ff914d;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-bottom: 1rem;
+}
+
+.datos-negocio {
+  text-align: center;
+}
+
+.datos-negocio h2 {
+  font-size: 2rem;
+  color: #de5b00;
+  margin: 0;
+}
+
+.categoria {
+  font-size: 1.1rem;
+  color: #666;
+  margin: 0.5rem 0;
+}
+
+.historia {
+  font-size: 1rem;
+  background: #fff4ec;
+  padding: 1rem;
+  border-left: 4px solid #ff914d;
+  border-radius: 10px;
+  margin-top: 1rem;
+}
+
+/* Botones */
+.configurar-btn, .volver-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  margin: 12px;
+  font-size: 0.95rem;
+}
+
+.configurar-btn {
+  background-color: #ff914d;
+  color: white;
+}
+
+.volver-btn {
+  background-color: #e0e0e0;
+  color: black;
+}
+
+/* Secciones */
+h3 {
+  color: #de5b00;
+  font-size: 1.4rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #ffa467;
+  padding-bottom: 0.4rem;
+}
+
+/* Calendario */
+.tabla-calendario {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 20px 0;
+}
+
+.cabecera-dia, .fila-hora {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  gap: 6px;
+}
+
+.celda-hora {
+  font-weight: bold;
+  text-align: center;
+}
+
+.celda-dia {
+  text-align: center;
+}
+
+.bloque-reserva {
+  background-color: #a2e8a2;
+  border: none;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #134d13;
+  transition: 0.2s;
+}
+
+.bloque-reserva:hover {
+  background-color: #7fd87f;
+}
+
+.bloque-ocupado {
+  background-color: #f8baba;
+  padding: 6px;
+  border-radius: 8px;
+  color: #444;
+}
+
+/* Nota media */
+.nota-media {
+  margin-top: 3rem;
+  text-align: center;
+}
+
+.media-numero {
+  font-size: 2rem;
+  color: #ff914d;
+  font-weight: bold;
+  margin-top: 0.5rem;
+}
+
+/* Reseñas */
+.resena-negocio {
+  display: flex;
+  align-items: flex-start;
+  background-color: #fff9f4;
+  border: 2px solid #ffb88c;
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+  gap: 1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.07);
+  transition: transform 0.2s ease;
+}
+
+.resena-negocio:hover {
+  transform: translateY(-2px);
+}
+
+.avatar-resena {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 3px solid #ffa467;
+  object-fit: cover;
+}
+
+.contenido-resena {
+  flex: 1;
+}
+
+.nombre-usuario {
+  font-weight: bold;
+  color: #de5b00;
+  font-size: 1.1rem;
+  margin-bottom: 0.3rem;
+}
+
+.contenido-resena p {
+  margin: 0.2rem 0;
+  font-size: 0.95rem;
+}
+
+/* Botón flotante */
+.btn-flotante {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #ff914d;
+  color: white;
+  font-size: 2rem;
+  border: none;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  cursor: pointer;
+  z-index: 999;
+}

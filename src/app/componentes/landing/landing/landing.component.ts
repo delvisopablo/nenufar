@@ -121,6 +121,7 @@ export class LandingComponent implements OnInit, OnDestroy {
     }
   }
   
+  
   probarRedireccion() {
     console.log('Redirección manual activada');
     this.router.navigate(['/login']);

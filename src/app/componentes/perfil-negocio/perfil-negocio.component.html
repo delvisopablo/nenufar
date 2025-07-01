@@ -1,0 +1,98 @@
+<!-- Botón para volver -->
+<button class="volver-btn" (click)="volver()">🔙 Volver</button>
+
+<div class="negocio-container">
+
+  <!-- CABECERA DEL NEGOCIO -->
+  <div class="cabecera-perfil">
+    <img 
+      [src]="negocio?.foto || '../../../../assets/imagenes/rana2_negocio_foto.png'" 
+      alt="Foto negocio" 
+      class="foto-negocio" 
+    />
+
+    <div class="datos-negocio">
+      <div class="top-header">
+        <h2>{{ negocio?.nombre || 'Nombre no disponible' }}</h2>
+          <button class="configurar-btn" (click)="irAEditarNegocio()">⚙️ Configurar</button>
+
+      </div>
+      <p class="categoria">{{ negocio?.categoria?.nombre || 'Sin categoría' }}</p>
+      <p class="historia">{{ negocio?.historia || 'Este negocio aún no tiene biografía' }}</p>
+    </div>
+  </div>
+
+  <!-- CALENDARIO -->
+  <section>
+  <h3>Reservas de esta semana</h3>
+  <div class="tabla-calendario">
+    <div class="cabecera-dia">
+      <div class="celda-hora"></div>
+      <div class="celda-dia" *ngFor="let dia of diasSemana">{{ dia }}</div>
+    </div>
+
+    <div class="fila-hora" *ngFor="let hora of horasGeneradas">
+      <div class="celda-hora">{{ hora }}</div>
+      <div class="celda-dia" *ngFor="let dia of diasSemana">
+        <button 
+          *ngIf="!esDueno && !reservasOcupadas[dia]?.includes(hora)"
+          class="bloque-reserva"
+          (click)="confirmarReserva(dia, hora)">
+          Reservar
+        </button>
+        <div *ngIf="reservasOcupadas[dia]?.includes(hora)" class="bloque-ocupado">
+          Ocupado
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+  <!-- NOTA MEDIA -->
+  <section class="nota-media">
+    <h3>Nota media del negocio</h3>
+    <p class="media-numero">{{ mediaPuntuacion }} / 5 ⭐</p>
+  </section>
+
+  <!-- RESEÑAS -->
+  <section>
+    <h3>Reseñas de clientes</h3>
+
+    <div *ngIf="resenas.length > 0; else noResenas">
+      <div *ngFor="let resena of resenas" class="resena-negocio">
+        <img
+          [src]="resena.usuario?.foto || '../../../../assets/imagenes/rana1_profile_foto.png'" 
+          alt="Usuario"
+          class="avatar-resena"
+        />
+        <div class="contenido-resena">
+         <p class="nombre-usuario">
+        <a [routerLink]="['/perfil', resena.usuario.id]" *ngIf="resena.usuario">
+          <p class="nombre-usuario">{{ resena.usuario.autorNombre }}</p>
+        </a>
+
+          <p>{{ '⭐'.repeat(resena.puntuacion || 0) }}</p>
+          <p>{{ resena.contenido }}</p>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noResenas>
+      <p style="text-align: center; color: #666;">Este negocio todavía no tiene reseñas. ¡Sé el primero!</p>
+    </ng-template>
+  </section>
+</div>
+
+<!-- Botón flotante para abrir modal -->
+<button class="btn-flotante" (click)="abrirModalResena()">＋</button>
+
+<!-- Modal crear reseña -->
+<app-crear-resena-modal
+  [visible]="modalAbierto"
+  [negocioId]="negocioId"
+  [resenas]="resenas"
+  [negocio]="negocio"
+  (cerrarModal)="modalAbierto = false"
+  (resenaCreada)="refrescarResenas()">
+</app-crear-resena-modal>

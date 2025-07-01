@@ -1,30 +1,81 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, tap } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private baseUrl = 'http://192.168.0.23:3000'; 
+  private baseUrl = 'http://localhost:3000'; // tu backend real
+  private token$ = new BehaviorSubject<string | null>(null);
 
-  constructor(private http: HttpClient) {}
-
-  login(email: string, contrasena: string) {
-    return this.http.post(`${this.baseUrl}/auth/login`, {
-      email,
-      contrasena
-    });
+  constructor(private http: HttpClient) {
+    // Recupera token guardado (si hay)
+    this.token$.next(localStorage.getItem('token'));
   }
 
-  register(data: any) {
-    return this.http.post(`${this.baseUrl}/auth/register`, data);
-  }
 
-  obtenerUsuariosRegistrados(): any[] {
-    return JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-  }
+usuarioExiste(usuario: string, email: string): boolean {
+  const registrados = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
+  return registrados.some(
+    (u: { nickname: string; email: string }) =>
+      u.nickname === usuario || u.email === email
+  );
+}
 
-  usuarioExiste(usuario: string, email: string): boolean {
-    const registrados = JSON.parse(localStorage.getItem('usuariosRegistrados') || '[]');
-    return registrados.some((u: { usuario: string; email: string; }) => u.usuario === usuario || u.email === email);
-  }
+
+ login(email: string, password: string) {
+  return this.http.post<{ access_token: string, usuario: any }>(`${this.baseUrl}/auth/login`, {
+    email,
+    password
+  }).pipe(
+    tap(res => {
+      console.log('✅ Login response:', res);
+      localStorage.setItem('token', res.access_token);
+      localStorage.setItem('usuarioLogueado', JSON.stringify(res.usuario));
+    })
+  );
+}
+
+
+
+
+   register(data: any) {
+  return this.http.post(`${this.baseUrl}/auth/register`, {
+    nombre: data.nombre,
+    nickname: data.nickname,
+    email: data.email,
+    password: data.password,
   
+    biografia: data.biografia      // ✅ opcional
+  });
+}
+
+
+registerNegocio(data: any) {
+  return this.http.post(`${this.baseUrl}/auth/register-negocio`, data);
+}
+
+
+ guardarUsuario(usuario: any) {
+  
+    localStorage.setItem('usuarioLogueado', JSON.stringify(usuario));
+  }
+
+ obtenerUsuario() {
+    const user = localStorage.getItem('usuarioLogueado');
+    return user ? JSON.parse(user) : null;
+  }
+
+
+  guardarToken(token: string) {
+    localStorage.setItem('token', token);
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('token');
+  }
+
+  logout() {
+    localStorage.removeItem('token');
+  }
+ 
 }

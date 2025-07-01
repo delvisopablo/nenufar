@@ -1,45 +1,52 @@
-<div class="perfil-contenedor" *ngIf="usuarioLogueado() as user">
-    <h2>Perfil de {{ user.nombre }}</h2>
-    <p><strong>Usuario:</strong> {{ user.usuario }}</p>
-    <p><strong>Email:</strong> {{ user.email }}</p>
-    <p><strong>Rol:</strong> {{ user.rol === 'negocio' ? 'Negocio' : 'Usuario' }}</p>
-  
-    @if (user.biografia?.length) {
-        <p><strong>Biografía:</strong> {{ user.biografia }}</p>
-      } @else {
-        <p><strong>Biografía:</strong> Sin biografía</p>
-      }  
-    @if (user.rol === 'negocio') {
-      <div class="info-negocio">
-        <p><strong>Negocio:</strong> {{ user.negocio?.nombre }}</p>
-        <p><strong>Tipo:</strong> {{ user.negocio?.tipo }}</p>
-  
-        @if (user.negocio?.horario) {
-          <p><strong>Horario:</strong> {{ user.negocio.horario.apertura }} - {{ user.negocio.horario.cierre }}</p>
-        }
-      </div>
-  
-      <div class="zona-reservas">
-        <h3>Reservas del negocio</h3>
-        <p>(Aquí irán las reservas en el futuro)</p>
-      </div>
-    }
-  
-    <button (click)="modoEdicion.set(true)">✏️ Personalizar</button>
-  
-    @if (modoEdicion()) {
-      <div class="editor">
-        <h4>Editar biografía</h4>
-        <textarea [(ngModel)]="nuevaBio" rows="3"></textarea>
-  
-        @if (user.rol === 'negocio') {
-          <h4>Editar horario</h4>
-          <input type="text" placeholder="Apertura (ej: 09:00)" [(ngModel)]="nuevoHorario.apertura" />
-          <input type="text" placeholder="Cierre (ej: 18:00)" [(ngModel)]="nuevoHorario.cierre" />
-        }
-  
-        <button (click)="guardarCambios()">💾 Guardar</button>
-      </div>
-    }
+<!-- Botón para volver -->
+<!-- <button class="btn-volver">← Volver</button> -->
+
+<div class="usuario-container">
+  <!-- Botón de editar -->
+  <!-- <button class="btn-editar">Editar perfil</button> -->
+
+ <div class="info-perfil">
+  <img [src]="usuarioLogueado()?.foto_perfil || '../../../../assets/imagenes/rana1_profile_foto.png'" alt="Foto de perfil" class="foto-usuario" />
+
+  <div class="datos-usuario">
+    <h2>{{ usuarioLogueado()?.nombre || 'Nombre no disponible' }}</h2>
+    <p class="nickname">&#64; {{ usuarioLogueado()?.nickname || 'sin_nickname' }}</p>
+    <p class="bio">{{ usuarioLogueado()?.biografia || 'Este usuario aún no ha escrito una biografía.' }}</p>
   </div>
-  
+</div>
+
+
+  <section *ngIf="resenas().length > 0">
+  <h3>Mis Reseñas</h3>
+  <div class="tarjeta-resena" *ngFor="let resena of resenas()">
+  <div class="encabezado">
+    <span class="estrella">⭐ {{ resena.puntuacion }}</span>
+    <span class="fecha">📅 {{ resena.fecha | date:'mediumDate' }}</span>
+  </div>
+
+  <div class="comentario">
+    <p>{{ resena.comentario || 'Sin comentario' }}</p>
+  </div>
+
+  <div class="extra">
+    <span class="negocio">🛍️ Publicado en <strong>{{ resena.negocio?.nombre }}</strong></span>
+    <span *ngIf="resena.selloNenufar" class="sello">🌿 ¡Con sello Nenúfar!</span>
+  </div>
+</div>
+</section>
+
+<section *ngIf="resenas().length === 0">
+  <h3>Mis Reseñas</h3>
+  <p style="font-style: italic;">Todavía no has dejado ninguna reseña.</p>
+</section>
+
+
+
+ <section>
+  <h3>Mis Reservas</h3>
+  <div class="reserva" *ngFor="let r of reservas()">
+    <p>📅 {{ r.fecha?.split('T')[0] }} · {{ r.fecha?.split('T')[1]?.substring(0,5) }}h en {{ r.negocio?.nombre }}</p>
+  </div>
+</section>
+
+</div>

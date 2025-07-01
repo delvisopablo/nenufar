@@ -1,24 +1,67 @@
+<div class="contenedor-inicio">
+  <header class="barra-navegacion">
+    <!-- Botón de Ayuda -->
+    <button class="btn-ayuda" (click)="modalAyudaAbierto = true">Ayuda</button>
 
-<div class="menu-wrapper">
-  <div class="ajustes-boton">
-    <button class="buscar-button" routerLink="/ajustes">Ajustes</button>
-  </div>
+    <!-- Buscador -->
+    <input type="text" placeholder="Buscar negocios..." class="buscador" />
 
-  <app-menu></app-menu>
+    <!-- Botón de Perfil del usuario logueado -->
+    <button class="btn-perfil" (click)="irAMiPerfil()">Perfil</button>
 
-  <div class="perfil-boton">
-    <button class="perfil-usuario" routerLink="/perfil">Perfil</button>
+  </header>
+
+  <div class="contenido-principal">
+    <!-- Promociones activas -->
+    <aside class="promociones">
+      <h3>Promociones activas</h3>
+      <div class="promo">
+        <p><strong>2x1 en cafés</strong></p>
+        <p>Cafetería Nenúfar</p>
+      </div>
+      <div class="promo">
+        <p><strong>15% descuento</strong></p>
+        <p>Don Pollo</p>
+      </div>
+    </aside>
+
+    <!-- Lista de negocios disponibles -->
+    <section class="negocios">
+      <h2>Locales disponibles</h2>
+      <div 
+        class="negocio" 
+        *ngFor="let negocio of negocios()" 
+        (click)="verNegocio(negocio.id)"
+      >
+        <h4>{{ negocio.nombre }}</h4>
+        <p class="descripcion">{{ negocio.historia || 'Negocio sin descripción' }}</p>
+        <p class="nota">⭐ {{ calcularMediaPorNegocio(negocio.id) || 'Sin reseñas' }}</p>
+      </div>
+    </section>
   </div>
 </div>
 
-<!-- Resto de contenido -->
+<!-- Botón flotante para crear reseña -->
+<button class="btn-flotante" (click)="abrirModal()">＋</button>
 
-<app-portal-resenas></app-portal-resenas>
+<!-- Modal para crear reseña -->
+<app-crear-resena-modal
+  [visible]="modalAbierto"
+  (cerrarModal)="modalAbierto = false"
+  (resenaCreada)="refrescarResenas()">
+</app-crear-resena-modal>
 
-<button class="crear-resena-btn" (click)="modalVisible = true">➕</button>
-<app-crear-resena-modal 
-  [visible]="modalVisible"
-  (reseñaCreada)="anadirResena($event)"> </app-crear-resena-modal>
 
-<!-- <app-portal-reseñas></app-portal-reseñas> -->
+<!-- Modal de ayuda -->
+<div class="modal-ayuda" *ngIf="modalAyudaAbierto">
+  <div class="modal-contenido">
+    <h3>¿Has detectado algún problema?</h3>
+    <textarea [(ngModel)]="mensajeAyuda" placeholder="Cuéntanos qué ocurre..."></textarea>
+    <div class="modal-botones">
+      <button (click)="enviarAyuda()">Enviar</button>
+      <button (click)="modalAyudaAbierto = false">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 

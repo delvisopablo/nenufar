@@ -1,0 +1,35 @@
+<form [formGroup]="negocioForm" (ngSubmit)="registrar()" class="formulario-negocio">
+  <h2>Registrar Negocio</h2>
+
+  <input type="text" formControlName="nombreDueño" placeholder="Nombre del dueño" />
+  <input type="text" formControlName="nickname" placeholder="Nombre de usuario" />
+  <input type="email" formControlName="email" placeholder="Correo electrónico" />
+  <input type="password" formControlName="password" placeholder="Contraseña" />
+
+  <input type="text" formControlName="nombreNegocio" placeholder="Nombre del negocio" />
+  <!-- <input type="text" formControlName="tipo" placeholder="Tipo de negocio" /> -->
+  <input type="text" formControlName="direccion" placeholder="Dirección (opcional)" />
+  <input type="date" formControlName="fechaFundacion" placeholder="Fecha de fundación" />
+  <textarea formControlName="historia" placeholder="Historia del negocio"></textarea>
+
+<!-- Campo autocompletable de categoría -->
+<input type="text"
+       formControlName="categoriaNombre"
+       placeholder="Categoría de negocio"
+       (input)="filtrarCategorias()"
+       (focus)="mostrarSugerencias = true"
+       (blur)="ocultarSugerenciasConRetraso()" />
+
+<ul *ngIf="mostrarSugerencias">
+  <li *ngFor="let cat of categoriasFiltradas()" (click)="seleccionarCategoria(cat)">
+    {{ cat.nombre }}
+  </li>
+</ul>
+  <!-- <label for="categoriaId">Categoría:</label>
+  <select formControlName="categoriaId">
+    <option value="" disabled selected>Selecciona una categoría</option>
+    <option *ngFor="let cat of categorias()" [value]="cat.id">{{ cat.nombre }}</option>
+  </select> -->
+
+  <button type="submit">Registrar Negocio</button>
+</form>

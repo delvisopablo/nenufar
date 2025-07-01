@@ -10,7 +10,7 @@
 
       <ul class="sugerencias" *ngIf="mostrarLista">
         <li *ngFor="let negocio of negocios" (click)="seleccionarNegocio(negocio)">
-          {{ negocio }}
+          {{ negocio.nombre }}
         </li>
       </ul>
 
@@ -18,19 +18,21 @@
       <textarea placeholder="Tu comentario..." formControlName="comentario"></textarea>
 
       <!-- Estrellas 0 a 5 -->
-      <div class="estrellas">
-        <span *ngFor="let estrella of [1, 2, 3, 4, 5]" 
-              (click)="seleccionarEstrellas(estrella)"
-              [class.activa]="estrella <= estrellas()">★</span>
-        <span (click)="seleccionarEstrellas(estrellas())"></span>
-      </div>
-      <!-- Sello Nenúfar -->
-      <div class="sello-switch" 
-           [class.activo]="selloNenufar()"
-           (click)="toggleSello()"
-           title="El Sello Nenúfar destaca esta reseña como especialmente útil o relevante.">
-        🌿 Sello Nenúfar
-      </div>
+     <!-- Estrellas -->
+<div class="estrellas">
+  <span *ngFor="let estrella of [1, 2, 3, 4, 5]" 
+        (click)="form.controls['valoracion'].setValue(estrella)"
+        [class.activa]="estrella <= form.controls['valoracion'].value">★</span>
+</div>
+
+<!-- Sello Nenúfar -->
+<div class="sello-switch"
+     [class.activo]="form.controls['selloNenufar'].value"
+     (click)="form.controls['selloNenufar'].setValue(!form.controls['selloNenufar'].value)"
+     title="El Sello Nenúfar destaca esta reseña como especialmente útil o relevante.">
+  🌿 Sello Nenúfar
+</div>
+
 
       <!-- Acciones -->
       <div class="acciones">

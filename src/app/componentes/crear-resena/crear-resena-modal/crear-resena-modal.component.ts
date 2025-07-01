@@ -1,73 +1,150 @@
-import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-crear-resena-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, HttpClientModule],
   templateUrl: './crear-resena-modal.component.html',
   styleUrl: './crear-resena-modal.component.css'
 })
-export class CrearResenaModalComponent {
-ocultarListaConRetraso() {
-throw new Error('Method not implemented.');
-}
+export class CrearResenaModalComponent implements OnInit {
+  // @Output() cerrarModal = new EventEmitter<void>();
+  @Output() resenaCreada = new EventEmitter<any>();
   @Input() visible = false;
-  @Output() reseñaCreada = new EventEmitter<any>();
+  @Input() negocioId!: number;
+
+  @Input() resenas: any[] = [];
+  @Input() negocio: any;
+  @Output() cerrarModal = new EventEmitter<void>();
+  usuarioActual: any = JSON.parse(localStorage.getItem('usuarioLogueado')!);
+
+  textoResena: string = '';
+  puntuacion: number = 0;
 
   form: FormGroup;
-  negocios = [
-    'Bar El Nenúfar', 'La Panadería Verde', 'Café Central', 'Restaurante El Lago',
-    'Gym Salamandra', 'Mercado Azul', 'Café Central', 'Bar El Nenúfar'
-  ];
+  negocios: { id: number; nombre: string }[] = [];
+   negocioIdSeleccionado: number | null = null;
 
   mostrarLista = signal(false);
-  estrellas = signal(0);
-  selloNenufar = signal(false);
+  
 
-  constructor(private fb: FormBuilder) {
+  constructor(private fb: FormBuilder, private http: HttpClient) {
     this.form = this.fb.group({
       negocio: ['', Validators.required],
-      comentario: ['', Validators.required]
+      comentario: ['', Validators.required],
+      valoracion: [0, [Validators.required, Validators.min(1), Validators.max(5)]],
+      selloNenufar: [false]
     });
   }
 
-  seleccionarNegocio(nombre: string) {
-    this.form.get('negocio')?.setValue(nombre);
-    this.mostrarLista.set(false);
+  ngOnInit() {
+    // this.autenticarToken();
+    this.http.get<any[]>('http://localhost:3000/negocio').subscribe({
+      next: (data) => {
+        this.negocios = data;
+        console.log('🟢 Negocios cargados:', data);
+
+      },
+      error: (err) => {
+        console.error('❌ Error al cargar negocios:', err);
+      }
+    });
+
+   
   }
 
-  seleccionarEstrellas(valor: number) {
-    this.estrellas.set(valor);
+
+seleccionarNegocio(negocio: any) {
+  this.form.get('negocio')?.setValue(negocio.nombre);
+  this.negocioIdSeleccionado = negocio.id;
+  this.mostrarLista.set(false);
+}
+
+  // seleccionarEstrellas(valor: number) {
+  //   this.estrellas.set(valor);
+  // }
+
+  // autenticarToken() {
+  //   const token = localStorage.getItem('token');
+
+  //   this.http.get('http://localhost:3000/ruta-protegida', {
+  //     headers: {
+  //       Authorization: `Bearer ${token}`
+  //     }
+  //   }).subscribe({
+  //     next: (res) => {
+  //       console.log('✅ Token autenticado:', res);
+  //     },
+  //     error: (err) => {
+  //       console.error('❌ Error al autenticar token:', err);
+  //     }
+  //   });
+  // }
+
+  // toggleSello() {
+  //   this.selloNenufar.update((v) => !v);
+  // }
+
+ 
+
+cerrar() {
+  this.visible = false;
+  this.cerrarModal.emit();
+}
+
+
+  ocultarListaConRetraso() {
+  setTimeout(() => this.mostrarLista.set(false), 200);
+}
+
+
+//  const resena = {
+//   negocioId: this.negocioId,
+//   usuarioId: this.usuarioActual.id,
+//   texto: this.textoResena,
+//   puntuacion: this.puntuacion
+// };
+
+// this.http.post(`http://localhost:3000/resena`, resena).subscribe({
+//   next: () => {
+//     this.cerrarModal.emit(); // o recargar
+//   },
+//   error: (err) => console.error('Error al enviar reseña:', err)
+// });
+
+ toggleSello() {
+    const actual = this.form.controls['selloNenufar'].value;
+    this.form.controls['selloNenufar'].setValue(!actual);
   }
 
-  toggleSello() {
-    this.selloNenufar.update((v) => !v);
-  }
 
-  cerrar() {
-    this.visible = false;
-  }
 
-  enviar() {
-    if (this.form.valid) {
+ enviar() {
+    console.log('🟢 Enviando reseña:', this.form.value);
+    if (this.form.valid && this.negocioIdSeleccionado && this.usuarioActual?.id) {
       const reseña = {
-        ...this.form.value,
-        valoracion: this.estrellas(),
-        selloNenufar: this.selloNenufar()
-        
+        contenido: this.form.value.comentario,
+        puntuacion: this.form.value.valoracion,
+        selloNenufar: this.form.value.selloNenufar,
+        negocioId: this.negocioIdSeleccionado,
+        usuarioId: this.usuarioActual.id
       };
-      console.log('🟢 Reseña enviada:', reseña);
-      this.form.reset();
-      this.estrellas.set(0);
-      this.selloNenufar.set(false);
-      const guardadas = JSON.parse(localStorage.getItem('reseñas') || '[]');
-          guardadas.push(reseña);
-          localStorage.setItem('reseñas', JSON.stringify(guardadas));
 
-      this.reseñaCreada.emit(reseña);
-      this.cerrar();
+      this.http.post('http://localhost:3000/resena', reseña).subscribe({
+        next: (res) => {
+          console.log('✅ Reseña guardada:', res);
+          alert('Genial!! Tu reseña se ha guardado.')
+          this.resenaCreada.emit(res);
+          this.form.reset({ valoracion: 0, selloNenufar: false });
+          this.negocioIdSeleccionado = null;
+        },
+        error: (err) => {
+          console.error('❌ Error al guardar reseña:', err);
+        }
+      });
     }
   }
 }

@@ -1,0 +1,71 @@
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #fff5eb;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+input, textarea {
+  padding: 10px;
+  border: 1px solid #e7cba1;
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 16px;
+  background: #fffdf8;
+}
+
+button {
+  padding: 10px;
+  background-color: #ff974d;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  background-color: #e96d1d;
+}
+
+.horario-matriz {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fila-dia {
+  display: flex;
+  align-items: center;
+}
+
+.nombre-dia {
+  width: 100px;
+  font-weight: bold;
+}
+
+.slots-dia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.slots-dia button {
+  padding: 5px 10px;
+  font-size: 14px;
+}
+
+.slots-dia button.ocupado {
+  background-color: red;
+  color: white;
+  cursor: not-allowed;
+}
+
+.ocupado {
+  background-color: red !important;
+  cursor: not-allowed;
+}

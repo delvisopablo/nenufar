@@ -1,59 +1,141 @@
-.menu-wrapper {
-    position: relative;
+.contenedor-inicio {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #4fa56c;
+    padding: 1rem;
+   border-radius: 12px ;
+  }
+
+  .barra-navegacion {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    padding: 1rem 2rem;
-    background-color: #087b04;
-    gap: 1rem;
+    background: linear-gradient(to right, #5cc47f, #f6a974);
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    margin-bottom: 2rem;
   }
-  
-  /* Botón Perfil - arriba derecha */
-  .perfil-boton {
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-  }
-  
-  /* Botón Ajustes - abajo izquierda */
-  .ajustes-boton {
-    position: fixed;
-    bottom: 1rem;
-    left: 1rem;
-  }
-  
-  .perfil-usuario,
-  .buscar-button {
-    background-color: #f6b93b;
+
+  .btn-ajustes, .btn-perfil {
+    background-color: #ffffffcc;
     border: none;
     padding: 0.5rem 1rem;
     border-radius: 8px;
-    color: white;
+    font-weight: bold;
     cursor: pointer;
   }
-  
-  .perfil-usuario:hover,
-  .buscar-button:hover {
-    background-color: #ffcc5c;
-  }
-  
-  .crear-resena-btn {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    background-color: #f6b93b;
-    color: white;
+
+  .buscador {
+    flex-grow: 1;
+    margin: 0 1rem;
+    padding: 0.5rem;
+    border-radius: 8px;
     border: none;
-    padding: 1rem 1.2rem;
-    border-radius: 50%;
-    font-size: 1.5rem;
-    cursor: pointer;
-    z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   }
-  
-  .crear-resena-btn:hover {
-    background-color: #ffcc5c;
+
+  .contenido-principal {
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    gap: 2rem;
   }
-  
+
+  .promociones {
+    background-color: #d0eaff;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .promo {
+    background-color: #aed9f7;
+    border-left: 5px solid #4285f4;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+  }
+
+  .negocios {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .negocio {
+    background-color: #fff4e6;
+    border-left: 5px solid #ff8c42;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+
+.negocio:hover {
+  transform: scale(1.01);
+}
+  .descripcion {
+    font-size: 0.9rem;
+    color: #555;
+  }
+
+  .nota {
+    font-weight: bold;
+    color: #ff8c42;
+  }
+
+  .btn-flotante {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background-color: #f7941e;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  font-size: 2rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.modal-ayuda {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal-contenido {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modal-contenido h3 {
+  margin: 0;
+  color: #de7c5a;
+}
+
+.modal-contenido textarea {
+  resize: vertical;
+  min-height: 100px;
+  padding: 0.5rem;
+  font-family: inherit;
+}
+
+.modal-botones {
+  display: flex;
+  justify-content: space-between;
+}

@@ -1,44 +1,154 @@
-.perfil-contenedor {
-    max-width: 600px;
-    margin: 2rem auto;
-    background: #a7e18e;
-    padding: 2rem;
-    border-radius: 12px;
-    font-family: 'Segoe UI', sans-serif;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  }
-  
-  .perfil-contenedor h2 {
-    color: #087b04;
-    margin-bottom: 1rem;
-  }
-  
-  .editor {
-    margin-top: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  textarea, input {
-    padding: 0.6rem;
-    border-radius: 8px;
-    border: 2px solid #3498db;
-    font-size: 1rem;
-    background: white;
-  }
-  
-  button {
-    background-color: #f6b93b;
-    color: white;
-    padding: 0.7rem 1rem;
-    border: none;
-    border-radius: 10px;
-    margin-top: 1rem;
-    cursor: pointer;
-  }
-  
-  button:hover {
-    background-color: #ffcc5c;
-  }
-  
+/* Botón volver (fuera del contenedor) */
+.btn-volver {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background-color: #19cc33;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* Contenedor principal */
+.usuario-container {
+  position: relative;
+  max-width: 900px;
+  margin: 4rem auto 2rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #fceabb, #f8b500);
+  color: #000000;
+  font-family: 'Segoe UI', sans-serif;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Botón editar (dentro, arriba derecha) */
+.btn-editar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background-color: #ff5200;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* Parte superior con imagen y datos */
+.info-perfil {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+/* Foto redonda */
+.foto-usuario {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #19cc33;
+  background-color: #fff;
+  margin-right: 1.5rem;
+}
+
+/* Datos personales */
+.datos-usuario h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #ff5200;
+}
+
+.nickname {
+  font-size: 1rem;
+  color: #333;
+  margin-top: 0.3rem;
+  margin-bottom: 0.8rem;
+}
+
+.bio {
+  font-size: 0.95rem;
+  background: #ffffffcc;
+  padding: 1rem;
+  border-left: 4px solid #ff5200;
+  border-radius: 8px;
+}
+
+/* Secciones */
+h3 {
+  color: #19cc33;
+  font-size: 1.1rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #19cc33;
+  padding-bottom: 0.3rem;
+}
+
+/* Reseñas y reservas con fondo color */
+.resena, .reserva {
+  background: #ffe0b2;
+  border: 2px dashed #00000044;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.resena p:first-child {
+  color: #ff5200;
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+}
+
+small {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #444;
+}
+
+.tarjeta-resena {
+  background: #fff8e1;
+  border: 2px dashed #c9a74c;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+}
+
+.tarjeta-resena:hover {
+  transform: translateY(-4px);
+}
+
+.encabezado {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #ff9800;
+}
+
+.comentario {
+  font-style: italic;
+  margin-bottom: 8px;
+}
+
+.extra {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9em;
+  color: #4caf50;
+}
+
+.sello {
+  font-weight: bold;
+  color: #2e7d32;
+}

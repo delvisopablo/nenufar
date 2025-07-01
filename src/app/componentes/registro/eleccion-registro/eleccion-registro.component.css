@@ -1,0 +1,44 @@
+.eleccion-contenedor {
+  max-width: 500px;
+  margin: 100px auto;
+  text-align: center;
+  padding: 40px;
+  background: #f4a30c;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.eleccion-contenedor h2 {
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.eleccion-contenedor button {
+  display: block;
+  width: 80%;
+  margin: 15px auto;
+  padding: 15px;
+  font-size: 1.2em;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.eleccion-contenedor button:first-of-type {
+  background: #33ff0094;
+  color: white;
+}
+
+.eleccion-contenedor button:first-of-type:hover {
+  background: #89b300;
+}
+
+.eleccion-contenedor button:last-of-type {
+  background: #28A745;
+  color: white;
+}
+
+.eleccion-contenedor button:last-of-type:hover {
+  background: #1e7e34;
+}
