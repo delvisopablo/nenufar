@@ -17,7 +17,7 @@ import { FooterComponent } from "../../HyF/footer/footer.component";
 export class LandingComponent implements OnInit, OnDestroy {
   name = 'Nenúfar';
   countdownSubscription: any;
-  targetDay = new Date(2025, 6, 1, 17, 59, 59).getTime(); // Julio es 6
+  targetDay = new Date(2025, 8, 1, 11, 59, 59).getTime(); // Julio es 6
   countdownArray: { value: string, label: string }[] = [];
   countdownObs$!: Observable<{ value: string, label: string }[]>;
 
