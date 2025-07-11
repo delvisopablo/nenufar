@@ -1,28 +1,51 @@
-# Nenufar
+# 🌿 Nenúfar
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.1.3.
+**Nenúfar** es una plataforma digital en desarrollo pensada para conectar a negocios locales con usuarios de su entorno de forma más cercana, divertida y útil. Se trata de un proyecto personal en fase de verificación previa al lanzamiento, desarrollado desde cero por mí como iniciativa de startup.
 
-## Development server
+---
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+## 🚀 ¿Qué es Nenúfar?
 
-## Code scaffolding
+Una web app que permite a los usuarios descubrir negocios cercanos, compartir reseñas, hacer reservas y ganar recompensas por interactuar con su comunidad. Todo ello en un entorno visual cuidado, con una identidad propia, un tono desenfadado y un enfoque centrado en la experiencia del usuario.
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+---
 
-## Build
+## 🛠️ Tecnologías usadas
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+- **Frontend:** Angular 17 
+- **Backend:** NestJS + Prisma
+- **Base de datos:** PostgreSQL (Neon)
+- **Autenticación:** JWT con roles diferenciados (usuario / negocio)
+- **Diseño:** Estética visual propia inspirada en un universo de marca personal
 
-## Running unit tests
+---
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+## 🔎 Estado actual
 
-## Running end-to-end tests
+Nenúfar sigue en desarrollo activo y se encuentra en su fase final antes del lanzamiento beta. Ya se han implementado las funcionalidades clave:
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+- Registro y login
+- Perfiles diferenciados de usuario y negocio
+- Creación y visualización de reseñas
+- Sistema de reservas con horarios configurables por negocio
+- Módulo de promociones visuales
+- Diseño responsivo y navegación basada en componentes
 
-## Further help
+📅 **Se prevé el lanzamiento beta para el 1 de septiembre de 2025**, (si todo sale tal y cómo esta planeado) con un conjunto cerrado de usuarios y negocios participantes.
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
-# nenufar
+Este periodo servirá para seguir validando la experiencia, corregir errores y afinar el producto antes de su despliegue abierto.
+
+---
+
+## ✨ Por qué Nenúfar
+
+Nenúfar nace del deseo de mejorar la digitalización de pequeños negocios desde una perspectiva cercana, divertida y personalizada. Combina funcionalidad real con una experiencia de usuario distintiva y gamificada.
+
+---
+
+## 📌 Nota
+
+Este proyecto está en evolución constante y forma parte de un proceso de aprendizaje, experimentación y validación de producto. Cualquier sugerencia, idea o colaboración es más que bienvenida.
+
+---
+
