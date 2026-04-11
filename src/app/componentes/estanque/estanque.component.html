@@ -1,0 +1,140 @@
+<div class="estanque-shell">
+  <canvas #bgCanvas class="pond-bg" aria-hidden="true"></canvas>
+  <div #viewport class="viewport" aria-hidden="true"></div>
+
+  @if (hudReady) {
+    <aside class="hud" [class.is-visible]="hudVisible" [attr.aria-hidden]="!hudVisible">
+      <div class="hud-row">
+        <span class="label">RÉCORD</span>
+        <span class="value">{{ bestScore }}</span>
+      </div>
+      <div class="hud-row">
+        <span class="label">ÚLTIMA</span>
+        <span class="value">{{ lastScore }}</span>
+      </div>
+      @if (activeCombo > 1) {
+        <div class="combo-live">COMBO x{{ activeCombo }}</div>
+      }
+    </aside>
+
+    <button
+      type="button"
+      class="hud-info"
+      [class.is-hidden]="hudVisible"
+      (click)="showHudTemporarily()"
+      aria-label="Mostrar récord y última"
+    >
+      i
+    </button>
+  }
+
+  @if (hudReady && popupViews.length) {
+    <div class="popup-layer" aria-hidden="true">
+      @for (popup of popupViews; track popup.id) {
+        <div
+          class="score-popup"
+          [style.--point-color]="popup.pointColor"
+          [style.--combo-color]="popup.comboColor"
+          [style.--popup-glow]="popup.glowColor"
+          [style.--popup-duration]="popup.durationMs + 'ms'"
+          [style.--popup-drift-x]="popup.driftX + 'px'"
+          [style.--popup-drift-y]="popup.driftY + 'px'"
+          [style.--popup-start-scale]="popup.startScale"
+          [style.--popup-end-scale]="popup.endScale"
+          [style.left.px]="popup.x"
+          [style.top.px]="popup.y"
+        >
+          <span
+            class="points"
+            [style.fontSize.rem]="popup.pointSize"
+          >
+            {{ popup.pointsText }}
+          </span>
+          <span
+            class="combo"
+            [style.transform]="'scale(' + popup.comboScale + ')'"
+          >
+            {{ popup.comboText }}
+          </span>
+        </div>
+      }
+    </div>
+  }
+
+  @if (loginModalOpen) {
+    <div class="login-overlay" (click)="closeLoginModal()">
+      <div class="login-stack" (click)="$event.stopPropagation()">
+        <img
+          class="modal-logo"
+          [src]="logoPath"
+          alt="Nenúfar"
+        >
+
+        <section
+          class="login-card"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Acceso a Nenúfar"
+        >
+          <button type="button" class="close-btn" (click)="closeLoginModal()" aria-label="Cerrar">
+            ×
+          </button>
+
+          <div class="modal-brand">
+            <p class="modal-eyebrow">Acceso flexible</p>
+            <h2>Entra a tu ritmo</h2>
+            <p>
+              Inicia sesión para guardar tu actividad o continúa sin cuenta para explorar Nenúfar con calma.
+            </p>
+          </div>
+
+          <form class="login-form" (ngSubmit)="submitLogin()" novalidate>
+            <label class="field">
+              <span>Correo electrónico</span>
+              <input
+                type="email"
+                name="email"
+                [(ngModel)]="loginEmail"
+                autocomplete="username"
+                placeholder="nombre@correo.com"
+              >
+            </label>
+
+            <label class="field">
+              <span>Contraseña</span>
+              <input
+                type="password"
+                name="password"
+                [(ngModel)]="loginPassword"
+                autocomplete="current-password"
+                placeholder="Escribe tu contraseña"
+              >
+            </label>
+
+            @if (loginError) {
+              <p class="login-feedback" role="alert">{{ loginError }}</p>
+            }
+
+            <button
+              type="submit"
+              class="submit-btn"
+              [disabled]="loginSubmitting"
+            >
+              {{ loginSubmitting ? 'Entrando...' : 'Iniciar sesión' }}
+            </button>
+          </form>
+
+          <div class="login-card-footer">
+            <button type="button" class="guest-link" (click)="continueAsGuest()">
+              Continuar sin cuenta
+            </button>
+            <p class="footer-copy">¿Es tu primera vez por aquí?</p>
+            <button type="button" class="register-link" (click)="onRegisterClick()">
+              Crear mi cuenta
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  }
+</div>

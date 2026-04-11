@@ -1,54 +1,70 @@
-@import './styles.css';
-@import './base.css';
-
-/* === BOTONES === */
-.btn-verde {
-  background-color: var(--color-boton-verde);
-  color: var(--color-fondo-blanco);
-  padding: 0.6rem 1.5rem;
-  font-size: 1.1em;
-  border: none;
-  border-radius: 10px;
+.btn-verde,
+.btn-naranja {
+  background: linear-gradient(135deg, var(--accent-primary), #ff7caf);
+  color: var(--text-on-accent);
+  padding: 0.75rem 1.35rem;
+  font-size: 1rem;
+  font-weight: 800;
+  border: 0;
+  border-radius: 16px;
   cursor: pointer;
-  margin-top: 0.8rem;
+  transition: var(--transicion-suave);
+  box-shadow: 0 16px 26px rgba(244, 92, 156, 0.22);
+}
+
+.btn-verde:hover,
+.btn-naranja:hover {
+  background: linear-gradient(135deg, var(--accent-primary-hover), var(--accent-primary));
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background: var(--secondary-button-bg);
+  border: 1px solid var(--secondary-button-border);
+  color: var(--secondary-button-text);
+  padding: 0.72rem 1.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 16px;
+  cursor: pointer;
   transition: var(--transicion-suave);
 }
 
-.btn-verde:hover {
-  background-color: var(--color-boton-verde-hover);
+.btn-outline:hover {
+  background: var(--secondary-button-bg-hover);
+  color: var(--text-primary);
 }
 
-/* === CARDS === */
 .card {
-  background-color: var(--color-fondo-blanco);
-  border: 3px solid var(--color-borde);
-  border-radius: 15px;
+  background: linear-gradient(180deg, var(--surface-1), var(--surface-2));
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
   padding: 1rem;
-  font-size: 1.2em;
-  text-align: center;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-soft);
 }
 
-/* === BADGES === */
 .badge {
-  display: inline-block;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.9rem;
-  background-color: var(--color-secundario);
-  color: var(--color-texto-negro);
-  border: 2px solid var(--color-texto-negro);
-  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.72rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  background: rgba(192, 184, 122, 0.22);
+  color: var(--text-primary);
+  border: 1px solid rgba(192, 184, 122, 0.24);
+  border-radius: 999px;
 }
 
-/* === TEXTO === */
 .text-xl {
   font-size: 1.9em;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .text-lg {
   font-size: 1.4em;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .text-sm {
@@ -60,29 +76,23 @@
 }
 
 .text-bold {
-  font-weight: bold;
+  font-weight: 700;
 }
 
-/* === FONDOS Y ESTILOS === */
-.bg-naranja {
-  background-color: var(--color-secundario-oscuro);
-  border: 2px solid var(--color-texto-negro);
-}
-
+.bg-naranja,
 .bg-verde-claro {
-  background-color: var(--color-verde-claro);
-  border: 2px solid var(--color-texto-negro);
+  background: linear-gradient(180deg, var(--surface-1), var(--surface-2));
+  border: 1px solid var(--border-soft);
 }
 
 .border-azul {
-  border: 3px solid var(--color-borde);
+  border: 1px solid var(--border-soft);
 }
 
 .shadow-suave {
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-soft);
 }
 
-/* === LAYOUTS === */
 .full-width {
   width: 100%;
   box-sizing: border-box;
@@ -93,57 +103,22 @@
   margin: 0 auto;
 }
 
-/* === BOTONES EXTRA === */
-.btn-naranja {
-  background-color: var(--color-secundario);
-  color: var(--color-texto-negro);
-  padding: 0.6rem 1.5rem;
-  font-size: 1.1em;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-top: 0.8rem;
-  transition: var(--transicion-suave);
-}
-
-.btn-naranja:hover {
-  background-color: #e59410; /* versión más oscura */
-}
-
-.btn-outline {
-  background-color: transparent;
-  border: 2px solid var(--color-texto-negro);
-  color: var(--color-texto-negro);
-  padding: 0.6rem 1.5rem;
-  font-size: 1.1em;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-top: 0.8rem;
-  transition: var(--transicion-suave);
-}
-
-.btn-outline:hover {
-  background-color: var(--color-texto-negro);
-  color: var(--color-fondo-blanco);
-}
-
-/* === ALERTAS === */
 .alert {
   padding: 1rem;
-  border-radius: 8px;
-  font-weight: 500;
+  border-radius: 16px;
+  font-weight: 600;
   margin: 1rem 0;
   text-align: center;
 }
 
 .alert-error {
-  background-color: var(--color-error, #f8d7da);
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background: rgba(196, 61, 118, 0.14);
+  color: var(--text-primary);
+  border: 1px solid rgba(196, 61, 118, 0.28);
 }
 
 .alert-success {
-  background-color: var(--color-success, #d4edda);
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background: rgba(192, 184, 122, 0.18);
+  color: var(--text-primary);
+  border: 1px solid rgba(192, 184, 122, 0.24);
 }

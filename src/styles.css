@@ -1,69 +1,179 @@
-@import './styles.css';
 @import './base.css';
 
-:root {
-  --color-primario: #66B6E4;         /* azul claro - fondo principal */
-  --color-secundario: #f6b93b;       /* naranja (gradiente header/footer) */
-  --color-secundario-oscuro: #f5c870;/* naranja claro (fondos encuestas) */
-  --color-verde: #6ab04c;            /* verde brillante - parte del header/footer */
-  --color-verde-claro: #a7e18e;      /* verde claro (encuesta 2) */
-  --color-boton-verde: #019940;      /* verde botón */
-  --color-boton-verde-hover: #27ae60;
-  --color-borde: #3498db;            /* azul intenso - bordes y detalles */
-  --color-fondo-blanco: #ffffff;
-  --color-texto-negro: #1d1d1d;
+:root,
+:root[data-theme='garden'] {
+  color-scheme: light;
 
-  /* Tipografía */
-  --fuente-principal: 'Segoe UI', sans-serif;
-  --fuente-secundaria: 'Inter', sans-serif;
+  --nenufar-green-900: #005f02;
+  --nenufar-green-700: #427a43;
+  --nenufar-gold-400: #c0b87a;
+  --nenufar-cream-200: #f2e3bb;
+  --nenufar-pink-500: #f45c9c;
+  --nenufar-pink-600: #db4d88;
+  --nenufar-pink-700: #c43d76;
 
-  /* Transiciones */
-  --transicion-suave: all 0.3s ease;
+  --font-sans: 'Nunito Sans', 'DM Sans', 'Segoe UI', sans-serif;
+  --font-display: 'Nunito Sans', 'DM Sans', 'Segoe UI', sans-serif;
+
+  --app-bg-base: var(--nenufar-green-900);
+  --app-bg-soft: var(--nenufar-green-700);
+  --app-bg-strong: #0b4f0b;
+  --app-bg: radial-gradient(circle at top left, rgba(242, 227, 187, 0.14), transparent 20%),
+    radial-gradient(circle at top right, rgba(244, 92, 156, 0.08), transparent 16%),
+    radial-gradient(circle at bottom center, rgba(192, 184, 122, 0.16), transparent 24%),
+    linear-gradient(180deg, #004d02 0%, #005f02 48%, #427a43 100%);
+
+  --surface-1: rgba(66, 122, 67, 0.96);
+  --surface-2: rgba(0, 95, 2, 0.92);
+  --surface-3: rgba(242, 227, 187, 0.94);
+  --surface-soft: rgba(192, 184, 122, 0.16);
+  --surface-overlay: rgba(0, 95, 2, 0.8);
+  --surface-elevated: rgba(192, 184, 122, 0.14);
+
+  --text-primary: var(--nenufar-cream-200);
+  --text-secondary: rgba(242, 227, 187, 0.84);
+  --text-muted: rgba(242, 227, 187, 0.64);
+  --text-strong: #1e2c24;
+  --text-on-accent: #fff8fc;
+
+  --green-main: var(--nenufar-green-700);
+  --green-dark: var(--nenufar-green-900);
+  --green-soft: rgba(66, 122, 67, 0.78);
+
+  --accent-primary: var(--nenufar-pink-500);
+  --accent-primary-hover: var(--nenufar-pink-600);
+  --accent-primary-active: var(--nenufar-pink-700);
+
+  --border-soft: rgba(192, 184, 122, 0.34);
+  --border-strong: rgba(242, 227, 187, 0.28);
+
+  --shadow-soft: 0 20px 42px rgba(0, 0, 0, 0.24);
+  --shadow-raised: 0 28px 54px rgba(0, 0, 0, 0.3);
+  --shadow-inline: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  --overlay-dark: rgba(0, 24, 1, 0.72);
+  --focus-ring: 0 0 0 4px rgba(244, 92, 156, 0.22);
+
+  --field-bg: var(--surface-3);
+  --field-bg-soft: rgba(242, 227, 187, 0.88);
+  --field-text: var(--text-strong);
+  --field-placeholder: rgba(30, 44, 36, 0.62);
+  --field-border: rgba(192, 184, 122, 0.78);
+
+  --label-color: var(--nenufar-cream-200);
+  --secondary-button-bg: rgba(192, 184, 122, 0.18);
+  --secondary-button-bg-hover: rgba(192, 184, 122, 0.26);
+  --secondary-button-border: rgba(192, 184, 122, 0.32);
+  --secondary-button-text: var(--nenufar-cream-200);
+
+  /* Compatibilidad con estilos antiguos */
+  --color-primario: var(--nenufar-green-900);
+  --color-secundario: var(--accent-primary);
+  --color-secundario-hover: var(--accent-primary-hover);
+  --color-secundario-oscuro: rgba(192, 184, 122, 0.18);
+  --color-verde: var(--nenufar-green-700);
+  --color-verde-claro: rgba(66, 122, 67, 0.82);
+  --color-boton-verde: var(--accent-primary);
+  --color-boton-verde-hover: var(--accent-primary-hover);
+  --color-borde: var(--border-soft);
+  --color-fondo-blanco: var(--surface-3);
+  --color-texto-negro: var(--text-strong);
+  --fuente-principal: var(--font-sans);
+  --fuente-secundaria: var(--font-sans);
+  --transicion-suave: all 0.22s ease;
 }
 
+:root[data-theme='dark'] {
+  color-scheme: dark;
 
+  --app-bg-base: #050505;
+  --app-bg-soft: #101510;
+  --app-bg-strong: #181d18;
+  --app-bg: radial-gradient(circle at top left, rgba(192, 184, 122, 0.08), transparent 20%),
+    radial-gradient(circle at top right, rgba(244, 92, 156, 0.08), transparent 16%),
+    linear-gradient(180deg, #050505 0%, #101510 52%, #181d18 100%);
 
-body{
-    background-color: rgb(82, 183, 234);
+  --surface-1: rgba(18, 25, 18, 0.96);
+  --surface-2: rgba(10, 16, 10, 0.94);
+  --surface-3: rgba(47, 53, 39, 0.96);
+  --surface-soft: rgba(192, 184, 122, 0.12);
+  --surface-overlay: rgba(5, 5, 5, 0.82);
+  --surface-elevated: rgba(192, 184, 122, 0.08);
+
+  --text-primary: var(--nenufar-cream-200);
+  --text-secondary: rgba(242, 227, 187, 0.78);
+  --text-muted: rgba(242, 227, 187, 0.58);
+  --text-strong: var(--nenufar-cream-200);
+  --text-on-accent: #fff8fc;
+
+  --border-soft: rgba(192, 184, 122, 0.22);
+  --border-strong: rgba(242, 227, 187, 0.18);
+  --shadow-soft: 0 22px 44px rgba(0, 0, 0, 0.4);
+  --shadow-raised: 0 30px 60px rgba(0, 0, 0, 0.48);
+  --shadow-inline: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --overlay-dark: rgba(0, 0, 0, 0.78);
+
+  --field-bg: rgba(31, 35, 27, 0.96);
+  --field-bg-soft: rgba(31, 35, 27, 0.96);
+  --field-text: var(--nenufar-cream-200);
+  --field-placeholder: rgba(242, 227, 187, 0.48);
+  --field-border: rgba(192, 184, 122, 0.32);
+
+  --secondary-button-bg: rgba(192, 184, 122, 0.12);
+  --secondary-button-bg-hover: rgba(192, 184, 122, 0.18);
+  --secondary-button-border: rgba(192, 184, 122, 0.2);
+  --secondary-button-text: var(--nenufar-cream-200);
 }
 
-* {
-  margin: 0;
-  padding: 0;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-/* Asegura que el body ocupe toda la altura de la ventana */
-body {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    font-family: 'Roboto', sans-serif;
-    font-weight: 400;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  /* Asegura que el contenido principal tome todo el espacio disponible */
-  main {
-    flex: 1;
-  }
-  
-  /* Footer */
-  footer {
-    width: 100%;
-    background-color: #556b2f; /* Color de fondo del footer */
-    color: white;
-    padding: 20px;
-    text-align: center;
-    position: relative;
-  }
+html {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  background: var(--app-bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
 
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-  }
-  
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--app-bg);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+app-root,
+main {
+  display: block;
+  min-height: 100vh;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(244, 92, 156, 0.22);
+  color: var(--text-on-accent);
+}

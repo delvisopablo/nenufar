@@ -1,23 +1,104 @@
-export const resenasMock = [
-    { autor: 'Lucía García (@luciagc)', negocio: 'Panadería Acústica', comentario: 'Se nota que no se esfuerzan nada. Sitio muy dejado.', valoracion: 0, fecha: '2024-10-01', selloNenufar: true },
-    { autor: 'David Martínez (@davidmtz)', negocio: 'Bar del Extremo', comentario: 'Una experiencia excelente de principio a fin. El trato fue impecable y el ambiente, inmejorable.', valoracion: 4, fecha: '2025-04-19', selloNenufar: true },
-    { autor: 'Sofía López (@sofilpz)', negocio: 'Panadería Acústica', comentario: 'No volvería ni aunque me pagaran. Atención pésima y comida peor.', valoracion: 0, fecha: '2025-04-09', selloNenufar: false },
-    { autor: 'Carlos Rodríguez (@carlitosrdz)', negocio: 'Museo de Sillas', comentario: 'Muy ruidoso, incómodo y con mal ambiente.', valoracion: 0, fecha: '2024-06-16', selloNenufar: false },
-    { autor: 'María Fernández (@mariafdez)', negocio: 'La Frutería Psicológica', comentario: 'Se nota que no se esfuerzan nada. Sitio muy dejado.', valoracion: 1, fecha: '2025-05-02', selloNenufar: false },
-    { autor: 'Álvaro Gómez (@algomez)', negocio: 'Mercado Temporal', comentario: 'Una experiencia excelente de principio a fin. El trato fue impecable y el ambiente, inmejorable.', valoracion: 5, fecha: '2024-11-12', selloNenufar: false },
-    { autor: 'Paula Torres (@ptorres)', negocio: 'Biblioteca Subterránea', comentario: 'Se nota que no se esfuerzan nada. Sitio muy dejado.', valoracion: 2, fecha: '2024-05-23', selloNenufar: false },
-    { autor: 'Javier Ruiz (@jruiz95)', negocio: 'El Café Olvidado', comentario: 'Muy buena calidad-precio. Lo recomiendo si buscas algo tranquilo y de calidad.', valoracion: 3, fecha: '2024-12-18', selloNenufar: false },
-    { autor: 'Claudia Vargas (@clauvg)', negocio: 'Bar del Extremo', comentario: 'Una decepción. El sitio no tenía nada que ver con lo prometido.', valoracion: 1, fecha: '2024-10-19', selloNenufar: true },
-    { autor: 'Diego Navarro (@dnavarro)', negocio: 'El Café Olvidado', comentario: 'Una experiencia excelente de principio a fin. El trato fue impecable y el ambiente, inmejorable.', valoracion: 5, fecha: '2024-09-23', selloNenufar: false },
-    { autor: 'Elena Castro (@elenac)', negocio: 'Mercado Temporal', comentario: 'Un lugar al que volvería sin duda. Todo cuidado al detalle.', valoracion: 4, fecha: '2024-10-10', selloNenufar: false },
-    { autor: 'Andrés Molina (@amolina)', negocio: 'La Frutería Psicológica', comentario: 'No volvería ni aunque me pagaran. Atención pésima y comida peor.', valoracion: 0, fecha: '2025-04-28', selloNenufar: false },
-    { autor: 'Irene Ramos (@ireners)', negocio: 'La Frutería Psicológica', comentario: 'Muy ruidoso, incómodo y con mal ambiente.', valoracion: 1, fecha: '2024-07-25', selloNenufar: true },
-    { autor: 'Sergio León (@serleon)', negocio: 'Bar del Otro Extremo', comentario: 'No esperaba mucho, pero me sorprendió para bien. La comida estaba deliciosa y bien presentada.', valoracion: 4, fecha: '2024-12-03', selloNenufar: true },
-    { autor: 'Laura Herrera (@lherrera)', negocio: 'El Café Olvidado', comentario: 'No esperaba mucho, pero me sorprendió para bien. La comida estaba deliciosa y bien presentada.', valoracion: 4, fecha: '2025-03-14', selloNenufar: false },
-    { autor: 'Adrián Sánchez (@adrisan)', negocio: 'Bar del Otro Extremo', comentario: 'Una experiencia excelente de principio a fin. El trato fue impecable y el ambiente, inmejorable.', valoracion: 4, fecha: '2025-01-29', selloNenufar: false },
-    { autor: 'Marta Romero (@martarom)', negocio: 'El Café Olvidado', comentario: 'No volvería ni aunque me pagaran. Atención pésima y comida peor.', valoracion: 0, fecha: '2024-07-14', selloNenufar: true },
-    { autor: 'Hugo Pérez (@hugopz)', negocio: 'Mercado Temporal', comentario: 'Se nota que no se esfuerzan nada. Sitio muy dejado.', valoracion: 0, fecha: '2025-03-01', selloNenufar: false },
-    { autor: 'Natalia Blanco (@natblanco)', negocio: 'El Café Olvidado', comentario: 'No esperaba mucho, pero me sorprendió para bien. La comida estaba deliciosa y bien presentada.', valoracion: 3, fecha: '2024-11-11', selloNenufar: true },
-    { autor: 'Rubén Cano (@rcano)', negocio: 'El Café Olvidado', comentario: 'No volvería ni aunque me pagaran. Atención pésima y comida peor.', valoracion: 0, fecha: '2024-10-17', selloNenufar: false },
-  ];
-  
+export type ResenaMock = {
+  autorNombre: string;
+  contenidoCorto: string;
+  fechaISO: string;
+  id: number;
+  lanzable: boolean;
+  negocioId: number;
+  negocioNombre: string;
+  puntuacion: number;
+  selloNenufar: boolean;
+};
+
+export const RESENAS_MOCK: ResenaMock[] = [
+  {
+    id: 1,
+    negocioId: 1,
+    negocioNombre: 'Bar del Extremo',
+    autorNombre: 'Lucía García',
+    puntuacion: 5,
+    contenidoCorto: 'Las croquetas llegaron crujientes, el sitio estaba vivo y el equipo fue rapidísimo.',
+    selloNenufar: true,
+    fechaISO: '2026-04-01T19:15:00.000Z',
+    lanzable: true
+  },
+  {
+    id: 2,
+    negocioId: 3,
+    negocioNombre: 'El Café Olvidado',
+    autorNombre: 'Diego Navarro',
+    puntuacion: 4,
+    contenidoCorto: 'Buen café, ambiente tranquilo y una barra perfecta para ir con portátil una hora.',
+    selloNenufar: false,
+    fechaISO: '2026-04-03T08:42:00.000Z',
+    lanzable: false
+  },
+  {
+    id: 3,
+    negocioId: 2,
+    negocioNombre: 'La Frutería Psicológica',
+    autorNombre: 'María Fernández',
+    puntuacion: 5,
+    contenidoCorto: 'Se nota muchísimo cariño en el producto y en cómo te recomiendan cada cosa.',
+    selloNenufar: true,
+    fechaISO: '2026-04-04T12:06:00.000Z',
+    lanzable: true
+  },
+  {
+    id: 4,
+    negocioId: 4,
+    negocioNombre: 'Mercado Temporal',
+    autorNombre: 'Hugo Pérez',
+    puntuacion: 3,
+    contenidoCorto: 'Buen sitio para pasar a picar algo rápido, aunque a media tarde se pone bastante lleno.',
+    selloNenufar: false,
+    fechaISO: '2026-04-05T17:22:00.000Z',
+    lanzable: false
+  },
+  {
+    id: 5,
+    negocioId: 5,
+    negocioNombre: 'Biblioteca Subterránea',
+    autorNombre: 'Irene Ramos',
+    puntuacion: 2,
+    contenidoCorto: 'Muy cómoda para quedarse leyendo, aunque la última vez faltaba algo más de movimiento.',
+    selloNenufar: false,
+    fechaISO: '2026-04-06T10:18:00.000Z',
+    lanzable: true
+  },
+  {
+    id: 6,
+    negocioId: 1,
+    negocioNombre: 'Bar del Extremo',
+    autorNombre: 'Sergio León',
+    puntuacion: 4,
+    contenidoCorto: 'Las tapas van rápidas y el local tiene energía, ideal para arrancar la noche sin plan cerrado.',
+    selloNenufar: true,
+    fechaISO: '2026-04-08T21:04:00.000Z',
+    lanzable: false
+  },
+  {
+    id: 7,
+    negocioId: 6,
+    negocioNombre: 'Panadería Acústica',
+    autorNombre: 'Paula Torres',
+    puntuacion: 5,
+    contenidoCorto: 'Entré por casualidad y salí con media barra, bollos y ganas de volver el domingo.',
+    selloNenufar: true,
+    fechaISO: '2026-04-09T08:20:00.000Z',
+    lanzable: true
+  },
+  {
+    id: 8,
+    negocioId: 7,
+    negocioNombre: 'Museo de Sillas',
+    autorNombre: 'Carlos Rodríguez',
+    puntuacion: 1,
+    contenidoCorto: 'Curioso por raro, aunque le vendría bien una vuelta al recorrido y a la iluminación.',
+    selloNenufar: false,
+    fechaISO: '2026-04-10T16:05:00.000Z',
+    lanzable: true
+  }
+];
+
+export const resenasMock = RESENAS_MOCK;

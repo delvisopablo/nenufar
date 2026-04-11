@@ -1,154 +1,177 @@
-/* Botón volver (fuera del contenedor) */
-.btn-volver {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  background-color: #19cc33;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+:host {
+  display: block;
+  min-height: 100%;
+  padding: 1rem;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
 }
 
-/* Contenedor principal */
 .usuario-container {
   position: relative;
-  max-width: 900px;
-  margin: 4rem auto 2rem;
-  padding: 2rem;
-  background: linear-gradient(135deg, #fceabb, #f8b500);
-  color: #000000;
-  font-family: 'Segoe UI', sans-serif;
-  border-radius: 20px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  max-width: 58rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
 }
 
-/* Botón editar (dentro, arriba derecha) */
+.btn-volver,
 .btn-editar {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background-color: #ff5200;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: bold;
+  width: fit-content;
+  padding: 0.78rem 1rem;
+  border-radius: 16px;
+  font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  transition: var(--transicion-suave);
 }
 
-/* Parte superior con imagen y datos */
+.btn-volver {
+  background: var(--secondary-button-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--secondary-button-border);
+}
+
+.btn-editar {
+  justify-self: end;
+  border: 0;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-hover));
+  color: var(--text-on-accent);
+  box-shadow: 0 18px 28px rgba(244, 92, 156, 0.22);
+}
+
+.info-perfil,
+section {
+  padding: 1.25rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--surface-1), var(--surface-2));
+  box-shadow: var(--shadow-soft);
+}
+
 .info-perfil {
   display: flex;
-  align-items: center;
-  margin-bottom: 2rem;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-/* Foto redonda */
 .foto-usuario {
-  width: 120px;
-  height: 120px;
+  width: 7rem;
+  height: 7rem;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid #19cc33;
-  background-color: #fff;
-  margin-right: 1.5rem;
+  border: 4px solid rgba(192, 184, 122, 0.24);
+  background-color: var(--surface-3);
+  box-shadow: 0 16px 26px rgba(0, 0, 0, 0.2);
 }
 
-/* Datos personales */
+.datos-usuario {
+  display: grid;
+  gap: 0.55rem;
+}
+
 .datos-usuario h2 {
   margin: 0;
-  font-size: 1.4rem;
-  color: #ff5200;
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  color: var(--text-primary);
 }
 
 .nickname {
-  font-size: 1rem;
-  color: #333;
-  margin-top: 0.3rem;
-  margin-bottom: 0.8rem;
+  margin: 0;
+  font-size: 0.98rem;
+  color: var(--text-secondary);
 }
 
 .bio {
-  font-size: 0.95rem;
-  background: #ffffffcc;
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  background: var(--surface-soft);
   padding: 1rem;
-  border-left: 4px solid #ff5200;
-  border-radius: 8px;
-}
-
-/* Secciones */
-h3 {
-  color: #19cc33;
-  font-size: 1.1rem;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  border-bottom: 2px solid #19cc33;
-  padding-bottom: 0.3rem;
-}
-
-/* Reseñas y reservas con fondo color */
-.resena, .reserva {
-  background: #ffe0b2;
-  border: 2px dashed #00000044;
-  border-radius: 12px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.resena p:first-child {
-  color: #ff5200;
-  font-weight: bold;
-  margin-bottom: 0.3rem;
-}
-
-small {
-  display: block;
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  color: #444;
-}
-
-.tarjeta-resena {
-  background: #fff8e1;
-  border: 2px dashed #c9a74c;
+  border-left: 4px solid var(--nenufar-gold-400);
   border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease;
 }
 
-.tarjeta-resena:hover {
-  transform: translateY(-4px);
+h3 {
+  margin: 0 0 1rem;
+  color: var(--text-primary);
+  font-size: 1.12rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.reserva,
+.tarjeta-resena {
+  background: var(--surface-soft);
+  border: 1px solid var(--secondary-button-border);
+  border-radius: 20px;
+  padding: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.reserva p,
+.comentario p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 
 .encabezado {
   display: flex;
   justify-content: space-between;
-  font-weight: bold;
-  margin-bottom: 8px;
-  color: #ff9800;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+  color: var(--nenufar-gold-400);
+  font-weight: 800;
 }
 
 .comentario {
-  font-style: italic;
-  margin-bottom: 8px;
+  margin-bottom: 0.75rem;
 }
 
 .extra {
   display: flex;
-  justify-content: space-between;
-  font-size: 0.9em;
-  color: #4caf50;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.92rem;
+  color: var(--text-muted);
 }
 
 .sello {
-  font-weight: bold;
-  color: #2e7d32;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.empty-copy {
+  margin: 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+small {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+@media (min-width: 760px) {
+  :host {
+    padding: 1.4rem;
+  }
+
+  .info-perfil {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .foto-usuario {
+    width: 8rem;
+    height: 8rem;
+  }
+
+  .extra {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }

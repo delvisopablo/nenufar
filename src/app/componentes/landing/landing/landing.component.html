@@ -1,79 +1,45 @@
+<div class="pond-wrapper">
+  <header class="pond-header">
+    <h1>nenúfar</h1>
+    <p>para que tu negocio no se estanque</p>
+  </header>
 
-<body>
-  <div class="page-wrapper">
-    <app-header></app-header>
-<!-- Formulario de acceso con contraseña -->
-    <!-- <form (submit)="acceder()">
-      <input
-        type="text"
-        placeholder="Introduce la clave secreta"
-        [(ngModel)]="claveIngresada"
-        name="clave"
-      />
-      <button type="submit">Entrar</button>
-    </form>
-    
-    @if (errorClave) {
-      <p style="color: red;">Clave incorrecta</p>
-    } -->
-    <main class="main-content">
+  <canvas #pond class="pond-canvas" (click)="onCanvasClick($event)"></canvas>
 
-    <div class="countdown-title">¡¡Cuenta atrás para el lanzamiento!!</div>
+  @if (modalOpen()) {
+    <div class="modal-bg" (click)="closeModal()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <button type="button" class="close-btn" (click)="closeModal()" aria-label="Cerrar">
+          ✕
+        </button>
 
-    <div class="countdown">
-      @for (item of countdownArray; track $index) {
-        <div class="count-box">
-          <strong>{{ item.value }}</strong><br>
-          {{ item.label }}
-        </div>
-      }
-    </div> 
-    
-    <div class="survey-box">
-      <span>¿Tienes un negocio local o trabajas en uno? ¡En 3 minutos dinos cómo podemos ayudarte a crecer! 🚀</span><br>
-      <button (click)="formulario2()" class="survey-button">Encuesta 📝</button>
+        <h2>nenúfar</h2>
+        <p class="subtitle">accede a tu cuenta</p>
+
+        <input
+          type="text"
+          placeholder="usuario"
+          [(ngModel)]="usuario"
+          autocomplete="off"
+        >
+        <input
+          type="password"
+          placeholder="contraseña"
+          [(ngModel)]="password"
+          autocomplete="current-password"
+        >
+
+        @if (loginError()) {
+          <p class="feedback">{{ loginError() }}</p>
+        }
+
+        <button type="button" class="btn-enter" (click)="onLogin()" [disabled]="loginPending()">
+          {{ loginPending() ? 'entrando...' : 'entrar' }}
+        </button>
+        <button type="button" class="btn-register" (click)="onRegister()" [disabled]="loginPending()">
+           Crear cuenta
+        </button>
+      </div>
     </div>
-
-    <div class="survey-box2">
-      <span>¿Eres consumidor? ¡Cuéntanos en 3 minutos cómo apoyas y descubres negocios locales! 🌱</span><br>
-      <button (click)="formulario()" class="survey-button">Encuesta 📝</button>
-    </div>
-
-   
-
-    <!-- Ejemplo adicional si lo necesitas más adelante -->
-    <!-- 
-    <div class="survey-box">
-      <button (click)="premio()" class="boton amarillo">Premio 🏆</button><br>
-      <span>Una pequeña recompensa para todo aquel que visite la web antes del final de la cuenta atrás 😲</span>
-    </div>
-
-    <div class="survey-box">
-      <button (click)="noTocar()" class="boton rojo">No me toques 🤬</button>
-    </div>
-    -->
-
-
-    
-    
-    <!-- <button (click)="probarRedireccion()">Probar login directo</button> -->
-
-
-
-<!-- 
-<div class="tfg-footer" style="background-color: #00BFFF; color: #000; padding: 1rem; text-align: center;">
-  <p style="margin: 0;">
-    Proyecto desarrollado por Pablo del Viso.
-  </p>
-  <p style="margin: 0;">
-    Sígueme en
-    <a href="https://www.instagram.com/minenufarcom"
-       target="_blank"
-       rel="noopener noreferrer"
-       style="color: #00FF7F; text-decoration: underline;">
-      Instagram &#64;minenufarcom
-    </a>.
-  </p> -->
-<!-- </div>  -->
-
-  
+  }
+</div>

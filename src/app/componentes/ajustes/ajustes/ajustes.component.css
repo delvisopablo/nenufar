@@ -1,0 +1,44 @@
+:host {
+  display: block;
+}
+
+.ajustes-shell {
+  min-height: 100vh;
+  padding: 1rem;
+  background:
+    radial-gradient(circle at top left, rgba(242, 227, 187, 0.08), transparent 22%),
+    radial-gradient(circle at top right, rgba(244, 92, 156, 0.08), transparent 16%),
+    linear-gradient(180deg, rgba(0, 95, 2, 0.16) 0%, rgba(66, 122, 67, 0.12) 100%);
+  font-family: var(--font-sans);
+}
+
+.ajustes-card {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.4rem;
+  border-radius: 28px;
+  border: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, var(--surface-1), var(--surface-2));
+  color: var(--text-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+.ajustes-kicker {
+  margin: 0 0 0.4rem;
+  color: var(--nenufar-gold-400);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ajustes-card h1 {
+  margin: 0 0 0.6rem;
+  font-size: clamp(1.9rem, 4vw, 2.5rem);
+}
+
+.ajustes-card p:last-child {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}

@@ -1,71 +1,116 @@
+:host {
+  display: block;
+  padding: 1rem;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+:host > div {
+  max-width: 64rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  letter-spacing: -0.03em;
+}
+
 form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background: #fff5eb;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  gap: 0.85rem;
+  background: linear-gradient(180deg, var(--surface-1), var(--surface-2));
+  border: 1px solid var(--border-soft);
+  border-radius: 24px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-soft);
 }
 
-input, textarea {
-  padding: 10px;
-  border: 1px solid #e7cba1;
-  border-radius: 5px;
+input,
+textarea {
+  padding: 0.88rem 0.95rem;
+  border: 1px solid var(--field-border);
+  border-radius: 16px;
   font-family: inherit;
-  font-size: 16px;
-  background: #fffdf8;
+  font-size: 1rem;
+  background: var(--field-bg);
+  color: var(--field-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--field-placeholder);
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: rgba(244, 92, 156, 0.58);
+  box-shadow: var(--focus-ring), 0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
 button {
-  padding: 10px;
-  background-color: #ff974d;
-  color: white;
+  padding: 0.88rem 1rem;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-hover));
+  color: var(--text-on-accent);
   border: none;
-  border-radius: 5px;
-  font-weight: bold;
+  border-radius: 16px;
+  font-weight: 800;
   cursor: pointer;
   transition: background-color 0.2s ease;
-}
-
-button:hover {
-  background-color: #e96d1d;
 }
 
 .horario-matriz {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
 }
 
 .fila-dia {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.45rem;
 }
 
 .nombre-dia {
-  width: 100px;
-  font-weight: bold;
+  font-weight: 800;
+  color: var(--text-secondary);
 }
 
 .slots-dia {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 0.45rem;
 }
 
 .slots-dia button {
-  padding: 5px 10px;
-  font-size: 14px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.92rem;
 }
 
-.slots-dia button.ocupado {
-  background-color: red;
-  color: white;
-  cursor: not-allowed;
-}
-
+.slots-dia button.ocupado,
 .ocupado {
-  background-color: red !important;
+  background: rgba(192, 184, 122, 0.18) !important;
+  color: var(--text-primary);
   cursor: not-allowed;
+}
+
+@media (min-width: 760px) {
+  :host {
+    padding: 1.4rem;
+  }
+
+  .fila-dia {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .nombre-dia {
+    width: 110px;
+    flex-shrink: 0;
+  }
 }

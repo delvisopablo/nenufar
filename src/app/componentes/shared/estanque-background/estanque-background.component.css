@@ -1,0 +1,96 @@
+:host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(242, 227, 187, 0.18), transparent 40%),
+    radial-gradient(circle at 82% 18%, rgba(192, 184, 122, 0.16), transparent 28%),
+    linear-gradient(180deg, #004901 0%, #005f02 46%, #427a43 100%);
+}
+
+:host::before,
+:host::after {
+  content: '';
+  position: absolute;
+  inset: -3%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+:host::before {
+  background:
+    radial-gradient(circle at 18% 14%, rgba(242, 227, 187, 0.14), transparent 24%),
+    radial-gradient(circle at 76% 22%, rgba(192, 184, 122, 0.12), transparent 26%),
+    linear-gradient(
+      180deg,
+      rgba(242, 227, 187, 0.12) 0%,
+      rgba(242, 227, 187, 0.02) 34%,
+      rgba(192, 184, 122, 0.08) 100%
+    );
+  mix-blend-mode: soft-light;
+  opacity: 0.92;
+  animation: pond-glaze-drift 28s ease-in-out infinite alternate;
+}
+
+:host::after {
+  background:
+    radial-gradient(circle at 0% 32%, rgba(122, 161, 136, 0.2), transparent 24%),
+    radial-gradient(circle at 100% 74%, rgba(133, 171, 147, 0.18), transparent 22%),
+    radial-gradient(circle at 50% 4%, rgba(255, 255, 255, 0.2), transparent 36%);
+  opacity: 0.84;
+  animation: pond-edge-drift 36s ease-in-out infinite alternate;
+}
+
+.pond-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  opacity: 0.98;
+  filter: saturate(110%) brightness(1.03) contrast(1.02);
+}
+
+.viewport {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.viewport canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+@keyframes pond-glaze-drift {
+  0% {
+    transform: translate3d(-0.4%, 0%, 0) scale(1);
+  }
+
+  100% {
+    transform: translate3d(0.7%, -1.2%, 0) scale(1.018);
+  }
+}
+
+@keyframes pond-edge-drift {
+  0% {
+    transform: translate3d(0%, 0%, 0) scale(1);
+  }
+
+  100% {
+    transform: translate3d(-0.8%, 0.6%, 0) scale(1.02);
+  }
+}

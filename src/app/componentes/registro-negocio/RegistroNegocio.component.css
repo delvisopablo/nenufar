@@ -1,79 +1,303 @@
-/* === Estilo general del formulario === */
-.formulario-negocio {
-  max-width: 600px;
-  margin: 2rem auto;
-  background: #fff8f0;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
-  font-family: 'Segoe UI', sans-serif;
-  color: #333;
+:host {
+  display: block;
 }
 
-/* === Títulos === */
-.formulario-negocio h2 {
-  text-align: center;
-  color: #de7e5d;
-  margin-bottom: 1.5rem;
-}
-
-/* === Inputs y textareas === */
-.formulario-negocio input,
-.formulario-negocio textarea {
+.pond-background {
+  position: relative;
+  min-height: 100vh;
   width: 100%;
-  padding: 0.75rem;
-  margin: 0.5rem 0 1rem;
-  border: 1px solid #e2cfc3;
-  border-radius: 8px;
-  background: #fff;
-  font-size: 1rem;
-  transition: border-color 0.2s ease;
+  overflow: hidden;
+  color: #f4f8ff;
 }
 
-.formulario-negocio input:focus,
-.formulario-negocio textarea:focus {
-  border-color: #de7e5d;
-  outline: none;
+.pond-canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100vw, 100vh);
+  height: max(100vw, 100vh);
+  transform: translate(-50%, -50%);
+  display: block;
+  cursor: crosshair;
+  background: #0a1f3d;
 }
 
-/* === Botón === */
-.formulario-negocio button[type="submit"] {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #de7e5d;
-  color: white;
-  font-size: 1rem;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+.page-shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  padding: 1.25rem 1rem 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
-.formulario-negocio button[type="submit"]:hover {
-  background-color: #c26d52;
+.auth-card {
+  width: min(100%, 580px);
+  margin-top: min(7vh, 4.5rem);
+  padding: 1.6rem 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+  display: grid;
+  gap: 1rem;
 }
 
-/* === Lista de sugerencias === */
-ul {
-  list-style: none;
+.eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(244, 92, 156, 0.16);
+  color: #ffd4e7;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-card h1,
+.section-head h2 {
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+
+.auth-card h1 {
+  font-size: clamp(1.95rem, 4vw, 2.7rem);
+  line-height: 1.05;
+}
+
+.auth-copy,
+.section-head p {
+  margin: 0;
+  color: rgba(234, 244, 255, 0.82);
+  line-height: 1.6;
+}
+
+.intro-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+}
+
+.text-link,
+.primary-btn,
+.secondary-btn,
+.suggestion-item {
+  font: inherit;
+}
+
+.text-link {
   padding: 0;
-  margin: -0.5rem 0 1rem;
-  background: #fff;
-  border: 1px solid #e2cfc3;
-  border-radius: 8px;
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-ul li {
-  padding: 0.5rem;
+  border: 0;
+  background: transparent;
+  color: #ffd7e9;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.22rem;
   cursor: pointer;
 }
 
-ul li:hover {
-  background-color: #f9e7dc;
+.auth-form {
+  display: grid;
+  gap: 1rem;
 }
 
-input.ng-touched.ng-invalid, textarea.ng-touched.ng-invalid {
-  border: 1px solid red;
+.form-section {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.form-section + .form-section {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.section-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field-grid {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.48rem;
+  position: relative;
+}
+
+.field span {
+  color: #fdf3c6;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.field-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.field-topline small {
+  color: rgba(234, 244, 255, 0.72);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #f7fbff;
+  font: inherit;
+  transition: 160ms ease;
+}
+
+.field input {
+  min-height: 3.35rem;
+  padding: 0.95rem 1rem;
+}
+
+.field textarea {
+  min-height: 8rem;
+  padding: 0.95rem 1rem;
+  resize: vertical;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgba(244, 248, 255, 0.6);
+}
+
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: rgba(244, 92, 156, 0.58);
+  box-shadow: 0 0 0 4px rgba(244, 92, 156, 0.18), 0 12px 24px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+.field-category {
+  z-index: 2;
+}
+
+.suggestions-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  display: grid;
+  padding: 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  background: rgba(6, 17, 31, 0.92);
+  box-shadow: 0 24px 44px rgba(0, 0, 0, 0.28);
+}
+
+.suggestion-item {
+  width: 100%;
+  padding: 0.72rem 0.82rem;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #f7fbff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.suggestion-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.suggestion-empty {
+  padding: 0.72rem 0.82rem;
+  color: #f7fbff;
+  font-size: 0.9rem;
+}
+
+.field-error {
+  font-size: 0.85rem;
+  color: #ffe3ef;
+}
+
+.form-feedback {
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(244, 92, 156, 0.28);
+  border-radius: 14px;
+  background: rgba(244, 92, 156, 0.12);
+  font-size: 0.85rem;
+  color: #fff3f8;
+  line-height: 1.5;
+}
+
+.form-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.primary-btn,
+.secondary-btn {
+  min-height: 3.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: 18px;
+  font-size: 0.98rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 160ms ease;
+}
+
+.primary-btn {
+  border: 0;
+  background: linear-gradient(135deg, #f45c9c, #db4d88);
+  color: #fff8fc;
+  box-shadow: 0 18px 28px rgba(244, 92, 156, 0.22);
+}
+
+.secondary-btn {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.12);
+  color: #f4f8ff;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.14);
+}
+
+.primary-btn:hover,
+.secondary-btn:hover,
+.text-link:hover {
+  transform: translateY(-1px);
+}
+
+.primary-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.text-link:focus-visible,
+.primary-btn:focus-visible,
+.secondary-btn:focus-visible,
+.suggestion-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08), 0 0 0 7px rgba(244, 92, 156, 0.16);
+}
+
+@media (min-width: 560px) {
+  .page-shell {
+    padding: 2rem 1.4rem 2.4rem;
+  }
+
+  .auth-card {
+    padding: 1.8rem;
+  }
+
+  .field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

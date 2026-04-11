@@ -1,35 +1,212 @@
-<form [formGroup]="negocioForm" (ngSubmit)="registrar()" class="formulario-negocio">
-  <h2>Registrar Negocio</h2>
+<section class="pond-background">
+  <app-estanque-background class="pond-canvas"></app-estanque-background>
 
-  <input type="text" formControlName="nombreDueño" placeholder="Nombre del dueño" />
-  <input type="text" formControlName="nickname" placeholder="Nombre de usuario" />
-  <input type="email" formControlName="email" placeholder="Correo electrónico" />
-  <input type="password" formControlName="password" placeholder="Contraseña" />
+  <div class="page-shell">
+    <article class="auth-card">
+      <p class="eyebrow">Cuenta de negocio</p>
+      <h1>Nénúfate con tu negocio</h1>
+      <p class="auth-copy">
+        Prepara tu escaparate local para compartir promociones, recibir reseñas y activar reservas
+        con una presencia más cálida dentro del estanque.
+      </p>
 
-  <input type="text" formControlName="nombreNegocio" placeholder="Nombre del negocio" />
-  <!-- <input type="text" formControlName="tipo" placeholder="Tipo de negocio" /> -->
-  <input type="text" formControlName="direccion" placeholder="Dirección (opcional)" />
-  <input type="date" formControlName="fechaFundacion" placeholder="Fecha de fundación" />
-  <textarea formControlName="historia" placeholder="Historia del negocio"></textarea>
+      <div class="intro-links">
+        <button type="button" class="text-link" (click)="volverAOpciones()">
+          Elegir otro tipo de cuenta
+        </button>
+        <button type="button" class="text-link" (click)="irAlEstanque()">
+          Volver al acceso
+        </button>
+      </div>
 
-<!-- Campo autocompletable de categoría -->
-<input type="text"
-       formControlName="categoriaNombre"
-       placeholder="Categoría de negocio"
-       (input)="filtrarCategorias()"
-       (focus)="mostrarSugerencias = true"
-       (blur)="ocultarSugerenciasConRetraso()" />
+      <form [formGroup]="negocioForm" (ngSubmit)="registrar()" class="auth-form" novalidate>
+        <section class="form-section">
+          <div class="section-head">
+            <h2>Tu cuenta</h2>
+            <p>Estos datos nos ayudan a crear la cuenta base con la que gestionarás el negocio.</p>
+          </div>
 
-<ul *ngIf="mostrarSugerencias">
-  <li *ngFor="let cat of categoriasFiltradas()" (click)="seleccionarCategoria(cat)">
-    {{ cat.nombre }}
-  </li>
-</ul>
-  <!-- <label for="categoriaId">Categoría:</label>
-  <select formControlName="categoriaId">
-    <option value="" disabled selected>Selecciona una categoría</option>
-    <option *ngFor="let cat of categorias()" [value]="cat.id">{{ cat.nombre }}</option>
-  </select> -->
+          <div class="field-grid">
+            <label class="field">
+              <span>Tu nombre</span>
+              <input
+                type="text"
+                formControlName="nombreDueño"
+                autocomplete="name"
+                placeholder="Cómo te llamas"
+              >
+              @if (campoInvalido('nombreDueño')) {
+                <small class="field-error">{{ getErrorCampo('nombreDueño') }}</small>
+              }
+            </label>
 
-  <button type="submit">Registrar Negocio</button>
-</form>
+            <label class="field">
+              <span>Nombre de usuario</span>
+              <input
+                type="text"
+                formControlName="nickname"
+                autocomplete="username"
+                placeholder="Cómo aparecerás dentro de Nenúfar"
+              >
+              @if (campoInvalido('nickname')) {
+                <small class="field-error">{{ getErrorCampo('nickname') }}</small>
+              }
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Correo electrónico</span>
+            <input
+              type="email"
+              formControlName="email"
+              autocomplete="email"
+              placeholder="nombre@correo.com"
+            >
+            @if (campoInvalido('email')) {
+              <small class="field-error">{{ getErrorCampo('email') }}</small>
+            }
+          </label>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>Contraseña</span>
+              <input
+                type="password"
+                formControlName="password"
+                autocomplete="new-password"
+                placeholder="Mínimo 6 caracteres"
+              >
+              @if (campoInvalido('password')) {
+                <small class="field-error">{{ getErrorCampo('password') }}</small>
+              }
+            </label>
+
+            <label class="field">
+              <span>Repite la contraseña</span>
+              <input
+                type="password"
+                formControlName="confirmarContrasena"
+                autocomplete="new-password"
+                placeholder="Escríbela de nuevo"
+              >
+              @if (campoInvalido('confirmarContrasena') || negocioForm.hasError('passwordMismatch')) {
+                <small class="field-error">{{ getErrorCampo('confirmarContrasena') }}</small>
+              }
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-head">
+            <h2>Tu negocio</h2>
+            <p>
+              Completa esta parte para que el perfil quede listo para promociones, reseñas y reservas.
+            </p>
+          </div>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>Nombre del negocio</span>
+              <input
+                type="text"
+                formControlName="nombreNegocio"
+                placeholder="Cómo se llama tu local"
+              >
+              @if (campoInvalido('nombreNegocio')) {
+                <small class="field-error">{{ getErrorCampo('nombreNegocio') }}</small>
+              }
+            </label>
+
+            <label class="field field-category">
+              <span>Categoría</span>
+              <input
+                type="text"
+                formControlName="categoriaNombre"
+                placeholder="Ej. cafetería, librería o floristería"
+                (input)="filtrarCategorias()"
+                (focus)="mostrarPanelCategorias()"
+                (blur)="ocultarSugerenciasConRetraso()"
+              >
+
+              @if (mostrarSugerencias()) {
+                <div class="suggestions-panel">
+                  @if (categoriasFiltradas().length) {
+                    @for (categoria of categoriasFiltradas(); track categoria.id) {
+                      <button
+                        type="button"
+                        class="suggestion-item"
+                        (mousedown)="seleccionarCategoria(categoria)"
+                      >
+                        {{ categoria.nombre }}
+                      </button>
+                    }
+                  } @else if (cargandoCategorias()) {
+                    <div class="suggestion-empty">Cargando categorías...</div>
+                  } @else {
+                    <div class="suggestion-empty">No hemos encontrado categorías con ese nombre.</div>
+                  }
+                </div>
+              }
+
+              @if (campoInvalido('categoriaNombre')) {
+                <small class="field-error">{{ getErrorCampo('categoriaNombre') }}</small>
+              }
+            </label>
+          </div>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>Dirección</span>
+              <input
+                type="text"
+                formControlName="direccion"
+                autocomplete="street-address"
+                placeholder="Calle, barrio o zona"
+              >
+            </label>
+
+            <label class="field">
+              <span>Fecha de fundación</span>
+              <input type="date" formControlName="fechaFundacion">
+              @if (campoInvalido('fechaFundacion')) {
+                <small class="field-error">{{ getErrorCampo('fechaFundacion') }}</small>
+              }
+            </label>
+          </div>
+
+          <label class="field">
+            <div class="field-topline">
+              <span>Historia breve</span>
+              <small>{{ historiaRestante }} caracteres disponibles</small>
+            </div>
+            <textarea
+              formControlName="historia"
+              rows="5"
+              maxlength="320"
+              placeholder="Cuéntanos qué hace especial a tu negocio."
+            ></textarea>
+            @if (campoInvalido('historia')) {
+              <small class="field-error">{{ getErrorCampo('historia') }}</small>
+            }
+          </label>
+        </section>
+
+        @if (errorMensaje()) {
+          <div class="form-feedback" role="alert">
+            {{ errorMensaje() }}
+          </div>
+        }
+
+        <div class="form-actions">
+          <button type="submit" class="primary-btn" [disabled]="registrando()">
+            {{ registrando() ? 'Preparando negocio...' : 'Registrar negocio' }}
+          </button>
+
+          <button type="button" class="secondary-btn" (click)="irARegistroUsuario()">
+            Prefiero una cuenta personal
+          </button>
+        </div>
+      </form>
+    </article>
+  </div>
+</section>

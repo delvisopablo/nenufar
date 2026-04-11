@@ -2,16 +2,36 @@ import { Injectable } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 export class LayoutService {
-  // Rutas que no muestran el menú lateral
-  private rutasSinMenu = ['/login', '/registro', '/holaaa'];
+  private rutasSinMenu = [
+    '/',
+    '/login',
+    '/registro',
+    '/registro-opciones',
+    '/registro-negocio',
+    '/holaaa',
+    '/estanque'
+  ];
 
-  // Rutas que no muestran ni header, ni footer, ni menú
-  private rutasSinLayout = ['/holaaa'];
+  private rutasSinLayout = [
+    '/',
+    '/login',
+    '/registro',
+    '/registro-opciones',
+    '/registro-negocio',
+    '/holaaa',
+    '/estanque'
+  ];
 
-  // Rutas que usan layout público (sin login)
-  private rutasPublicas = ['/login', '/registro', '/holaaa'];
+  private rutasPublicas = [
+    '/',
+    '/login',
+    '/registro',
+    '/registro-opciones',
+    '/registro-negocio',
+    '/holaaa',
+    '/estanque'
+  ];
 
-  // En el futuro puedes añadir rutas privadas o admin
   private rutasAdmin = ['/admin', '/panel'];
 
   shouldShowMenu(url: string): boolean {
@@ -27,6 +47,6 @@ export class LayoutService {
   }
 
   isAdmin(url: string): boolean {
-    return this.rutasAdmin.some(path => url.startsWith(path));
+    return this.rutasAdmin.some((path) => url.startsWith(path));
   }
 }

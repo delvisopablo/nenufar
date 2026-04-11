@@ -1,27 +1,24 @@
-/* Asegúrate de que el body no tenga cosas raras */
-body {
-  margin: 0;
-  padding: 0;
+:host {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: block;
   width: 100%;
-  font-family: sans-serif;
 }
-
 
 .header {
   width: 100%;
-  background: linear-gradient(to right, darkgreen, orange);
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px 0;
+  padding: 0.8rem 1rem;
+  background:
+    linear-gradient(180deg, rgba(0, 95, 2, 0.9), rgba(66, 122, 67, 0.86)),
+    radial-gradient(circle at top, rgba(242, 227, 187, 0.1), transparent 38%);
+  border-bottom: 1px solid rgba(192, 184, 122, 0.3);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(16px) saturate(120%);
 }
-
-.logo {
-  max-width: 390px;
-  height: auto;
-}
-
-
 
 .titulo {
   margin: 0;
@@ -30,8 +27,10 @@ body {
   align-items: center;
 }
 
-
-img {
-  max-width: 400px; /* o el tamaño que quieras */
+.logo {
+  width: min(82vw, 17rem);
   height: auto;
+  filter:
+    drop-shadow(0 14px 22px rgba(0, 0, 0, 0.18))
+    drop-shadow(0 0 14px rgba(242, 227, 187, 0.08));
 }

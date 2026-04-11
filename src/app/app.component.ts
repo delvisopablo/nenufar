@@ -1,79 +1,65 @@
-import { CuentaAtrasService } from './servicios/cuentaAtrasServicio/cuenta-atras.service';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
-
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 import { HeaderComponent } from './componentes/HyF/header/header.component';
-import { PrincipalComponent } from './componentes/principal/principal.component';
-import { JuegoComponent } from './componentes/juego/juego.component';
-import { MenuComponent } from './componentes/menu/menu/menu.component';
-import { FooterComponent } from './componentes/HyF/footer/footer.component';
-import { LandingComponent } from './componentes/landing/landing/landing.component';
-import { LoginComponent } from './componentes/login/login/login.component';
+import { EstanqueComponent } from './componentes/estanque/estanque.component';
+import { CuentaAtrasService } from './servicios/cuentaAtrasServicio/cuenta-atras.service';
 import { LayoutService } from './servicios/layoutServicio/layout.service';
-import { RegistroComponent } from './componentes/registro/registro/registro.component';
-import { AjustesComponent } from './componentes/ajustes/ajustes/ajustes.component';
-import { UsuarioComponent } from './componentes/usuario/usuario/usuario.component';
-import { ReviewComponent } from './componentes/review/review/review.component';
-import { PerfilComponent } from './componentes/perfil/perfil/perfil.component';
-import { HacerReviewComponent } from './componentes/review/review/hacer-review/hacer-review/hacer-review.component';
-import { CrearResenaModalComponent } from './componentes/crear-resena/crear-resena-modal/crear-resena-modal.component';
-import { PortalReseñasComponent } from './componentes/portal-resenas/portal-resenas/portal-resenas.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, HeaderComponent, LandingComponent,],
+  imports: [RouterOutlet, HeaderComponent, EstanqueComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent implements OnInit {
-  countdownFinished = false;
-  private router = inject(Router);
-  layoutService = inject(LayoutService);
-  mostrarLayout = signal(true);
-  mostrarApp = signal(false);
-  ocultarMenu = signal(false);
-  ocultarLayout = signal(false);
+  private readonly router = inject(Router);
+  private readonly cuentaAtrasService = inject(CuentaAtrasService);
 
-  constructor(private CuentaAtrasService: CuentaAtrasService) {}
+  readonly layoutService = inject(LayoutService);
+  readonly mostrarApp = signal(false);
+  readonly ocultarMenu = signal(false);
+  readonly ocultarLayout = signal(false);
 
-  ngOnInit() {
-    setTimeout(() => {
-    const urlActual = this.router.url;
+  ngOnInit(): void {
+    this.sincronizarAccesoPersistido();
+    this.actualizarEstadoRuta(this.router.url);
 
-  // Si la recarga no es desde '/', redirigimos
-  if (urlActual !== '/') {
-    this.router.navigate(['/']);
-  }
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((event) => {
+        this.actualizarEstadoRuta(event.urlAfterRedirects);
+      });
 
-});
-
-    this.router.events.subscribe(() => {
-      const ruta = this.router.url;
-      this.ocultarMenu.set(!this.layoutService.shouldShowMenu(ruta));
-      this.ocultarLayout.set(!this.layoutService.shouldShowLayout(ruta));
-    });
-
-
-    this.router.events.subscribe(() => {
-      const rutaActual = this.router.url;
-      this.mostrarLayout.set(!['/login', '/holaaa'].includes(rutaActual));
-    });
-  
-  
-    
-  this.CuentaAtrasService.accesoDesbloqueadoObs$.subscribe(ok => {
-    this.mostrarApp.set(ok);
-
+    this.cuentaAtrasService.accesoDesbloqueadoObs$.subscribe((ok) => {
+      this.mostrarApp.set(ok || this.tieneAccesoDesbloqueado());
     });
   }
 
- 
+  private sincronizarAccesoPersistido(): void {
+    if (!this.tieneAccesoDesbloqueado()) {
+      return;
+    }
 
+    this.mostrarApp.set(true);
+    this.cuentaAtrasService.desbloquearAcceso();
+  }
 
+  private actualizarEstadoRuta(ruta: string): void {
+    this.ocultarMenu.set(!this.layoutService.shouldShowMenu(ruta));
+    this.ocultarLayout.set(!this.layoutService.shouldShowLayout(ruta));
+
+    if (!this.tieneAccesoDesbloqueado() && !this.esRutaDeAcceso(ruta)) {
+      void this.router.navigate(['/estanque']);
+    }
+  }
+
+  private tieneAccesoDesbloqueado(): boolean {
+    return localStorage.getItem('accesoPermitido') === 'true';
+  }
+
+  private esRutaDeAcceso(ruta: string): boolean {
+    return ['/', '/estanque'].includes(ruta);
+  }
 }
-
-
-
-
-

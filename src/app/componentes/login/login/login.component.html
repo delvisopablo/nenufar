@@ -1,24 +1,60 @@
-<div class="login-container">
-  <div class="login-box">
-    <h2 class="text-xl">Iniciar sesión</h2>
+<section class="pond-background">
+  <app-estanque-background class="pond-canvas"></app-estanque-background>
 
-    <form (ngSubmit)="iniciarSesion()" [formGroup]="loginForm">
-      <label for="email">Email</label>
-      <input id="email" type="text" formControlName="email" placeholder="Introduce tu email" />
+  <div class="page-shell">
+    <article class="auth-card">
+      <p class="eyebrow">Acceso</p>
+      <h1>Nénúfate</h1>
+      <p class="auth-copy">
+        Inicia sesión y guarda tu actividad, o date una vuelta en tu nenúfar.
+      </p>
 
-      <label for="password">Contraseña</label>
-      <input type="password" formControlName="password" />
+      <form class="auth-form" [formGroup]="loginForm" (ngSubmit)="iniciarSesion()" novalidate>
+        <label class="field" for="identifier">
+          <span>Usuario o correo</span>
+          <input
+            id="identifier"
+            type="text"
+            formControlName="identifier"
+            autocomplete="username email"
+            placeholder="Usuario o correo"
+          >
+          @if (campoInvalido('identifier')) {
+            <small class="field-error">Escribe tu usuario o tu correo.</small>
+          }
+        </label>
 
-      @if (loginError()) {
-        <p class="error">Email o contraseña incorrectos</p>
-      }
+        <label class="field" for="password">
+          <span>Contraseña</span>
+          <input
+            id="password"
+            type="password"
+            formControlName="password"
+            autocomplete="current-password"
+            placeholder="Tu contraseña"
+          >
+          @if (campoInvalido('password')) {
+            <small class="field-error">Escribe tu contraseña.</small>
+          }
+        </label>
 
-      <button type="submit" >Entrar</button>
-    </form>
+        @if (loginError()) {
+          <p class="form-feedback" role="alert">{{ loginError() }}</p>
+        }
 
-    <div class="acciones">
-      <button type="button" (click)="crearCuenta()">Crear cuenta</button>
-      <!-- <button type="button" (click)="recuperarClave()">He olvidado la contraseña</button> -->
-    </div>
+        <button type="submit" class="primary-btn" [disabled]="loginSubmitting()">
+          {{ loginSubmitting() ? 'Iniciando...' : 'Iniciar sesión' }}
+        </button>
+      </form>
+
+      <div class="login-actions">
+        <button type="button" class="secondary-btn" (click)="continuarComoInvitado()">
+          Continuar como invitado
+        </button>
+        <button type="button" class="text-link" (click)="crearCuenta()">
+          Si no tienes cuenta
+        </button>
+      </div>
+    </article>
   </div>
-</div>
+</section>

@@ -1,12 +1,22 @@
 <div class="modal-backdrop" *ngIf="visible">
   <div class="modal">
-    <h2>Crear Reseña</h2>
-    <form [formGroup]="form" (ngSubmit)="enviar()">
+    <div class="modal-head">
+      <p class="modal-eyebrow">Nueva reseña</p>
+      <h2>Compartir una reseña</h2>
+      <p>Cuéntale a la comunidad cómo ha sido tu experiencia.</p>
+    </div>
 
-      <!-- Campo autocompletable de negocio -->
-      <input type="text" placeholder="Negocio" formControlName="negocio"
-             (focus)="mostrarLista.set(true)" 
-             (blur)="ocultarListaConRetraso()" />
+    <form [formGroup]="form" (ngSubmit)="enviar()" class="modal-form">
+      <label class="field">
+        <span>Negocio</span>
+        <input
+          type="text"
+          placeholder="Busca o escribe el negocio"
+          formControlName="negocio"
+          (focus)="mostrarLista.set(true)"
+          (blur)="ocultarListaConRetraso()"
+        />
+      </label>
 
       <ul class="sugerencias" *ngIf="mostrarLista">
         <li *ngFor="let negocio of negocios" (click)="seleccionarNegocio(negocio)">
@@ -14,30 +24,36 @@
         </li>
       </ul>
 
-      <!-- Comentario -->
-      <textarea placeholder="Tu comentario..." formControlName="comentario"></textarea>
+      <label class="field">
+        <span>Comentario</span>
+        <textarea placeholder="Tu comentario..." formControlName="comentario"></textarea>
+      </label>
 
-      <!-- Estrellas 0 a 5 -->
-     <!-- Estrellas -->
-<div class="estrellas">
-  <span *ngFor="let estrella of [1, 2, 3, 4, 5]" 
-        (click)="form.controls['valoracion'].setValue(estrella)"
-        [class.activa]="estrella <= form.controls['valoracion'].value">★</span>
-</div>
+      <div class="field">
+        <span>Valoración</span>
+        <div class="estrellas">
+          <span
+            *ngFor="let estrella of [1, 2, 3, 4, 5]"
+            (click)="form.controls['valoracion'].setValue(estrella)"
+            [class.activa]="estrella <= form.controls['valoracion'].value"
+          >
+            ★
+          </span>
+        </div>
+      </div>
 
-<!-- Sello Nenúfar -->
-<div class="sello-switch"
-     [class.activo]="form.controls['selloNenufar'].value"
-     (click)="form.controls['selloNenufar'].setValue(!form.controls['selloNenufar'].value)"
-     title="El Sello Nenúfar destaca esta reseña como especialmente útil o relevante.">
-  🌿 Sello Nenúfar
-</div>
+      <div
+        class="sello-switch"
+        [class.activo]="form.controls['selloNenufar'].value"
+        (click)="form.controls['selloNenufar'].setValue(!form.controls['selloNenufar'].value)"
+        title="El Sello Nenúfar destaca esta reseña como especialmente útil o relevante."
+      >
+        🌿 Sello Nenúfar
+      </div>
 
-
-      <!-- Acciones -->
       <div class="acciones">
-        <button type="submit" [disabled]="form.invalid">Publicar</button>
-        <button type="button" (click)="cerrar()">Cancelar</button>
+        <button type="button" class="secondary-btn" (click)="cerrar()">Cancelar</button>
+        <button type="submit" class="primary-btn" [disabled]="form.invalid">Publicar</button>
       </div>
     </form>
   </div>

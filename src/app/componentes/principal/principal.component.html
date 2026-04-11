@@ -1,67 +1,266 @@
-<div class="contenedor-inicio">
-  <header class="barra-navegacion">
-    <!-- Botón de Ayuda -->
-    <button class="btn-ayuda" (click)="modalAyudaAbierto = true">Ayuda</button>
+<div class="home-shell inicio-root" #scene (pointerdown)="onScenePointerDown($event)">
+  <app-estanque-background class="pond-background"></app-estanque-background>
 
-    <!-- Buscador -->
-    <input type="text" placeholder="Buscar negocios..." class="buscador" />
+  <header class="topbar">
+    <div class="brand-lockup">
+      <img class="brand-logo" [src]="brandLogoSrc" alt="Flor de Nenúfar">
+      <div class="brand-copy">
+        <p class="brand-mark">Nenúfar</p>
+        <h1>Inicio</h1>
+      </div>
+    </div>
 
-    <!-- Botón de Perfil del usuario logueado -->
-    <button class="btn-perfil" (click)="irAMiPerfil()">Perfil</button>
+    <div class="topbar-lilies">
+      <button type="button" class="top-lily top-lily--fresh" (click)="abrirInfo()">
+        <span>Menúfa</span>
+        <strong>Info</strong>
+      </button>
 
+      <button type="button" class="top-lily top-lily--fresh" (click)="abrirAyuda()">
+        <span>Menúfa</span>
+        <strong>Ayuda</strong>
+      </button>
+    </div>
   </header>
 
-  <div class="contenido-principal">
-    <!-- Promociones activas -->
-    <aside class="promociones">
-      <h3>Promociones activas</h3>
-      <div class="promo">
-        <p><strong>2x1 en cafés</strong></p>
-        <p>Cafetería Nenúfar</p>
-      </div>
-      <div class="promo">
-        <p><strong>15% descuento</strong></p>
-        <p>Don Pollo</p>
-      </div>
-    </aside>
+  <div class="search-shell">
+    <form class="searchbar" (ngSubmit)="buscarPrimerNegocio()">
+      <label class="searchbar-field" for="pond-search">
+        <input
+          id="pond-search"
+          type="search"
+          name="pondSearch"
+          [ngModel]="busqueda()"
+          (ngModelChange)="busqueda.set($event)"
+          placeholder="Buscar negocio"
+          autocomplete="off"
+        >
+      </label>
 
-    <!-- Lista de negocios disponibles -->
-    <section class="negocios">
-      <h2>Locales disponibles</h2>
-      <div 
-        class="negocio" 
-        *ngFor="let negocio of negocios()" 
-        (click)="verNegocio(negocio.id)"
-      >
-        <h4>{{ negocio.nombre }}</h4>
-        <p class="descripcion">{{ negocio.historia || 'Negocio sin descripción' }}</p>
-        <p class="nota">⭐ {{ calcularMediaPorNegocio(negocio.id) || 'Sin reseñas' }}</p>
+      <button type="submit" class="search-btn">Buscar</button>
+    </form>
+
+    @if (resultadosBusqueda().length) {
+      <div class="search-results" role="list">
+        @for (negocio of resultadosBusqueda(); track negocio.id) {
+          <button type="button" class="search-result" (click)="seleccionarNegocio(negocio)">
+            <strong>{{ negocio.nombre }}</strong>
+            <span>{{ negocio.categoria }}</span>
+          </button>
+        }
+      </div>
+    } @else if (sinResultadosBusqueda()) {
+      <div class="search-empty">No hemos encontrado negocios con ese nombre.</div>
+    }
+  </div>
+
+  <main class="pond-stage">
+    <section class="zone promos-zone" #promosZone>
+      <div class="zone-head">
+        <p class="zone-kicker">Promociones</p>
+        <h2>Zona izquierda inferior</h2>
+      </div>
+
+      <div class="zone-lily-field">
+        @for (item of promoLilies(); track item.id) {
+          <button
+            type="button"
+            class="zone-lily zone-lily--promo zone-lily--fresh"
+            [attr.data-lily-id]="item.id"
+            [attr.aria-label]="item.label"
+            (click)="manejarLilyClick(item)"
+            (mouseenter)="mostrarTooltip($event, item)"
+            (mousemove)="mostrarTooltip($event, item)"
+            (mouseleave)="ocultarTooltip()"
+            (focus)="ocultarTooltip()"
+          >
+            <span class="zone-lily__copy">
+              <strong>{{ item.label }}</strong>
+              <small>{{ item.subtitle }}</small>
+            </span>
+          </button>
+        }
       </div>
     </section>
-  </div>
-</div>
 
-<!-- Botón flotante para crear reseña -->
-<button class="btn-flotante" (click)="abrirModal()">＋</button>
+    <section class="zone resenas-zone" #resenasZone>
+      <div class="zone-head">
+        <p class="zone-kicker">Reseñas</p>
+        <h2>Centro encajado</h2>
+      </div>
 
-<!-- Modal para crear reseña -->
-<app-crear-resena-modal
-  [visible]="modalAbierto"
-  (cerrarModal)="modalAbierto = false"
-  (resenaCreada)="refrescarResenas()">
-</app-crear-resena-modal>
+      <div class="zone-lily-field">
+        @for (item of reviewLilies(); track item.id) {
+          <button
+            type="button"
+            class="zone-lily zone-lily--review"
+            [class.zone-lily--fresh]="(item.review?.puntuacion || 0) >= 3"
+            [class.zone-lily--mustio]="(item.review?.puntuacion || 0) < 3"
+            [attr.data-lily-id]="item.id"
+            [attr.aria-label]="item.label"
+            (click)="manejarLilyClick(item)"
+            (mouseenter)="mostrarTooltip($event, item)"
+            (mousemove)="mostrarTooltip($event, item)"
+            (mouseleave)="ocultarTooltip()"
+            (focus)="ocultarTooltip()"
+          >
+            @if (item.badge) {
+              <span class="zone-lily__badge">{{ item.badge }}</span>
+            }
 
+            <span class="zone-lily__copy">
+              <strong>{{ item.label }}</strong>
+              <small>{{ item.subtitle }}</small>
+            </span>
+          </button>
+        }
+      </div>
+    </section>
 
-<!-- Modal de ayuda -->
-<div class="modal-ayuda" *ngIf="modalAyudaAbierto">
-  <div class="modal-contenido">
-    <h3>¿Has detectado algún problema?</h3>
-    <textarea [(ngModel)]="mensajeAyuda" placeholder="Cuéntanos qué ocurre..."></textarea>
-    <div class="modal-botones">
-      <button (click)="enviarAyuda()">Enviar</button>
-      <button (click)="modalAyudaAbierto = false">Cancelar</button>
+    <section class="zone perfil-zone" #perfilZone>
+      <div class="zone-head">
+        <p class="zone-kicker">Perfil</p>
+        <h2>Columna derecha</h2>
+      </div>
+
+      <div class="zone-lily-field">
+        @for (item of profileLilies(); track item.id) {
+          <button
+            type="button"
+            class="zone-lily zone-lily--profile zone-lily--fresh"
+            [attr.data-lily-id]="item.id"
+            [attr.aria-label]="item.label"
+            (click)="manejarLilyClick(item)"
+          >
+            <span class="zone-lily__copy">
+              <strong>{{ item.label }}</strong>
+              <small>{{ item.subtitle }}</small>
+            </span>
+          </button>
+        }
+      </div>
+    </section>
+
+    <section class="zone crear-zone" #crearZone>
+      <div class="zone-head">
+        <p class="zone-kicker">+ Reseña</p>
+        <h2>Acción rápida</h2>
+      </div>
+
+      <div class="zone-lily-field">
+        @for (item of createLilies(); track item.id) {
+          <button
+            type="button"
+            class="zone-lily zone-lily--create zone-lily--fresh"
+            [attr.data-lily-id]="item.id"
+            [attr.aria-label]="item.label"
+            (click)="manejarLilyClick(item)"
+          >
+            <span class="zone-lily__copy">
+              <strong>{{ item.label }}</strong>
+              <small>{{ item.subtitle }}</small>
+            </span>
+          </button>
+        }
+      </div>
+    </section>
+
+    <div class="rocks-layer" aria-hidden="true">
+      <img class="rock-divider rock-divider--one" src="assets/imagenes/ROCA_DIVIDER.png" alt="">
+      <img class="rock-divider rock-divider--two" src="assets/imagenes/ROCA_DIVIDER.png" alt="">
+      <img class="rock-divider rock-divider--three" src="assets/imagenes/ROCA_DIVIDER.png" alt="">
     </div>
-  </div>
+  </main>
+
+  @if (hoveredTooltip(); as tooltip) {
+    <div
+      class="hover-tooltip"
+      [class.hover-tooltip--promo]="tooltip.tone === 'promo'"
+      [class.hover-tooltip--review]="tooltip.tone === 'review'"
+      [style.left.px]="tooltip.x"
+      [style.top.px]="tooltip.y"
+    >
+      <strong>{{ tooltip.title }}</strong>
+      <span>{{ tooltip.text }}</span>
+    </div>
+  }
+
+  @if (popup(); as activePopup) {
+    <div class="popup-overlay" (click)="handleBackdropClick($event)">
+      <section class="popup-card" (click)="$event.stopPropagation()">
+        <button type="button" class="popup-close" (click)="cerrarPopup()" aria-label="Cerrar">
+          ×
+        </button>
+
+        @if (activePopup.kind === 'info') {
+          <p class="popup-kicker">Menúfa Info</p>
+          <h2>Qué es Nenúfar</h2>
+          <p>
+            Nenúfar reúne promociones, reseñas y accesos rápidos en un único estanque. Pulsa en los
+            nenúfares para moverte por la app sin perder el contexto del fondo.
+          </p>
+          <p>
+            La izquierda te enseña promos, el centro reseñas y la derecha concentra tu perfil y la
+            creación de nuevas opiniones.
+          </p>
+        }
+
+        @if (activePopup.kind === 'ayuda') {
+          <p class="popup-kicker">Menúfa Ayuda</p>
+          <h2>Cómo usar el inicio</h2>
+          <p>
+            Busca un negocio arriba, entra en promociones desde la izquierda o revisa reseñas en el
+            centro. El nenúfar de perfil te lleva a tu cuenta y el de abajo abre el modal para crear
+            reseñas nuevas.
+          </p>
+        }
+
+        @if (activePopup.kind === 'signin') {
+          <p class="popup-kicker">Acceso necesario</p>
+          <h2>{{ activePopup.title || 'Inicia sesión' }}</h2>
+          <p>{{ activePopup.message }}</p>
+
+          <div class="popup-actions">
+            <button type="button" class="primary-btn" (click)="irALogin()">Ir a login</button>
+            <button type="button" class="secondary-btn" (click)="cerrarPopup()">Seguir aquí</button>
+          </div>
+        }
+
+        @if (activePopup.kind === 'review') {
+          <p class="popup-kicker">Detalle de reseña</p>
+          <h2>{{ activePopup.review?.negocioNombre }}</h2>
+
+          <div class="review-popup-meta">
+            <span>{{ activePopup.review?.autorNombre }}</span>
+            <span>{{ getEstrellas(activePopup.review?.puntuacion || 0) }}</span>
+            <span>{{ formatearFecha(activePopup.review?.fechaISO || '') }}</span>
+          </div>
+
+          <p>{{ activePopup.review?.contenidoCorto }}</p>
+
+          @if (activePopup.review?.selloNenufar) {
+            <span class="review-seal">Sello Nenúfar</span>
+          }
+
+          <div class="popup-actions">
+            @if (activePopup.review?.lanzable) {
+              <button type="button" class="primary-btn" (click)="lanzarReviewActiva()">
+                Lanzar
+              </button>
+            } @else {
+              <button type="button" class="secondary-btn" (click)="cerrarPopup()">
+                Cerrar
+              </button>
+            }
+          </div>
+        }
+      </section>
+    </div>
+  }
+
+  <app-crear-resena-modal
+    [visible]="crearResenaAbierto()"
+    (cerrarModal)="cerrarCrearResena()"
+    (resenaCreada)="manejarResenaCreada($event)"
+  ></app-crear-resena-modal>
 </div>
-
-

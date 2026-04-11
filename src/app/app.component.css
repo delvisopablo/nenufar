@@ -1,39 +1,29 @@
-.container {
-    display: flex;
-  }
-  
-  app-sidebar {
-    flex: 0 0 250px; 
-  }
-  
-  .content {
-    flex: 1;
-    padding: 20px;
-  }
-  
-  body, html {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-  }
-  
-  body {
-    display: flex;
-    flex-direction: column;
+:host {
+  display: block;
+  min-height: 100vh;
+  color: var(--text-primary);
+}
 
-  }
-  
-  app-header, app-footer {
-    flex: 0 0 auto;
-  }
-  
-  .container {
-    flex: 1 1 auto;
-    display: flex;
-  }
-  
-  .content {
-    flex: 1 1 auto;
-    overflow: auto;
-  }
-  
+.pantalla-landing {
+  min-height: 100vh;
+  background: transparent;
+}
+
+.container {
+  display: flex;
+  min-height: 100vh;
+  background: transparent;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 100vh;
+  padding: 0;
+  background: transparent;
+}
+
+app-header,
+app-footer {
+  flex: 0 0 auto;
+}

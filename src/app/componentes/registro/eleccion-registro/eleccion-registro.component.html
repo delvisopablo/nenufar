@@ -1,6 +1,78 @@
-<div class="eleccion-contenedor">
-  <h2>¿Qué quieres registrar?</h2>
+<section class="choice-page" #scene>
+  <app-estanque-background class="page-background"></app-estanque-background>
 
-  <button (click)="irARegistroUsuario()"> Quiero ser Usuario</button>
-  <button (click)="irARegistroNegocio()"> Quiero registrar Negocio</button>
-</div>
+  <div class="lily-layer">
+    @for (lily of lilies(); track lily.id) {
+      @if (lily.isInteractive && lily.route) {
+        <button
+          type="button"
+          class="lily-pad lily-pad--interactive"
+          [class.lily-pad--business]="lily.id === 'negocio'"
+          [style.left.px]="lily.x"
+          [style.top.px]="lily.y"
+          [style.width.px]="lily.diameter"
+          [style.height.px]="lily.diameter"
+          [style.--lily-rotation]="lily.angle + 'deg'"
+          [style.--lily-tone]="lily.tone + 'deg'"
+          [attr.aria-label]="'Ir a registro de ' + lily.label.toLowerCase()"
+          (click)="irARuta(lily.route)"
+        >
+          <span class="lily-copy">
+            <strong>{{ lily.label }}</strong>
+            <small>{{ lily.subtitle }}</small>
+          </span>
+        </button>
+      } @else {
+        <div
+          class="lily-pad lily-pad--decorative"
+          [style.left.px]="lily.x"
+          [style.top.px]="lily.y"
+          [style.width.px]="lily.diameter"
+          [style.height.px]="lily.diameter"
+          [style.--lily-rotation]="lily.angle + 'deg'"
+          [style.--lily-tone]="lily.tone + 'deg'"
+          aria-hidden="true"
+        ></div>
+      }
+    }
+  </div>
+
+  <div class="page-shell">
+    <article class="choice-card" #card>
+      <p class="eyebrow">Registro</p>
+      <h1>Regístrate</h1>
+      <p class="choice-copy">
+        Elige cómo quieres entrar en Nenúfar. Los nenúfares grandes del fondo también funcionan
+        como acceso directo a cada formulario.
+      </p>
+
+      <div class="option-list">
+        <section class="option-block">
+          <div class="option-copy">
+            <h2>Usuario</h2>
+            <p>Para guardar reseñas, reservar con más calma y moverte por tu actividad.</p>
+          </div>
+          <button type="button" class="primary-btn" (click)="irARuta('/registro')">
+            Registrar usuario
+          </button>
+        </section>
+
+        <section class="option-block">
+          <div class="option-copy">
+            <h2>Negocio</h2>
+            <p>Para crear tu perfil, gestionar horarios y lanzar promociones dentro de Nenúfar.</p>
+          </div>
+          <button type="button" class="primary-btn" (click)="irARuta('/registro-negocio')">
+            Registrar negocio
+          </button>
+        </section>
+      </div>
+
+      <div class="choice-links">
+        <button type="button" class="text-link" (click)="volverAlEstanque()">
+          Volver al estanque
+        </button>
+      </div>
+    </article>
+  </div>
+</section>
