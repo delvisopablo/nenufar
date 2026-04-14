@@ -21,7 +21,7 @@ import { RESENAS_MOCK, ResenaMock } from './resenasMock';
 
 type ZoneKey = 'promos' | 'resenas' | 'perfil' | 'crear';
 type LilyKind = 'promo' | 'review' | 'profile' | 'create';
-type PopupKind = 'info' | 'ayuda' | 'signin' | 'review';
+type PopupKind = 'info' | 'ayuda' | 'signin' | 'review' | 'promo' | 'profile' | 'create';
 
 type HoverTooltip = {
   text: string;
@@ -31,13 +31,14 @@ type HoverTooltip = {
   y: number;
 };
 
-type HomePopup = {
-  kind: PopupKind;
-  lilyId?: string;
-  message?: string;
-  review?: ResenaMock;
-  title?: string;
-};
+type HomePopup =
+  | { kind: 'info' }
+  | { kind: 'ayuda' }
+  | { kind: 'signin'; message: string; title: string }
+  | { kind: 'review'; lilyId: string; review: ResenaMock }
+  | { kind: 'promo'; lilyId: string; promo: PromoMock }
+  | { kind: 'profile'; lilyId: string }
+  | { kind: 'create'; lilyId: string };
 
 type BusinessCatalogItem = {
   categoria: string;
@@ -54,29 +55,44 @@ type LilyView = {
   promo?: PromoMock;
   review?: ResenaMock;
   subtitle: string;
+  tone: 'fresh' | 'mustio';
   zone: ZoneKey;
 };
 
 type LilyBody = {
   angle: number;
   angVel: number;
-  drag: number;
+  dataRef: LilyView;
   driftSeed: number;
   element?: HTMLElement;
+  escapeUntil: number;
   id: string;
-  radius: number;
-  speedCapMultiplier: number;
+  lastTouchedAt: number;
+  r: number;
   vx: number;
   vy: number;
   x: number;
   y: number;
 };
 
+type ZonePhysicsConfig = {
+  damping: number;
+  maxSpeed: number;
+  minSpeed: number;
+  restitution: number;
+  targetCount: number;
+};
+
 type ZoneRuntime = {
   bodies: LilyBody[];
+  config: ZonePhysicsConfig;
   host: HTMLDivElement;
   key: ZoneKey;
-  maxSpeed: number;
+  respawnTimers: Set<number>;
+  size: {
+    height: number;
+    width: number;
+  };
 };
 
 @Component({
@@ -89,10 +105,10 @@ type ZoneRuntime = {
 export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(EstanqueBackgroundComponent) private backgroundRef?: EstanqueBackgroundComponent;
   @ViewChild('scene', { static: true }) private sceneRef?: ElementRef<HTMLDivElement>;
-  @ViewChild('promosZone', { static: true }) private promosZoneRef?: ElementRef<HTMLDivElement>;
-  @ViewChild('resenasZone', { static: true }) private resenasZoneRef?: ElementRef<HTMLDivElement>;
-  @ViewChild('perfilZone', { static: true }) private perfilZoneRef?: ElementRef<HTMLDivElement>;
-  @ViewChild('crearZone', { static: true }) private crearZoneRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('promosField', { static: true }) private promosFieldRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('resenasField', { static: true }) private resenasFieldRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('perfilField', { static: true }) private perfilFieldRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('crearField', { static: true }) private crearFieldRef?: ElementRef<HTMLDivElement>;
 
   private readonly router = inject(Router);
   private readonly title = inject(Title);
@@ -114,7 +130,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly nombreUsuario = computed(() => {
     const nombre = this.usuarioLogueado()?.nombre;
-    return nombre ? String(nombre).split(' ')[0] : 'Nenúfar';
+    return nombre ? String(nombre).split(' ')[0] : 'Nenufar';
   });
 
   readonly businessCatalog = computed<BusinessCatalogItem[]>(() => {
@@ -124,7 +140,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       catalog.set(promo.negocioId, {
         id: promo.negocioId,
         nombre: promo.negocioNombre,
-        categoria: 'Promoción activa',
+        categoria: 'Promocion activa',
         descripcion: promo.descripcionCorta
       });
     }
@@ -134,7 +150,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         catalog.set(resena.negocioId, {
           id: resena.negocioId,
           nombre: resena.negocioNombre,
-          categoria: 'Reseñas recientes',
+          categoria: 'Resenas recientes',
           descripcion: resena.contenidoCorto
         });
       }
@@ -161,11 +177,21 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     () => Boolean(this.busqueda().trim()) && this.resultadosBusqueda().length === 0
   );
 
+  private readonly zoneConfigs: Record<ZoneKey, ZonePhysicsConfig> = {
+    promos: { targetCount: 3, maxSpeed: 92, minSpeed: 9, damping: 0.989, restitution: 0.76 },
+    resenas: { targetCount: 4, maxSpeed: 84, minSpeed: 8, damping: 0.99, restitution: 0.78 },
+    perfil: { targetCount: 1, maxSpeed: 72, minSpeed: 6, damping: 0.991, restitution: 0.82 },
+    crear: { targetCount: 1, maxSpeed: 70, minSpeed: 6, damping: 0.991, restitution: 0.82 }
+  };
+
   private animationFrameId = 0;
+  private lilyInstanceCounter = 0;
   private lastFrameTime = 0;
   private resizeObserver?: ResizeObserver;
-  private reviewInstanceCounter = 0;
   private reviewSpawnCursor = 0;
+  private promoSpawnCursor = 0;
+  private profileSpawnCursor = 0;
+  private createSpawnCursor = 0;
   private syncFrameId = 0;
   private viewReady = false;
   private readonly zoneRuntimes = new Map<ZoneKey, ZoneRuntime>();
@@ -173,27 +199,25 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.title.setTitle('Inicio');
     this.usuarioLogueado.set(this.leerJsonLocal('usuarioLogueado'));
-    this.refreshStaticLilies();
+    this.seedZoneLilies();
   }
 
   ngAfterViewInit(): void {
     this.viewReady = true;
 
     this.zone.runOutsideAngular(() => {
-      this.scheduleZoneSync();
+      this.queueZoneSync();
 
       if (typeof ResizeObserver !== 'undefined') {
-        this.resizeObserver = new ResizeObserver(() => this.scheduleZoneSync());
+        this.resizeObserver = new ResizeObserver(() => this.queueZoneSync());
 
-        const elements = [
+        [
           this.sceneRef?.nativeElement,
-          this.promosZoneRef?.nativeElement,
-          this.resenasZoneRef?.nativeElement,
-          this.perfilZoneRef?.nativeElement,
-          this.crearZoneRef?.nativeElement
-        ];
-
-        elements.forEach((element) => {
+          this.promosFieldRef?.nativeElement,
+          this.resenasFieldRef?.nativeElement,
+          this.perfilFieldRef?.nativeElement,
+          this.crearFieldRef?.nativeElement
+        ].forEach((element) => {
           if (element) {
             this.resizeObserver?.observe(element);
           }
@@ -214,6 +238,11 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.resizeObserver?.disconnect();
+
+    this.zoneRuntimes.forEach((runtime) => {
+      runtime.respawnTimers.forEach((timerId) => window.clearTimeout(timerId));
+      runtime.respawnTimers.clear();
+    });
     this.zoneRuntimes.clear();
   }
 
@@ -225,6 +254,35 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   abrirInfo(): void {
     this.hoveredTooltip.set(null);
     this.popup.set({ kind: 'info' });
+  }
+
+  abrirCrearResena(): void {
+    if (this.usuarioLogueado()?.id) {
+      this.popup.set(null);
+      this.crearResenaAbierto.set(true);
+      return;
+    }
+
+    this.popup.set({
+      kind: 'signin',
+      title: 'Inicia sesion para resenar',
+      message: 'Necesitas iniciar sesion para crear una resena y guardarla en tu actividad.'
+    });
+  }
+
+  abrirPerfil(): void {
+    const idUsuario = this.usuarioLogueado()?.id;
+    if (idUsuario) {
+      this.popup.set(null);
+      void this.router.navigate(['/perfil', idUsuario]);
+      return;
+    }
+
+    this.popup.set({
+      kind: 'signin',
+      title: 'Inicia sesion',
+      message: 'Necesitas iniciar sesion para entrar en tu perfil y recuperar tu actividad.'
+    });
   }
 
   buscarPrimerNegocio(): void {
@@ -254,6 +312,19 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     }).format(fecha);
   }
 
+  formatearFechaCompleta(fechaISO: string): string {
+    const fecha = new Date(fechaISO);
+    if (Number.isNaN(fecha.getTime())) {
+      return 'Sin fecha';
+    }
+
+    return new Intl.DateTimeFormat('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(fecha);
+  }
+
   getEstrellas(puntuacion: number): string {
     const nota = this.clamp(Math.round(Number(puntuacion) || 0), 0, 5);
     return `${'★'.repeat(nota)}${'☆'.repeat(5 - nota)}`;
@@ -266,32 +337,8 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   irALogin(): void {
+    this.popup.set(null);
     void this.router.navigate(['/login']);
-  }
-
-  lanzarReviewActiva(): void {
-    const activePopup = this.popup();
-    if (!activePopup?.review?.lanzable || !activePopup.lilyId) {
-      this.cerrarPopup();
-      return;
-    }
-
-    const runtime = this.zoneRuntimes.get('resenas');
-    const body = runtime?.bodies.find((item) => item.id === activePopup.lilyId);
-
-    if (body) {
-      const angle = this.randomBetween(-0.95, 0.95);
-      const horizontal = body.x < (runtime?.host.clientWidth || 0) * 0.5 ? 1 : -1;
-      body.vx += Math.cos(angle) * 115 * horizontal;
-      body.vy += Math.sin(angle) * 86;
-      body.drag = 0.992;
-      body.speedCapMultiplier = 6.4;
-      body.angVel += this.randomBetween(-0.22, 0.22);
-    }
-
-    const nextLilies = this.takeNextReviewLilies(2);
-    this.appendReviewLilies(nextLilies);
-    this.cerrarPopup();
   }
 
   manejarResenaCreada(respuesta: any): void {
@@ -300,14 +347,18 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       negocioId: Number(respuesta?.negocioId ?? this.businessCatalog()[0]?.id ?? 1),
       negocioNombre: String(
         respuesta?.negocio?.nombre ??
-        this.businessCatalog().find((item) => item.id === Number(respuesta?.negocioId))?.nombre ??
-        'Negocio local'
+          this.businessCatalog().find((item) => item.id === Number(respuesta?.negocioId))?.nombre ??
+          'Negocio local'
       ),
-      autorNombre: this.usuarioLogueado()?.nombre || 'Tú',
+      autorNombre: this.usuarioLogueado()?.nombre || 'Tu',
       puntuacion: Number(respuesta?.puntuacion ?? 5),
       contenidoCorto: String(
-        respuesta?.contenido ?? 'Tu nueva reseña ya está flotando por el estanque.'
-      ).slice(0, 140),
+        respuesta?.contenido ?? 'Tu nueva resena ya esta flotando por el estanque.'
+      ).slice(0, 132),
+      contenido: String(
+        respuesta?.contenido ??
+          'Tu nueva resena ya esta flotando por el estanque y aparecera cuando vuelva a entrar en la zona.'
+      ),
       selloNenufar: Boolean(respuesta?.selloNenufar),
       fechaISO: new Date().toISOString(),
       lanzable: true
@@ -315,34 +366,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.resenas.update((items) => [nuevaResena, ...items]);
     this.crearResenaAbierto.set(false);
-    this.appendReviewLilies([this.createReviewLily(nuevaResena)]);
-  }
-
-  manejarLilyClick(item: LilyView): void {
-    this.hoveredTooltip.set(null);
-
-    switch (item.kind) {
-      case 'promo':
-        if (item.promo?.negocioId) {
-          void this.router.navigate(['/negocio', item.promo.negocioId]);
-        }
-        break;
-      case 'review':
-        if (item.review) {
-          this.popup.set({
-            kind: 'review',
-            lilyId: item.id,
-            review: item.review
-          });
-        }
-        break;
-      case 'profile':
-        this.abrirPerfil();
-        break;
-      case 'create':
-        this.abrirCrearResena();
-        break;
-    }
+    this.scheduleRespawn('resenas', 220);
   }
 
   mostrarTooltip(event: MouseEvent, item: LilyView): void {
@@ -362,19 +386,54 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     this.hoveredTooltip.set(null);
   }
 
+  onLilyPointerDown(event: PointerEvent, item: LilyView): void {
+    if (event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    this.hoveredTooltip.set(null);
+
+    const runtime = this.zoneRuntimes.get(item.zone);
+    const body = runtime?.bodies.find((candidate) => candidate.id === item.id);
+    if (!runtime || !body) {
+      return;
+    }
+
+    const rect = runtime.host.getBoundingClientRect();
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+    const dNorm = this.applyImpulseFromPoint(runtime, body, localX, localY, performance.now() * 0.001);
+
+    this.emitRipple(event.clientX, event.clientY, 0.82 + dNorm * 0.34);
+  }
+
+  onLilyContextMenu(event: MouseEvent, item: LilyView): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.hoveredTooltip.set(null);
+    this.emitRipple(event.clientX, event.clientY, 0.92);
+    this.abrirPopupDesdeNenufar(item);
+  }
+
   onScenePointerDown(event: PointerEvent): void {
+    if (event.button !== 0) {
+      return;
+    }
+
     const target = event.target as Element | null;
     if (
       target?.closest(
         '.zone-lily, .top-lily, .topbar, .brand-lockup, .search-shell, .searchbar, ' +
-        '.search-results, .search-result, .popup-overlay, .popup-card, .popup-close, ' +
-        '.modal, .modal-backdrop, input, textarea, button'
+          '.search-results, .search-result, .popup-overlay, .popup-card, .popup-close, ' +
+          '.modal, .modal-backdrop, input, textarea, button, .zone-quick-action'
       )
     ) {
       return;
     }
 
-    this.backgroundRef?.triggerRippleAtClientPoint(event.clientX, event.clientY, 1);
+    this.emitRipple(event.clientX, event.clientY, 1);
   }
 
   seleccionarNegocio(negocio: BusinessCatalogItem): void {
@@ -382,54 +441,63 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     void this.router.navigate(['/negocio', negocio.id]);
   }
 
-  private abrirCrearResena(): void {
-    if (this.usuarioLogueado()?.id) {
-      this.crearResenaAbierto.set(true);
-      return;
+  private abrirPopupDesdeNenufar(item: LilyView): void {
+    switch (item.kind) {
+      case 'promo':
+        if (item.promo) {
+          this.popup.set({ kind: 'promo', lilyId: item.id, promo: item.promo });
+        }
+        break;
+      case 'review':
+        if (item.review) {
+          this.popup.set({ kind: 'review', lilyId: item.id, review: item.review });
+        }
+        break;
+      case 'profile':
+        this.popup.set({ kind: 'profile', lilyId: item.id });
+        break;
+      case 'create':
+        this.popup.set({ kind: 'create', lilyId: item.id });
+        break;
     }
-
-    this.popup.set({
-      kind: 'signin',
-      title: 'Inicia sesión para reseñar',
-      message: 'Necesitas iniciar sesión para dejar una reseña y guardarla en tu actividad.'
-    });
-  }
-
-  private abrirPerfil(): void {
-    const idUsuario = this.usuarioLogueado()?.id;
-    if (idUsuario) {
-      void this.router.navigate(['/perfil', idUsuario]);
-      return;
-    }
-
-    this.popup.set({
-      kind: 'signin',
-      title: 'Inicia sesión',
-      message: 'Necesitas iniciar sesión para entrar en tu perfil y recuperar tu actividad.'
-    });
   }
 
   private animate = (timestamp: number): void => {
     const dt = this.lastFrameTime ? Math.min((timestamp - this.lastFrameTime) / 1000, 0.032) : 0.016;
+    const elapsed = timestamp * 0.001;
     this.lastFrameTime = timestamp;
-    const elapsed = timestamp / 1000;
 
     this.zoneRuntimes.forEach((runtime) => this.updateZone(runtime, dt, elapsed));
     this.animationFrameId = requestAnimationFrame(this.animate);
   };
 
-  private appendReviewLilies(items: LilyView[]): void {
-    if (!items.length) {
-      return;
-    }
+  private applyImpulseFromPoint(
+    runtime: ZoneRuntime,
+    body: LilyBody,
+    impactX: number,
+    impactY: number,
+    now: number
+  ): number {
+    const dx = body.x - impactX;
+    const dy = body.y - impactY;
+    const distance = Math.hypot(dx, dy);
+    const safeDistance = distance || 0.001;
+    const nx = dx / safeDistance;
+    const ny = dy / safeDistance;
+    const dNorm = this.clamp(distance / body.r, 0, 1);
+    const minForce = 120;
+    const maxForce = 310;
+    const force = minForce + (maxForce - minForce) * dNorm;
+    const torque = ((impactX - body.x) * ny - (impactY - body.y) * nx) / Math.max(body.r, 1);
 
-    this.reviewLilies.update((current) => [...current, ...items]);
+    body.vx += nx * force;
+    body.vy += ny * force;
+    body.angVel += torque * 0.08;
+    body.lastTouchedAt = now;
+    body.escapeUntil = now + 1.05;
 
-    this.zone.runOutsideAngular(() => {
-      requestAnimationFrame(() => {
-        this.attachBodiesToZone('resenas', items);
-      });
-    });
+    this.limitSpeed(body, runtime.config.maxSpeed * 4.4);
+    return dNorm;
   }
 
   private applyZoneBodies(bodies: LilyBody[]): void {
@@ -439,34 +507,18 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       }
 
       body.element.style.transform =
-        `translate3d(${body.x - body.radius}px, ${body.y - body.radius}px, 0) rotate(${body.angle}deg)`;
+        `translate3d(${body.x - body.r}px, ${body.y - body.r}px, 0) rotate(${body.angle}deg)`;
     });
   }
 
-  private attachBodiesToZone(key: ZoneKey, items: LilyView[]): void {
-    const host = this.getZoneHost(key);
-    if (!host || !items.length) {
-      return;
+  private attachElement(body: LilyBody, host: HTMLDivElement): void {
+    body.element = host.querySelector<HTMLElement>(`[data-lily-id="${body.id}"]`) ?? undefined;
+    if (body.element) {
+      const nextRadius = Math.max(body.element.offsetWidth, body.element.offsetHeight) / 2;
+      if (nextRadius > 0) {
+        body.r = nextRadius;
+      }
     }
-
-    const maxSpeed = this.getZoneMaxSpeed(key);
-    const runtime = this.zoneRuntimes.get(key);
-    const occupied = runtime?.bodies ?? [];
-    const bodies = items.map((item) => this.createBodyForItem(key, host, item, maxSpeed, occupied));
-
-    if (runtime) {
-      runtime.bodies.push(...bodies);
-      this.applyZoneBodies(runtime.bodies);
-      return;
-    }
-
-    this.zoneRuntimes.set(key, {
-      key,
-      host,
-      bodies,
-      maxSpeed
-    });
-    this.applyZoneBodies(bodies);
   }
 
   private buildTooltip(item: LilyView): Omit<HoverTooltip, 'x' | 'y'> | null {
@@ -493,106 +545,214 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     return Math.min(max, Math.max(min, value));
   }
 
-  private createBodyForItem(
-    key: ZoneKey,
-    host: HTMLDivElement,
-    item: LilyView,
-    maxSpeed: number,
-    occupied: LilyBody[]
-  ): LilyBody {
-    const element = host.querySelector<HTMLElement>(`[data-lily-id="${item.id}"]`) ?? undefined;
-    const size = element
-      ? Math.max(element.offsetWidth, element.offsetHeight)
-      : this.fallbackSizeForZone(key);
-    const radius = size / 2;
-    const centerX = host.clientWidth / 2;
-    const centerY = host.clientHeight / 2;
-    let x = centerX;
-    let y = centerY;
+  private createBody(runtime: ZoneRuntime, item: LilyView, occupied: LilyBody[]): LilyBody {
+    const body: LilyBody = {
+      id: item.id,
+      dataRef: item,
+      x: runtime.size.width * 0.5,
+      y: runtime.size.height * 0.5,
+      vx: this.randomBetween(-runtime.config.maxSpeed * 0.55, runtime.config.maxSpeed * 0.55),
+      vy: this.randomBetween(-runtime.config.maxSpeed * 0.55, runtime.config.maxSpeed * 0.55),
+      r: this.fallbackRadiusForZone(item.zone),
+      angle: this.randomBetween(-12, 12),
+      angVel: this.randomBetween(-0.014, 0.014),
+      driftSeed: Math.random() * Math.PI * 2,
+      lastTouchedAt: 0,
+      escapeUntil: 0
+    };
 
-    if (key === 'perfil' || key === 'crear') {
-      x = centerX;
-      y = centerY;
-    } else {
-      for (let attempt = 0; attempt < 40; attempt += 1) {
-        const nextX = this.randomBetween(radius + 16, Math.max(radius + 16, host.clientWidth - radius - 16));
-        const nextY = this.randomBetween(radius + 16, Math.max(radius + 16, host.clientHeight - radius - 16));
+    this.attachElement(body, runtime.host);
+    this.placeBodyWithoutOverlap(runtime, body, occupied);
+    return body;
+  }
 
-        if (!occupied.some((body) => this.areBodiesOverlapping(nextX, nextY, radius, body))) {
-          x = nextX;
-          y = nextY;
-          break;
+  private createCreateLily(): LilyView {
+    return {
+      id: `crear-${++this.lilyInstanceCounter}`,
+      zone: 'crear',
+      kind: 'create',
+      label: '+ Resena',
+      subtitle: this.usuarioLogueado()?.id ? 'Click derecho para crear' : 'Necesitas sesion',
+      tone: 'fresh'
+    };
+  }
+
+  private createNextZoneItem(key: ZoneKey): LilyView | null {
+    switch (key) {
+      case 'promos': {
+        const pool = this.promociones();
+        if (!pool.length) {
+          return null;
         }
 
-        x = nextX;
-        y = nextY;
+        const promo = pool[this.promoSpawnCursor % pool.length];
+        this.promoSpawnCursor = (this.promoSpawnCursor + 1) % pool.length;
+        return this.createPromoLily(promo);
       }
-    }
+      case 'resenas': {
+        const pool = this.resenas();
+        if (!pool.length) {
+          return null;
+        }
 
+        const review = pool[this.reviewSpawnCursor % pool.length];
+        this.reviewSpawnCursor = (this.reviewSpawnCursor + 1) % pool.length;
+        return this.createReviewLily(review);
+      }
+      case 'perfil':
+        this.profileSpawnCursor = (this.profileSpawnCursor + 1) % 1000;
+        return this.createProfileLily();
+      case 'crear':
+        this.createSpawnCursor = (this.createSpawnCursor + 1) % 1000;
+        return this.createCreateLily();
+    }
+  }
+
+  private createProfileLily(): LilyView {
     return {
-      id: item.id,
-      element,
-      radius,
-      x,
-      y,
-      vx: this.randomBetween(-maxSpeed * 0.5, maxSpeed * 0.5),
-      vy: this.randomBetween(-maxSpeed * 0.5, maxSpeed * 0.5),
-      angle: this.randomBetween(-9, 9),
-      angVel: this.randomBetween(-0.01, 0.01),
-      driftSeed: Math.random() * Math.PI * 2,
-      drag: 0.989,
-      speedCapMultiplier: 1
+      id: `perfil-${++this.lilyInstanceCounter}`,
+      zone: 'perfil',
+      kind: 'profile',
+      label: this.nombreUsuario(),
+      subtitle: this.usuarioLogueado()?.id ? 'Click derecho para abrir' : 'Inicia sesion',
+      tone: 'fresh'
+    };
+  }
+
+  private createPromoLily(promo: PromoMock): LilyView {
+    return {
+      id: `promo-${promo.id}-${++this.lilyInstanceCounter}`,
+      zone: 'promos',
+      kind: 'promo',
+      label: promo.titulo,
+      subtitle: `${promo.negocioNombre} · ${promo.descuentoTexto}`,
+      promo,
+      tone: 'fresh'
     };
   }
 
   private createReviewLily(review: ResenaMock): LilyView {
     return {
-      id: `review-instance-${++this.reviewInstanceCounter}`,
+      id: `review-${review.id}-${++this.lilyInstanceCounter}`,
       zone: 'resenas',
       kind: 'review',
       label: review.negocioNombre,
       subtitle: `${review.autorNombre} · ${this.getEstrellas(review.puntuacion)}`,
       review,
-      badge: review.selloNenufar ? 'Sello Nenúfar' : undefined
+      badge: review.selloNenufar ? 'Sello Nenufar' : undefined,
+      tone: review.puntuacion >= 3 ? 'fresh' : 'mustio'
     };
   }
 
-  private fallbackSizeForZone(zone: ZoneKey): number {
+  private despawnBody(runtime: ZoneRuntime, bodyId: string): void {
+    const removed = runtime.bodies.find((body) => body.id === bodyId);
+    if (!removed) {
+      return;
+    }
+
+    runtime.bodies = runtime.bodies.filter((body) => body.id !== bodyId);
+
+    const activePopup = this.popup();
+    if (
+      activePopup &&
+      'lilyId' in activePopup &&
+      activePopup.lilyId === bodyId
+    ) {
+      this.popup.set(null);
+    }
+
+    this.removeZoneItem(runtime.key, bodyId);
+    this.scheduleRespawn(runtime.key, this.randomBetween(1500, 3000));
+  }
+
+  private emitRipple(clientX: number, clientY: number, strength: number): void {
+    this.backgroundRef?.triggerRippleAtClientPoint(clientX, clientY, strength);
+  }
+
+  private fallbackRadiusForZone(zone: ZoneKey): number {
     switch (zone) {
       case 'promos':
-        return 128;
+        return 64;
       case 'resenas':
-        return 118;
+        return 58;
       case 'perfil':
       case 'crear':
-        return 178;
+        return 72;
+    }
+  }
+
+  private getSignalForZone(zone: ZoneKey) {
+    switch (zone) {
+      case 'promos':
+        return this.promoLilies;
+      case 'resenas':
+        return this.reviewLilies;
+      case 'perfil':
+        return this.profileLilies;
+      case 'crear':
+        return this.createLilies;
     }
   }
 
   private getZoneHost(key: ZoneKey): HTMLDivElement | undefined {
     switch (key) {
       case 'promos':
-        return this.promosZoneRef?.nativeElement;
+        return this.promosFieldRef?.nativeElement;
       case 'resenas':
-        return this.resenasZoneRef?.nativeElement;
+        return this.resenasFieldRef?.nativeElement;
       case 'perfil':
-        return this.perfilZoneRef?.nativeElement;
+        return this.perfilFieldRef?.nativeElement;
       case 'crear':
-        return this.crearZoneRef?.nativeElement;
+        return this.crearFieldRef?.nativeElement;
     }
   }
 
-  private getZoneMaxSpeed(key: ZoneKey): number {
-    switch (key) {
-      case 'promos':
-        return 10.8;
-      case 'resenas':
-        return 9.8;
-      case 'perfil':
-        return 6.5;
-      case 'crear':
-        return 6.2;
+  private handleBoundary(runtime: ZoneRuntime, body: LilyBody, elapsed: number): void {
+    const left = body.r;
+    const right = runtime.size.width - body.r;
+    const top = body.r;
+    const bottom = runtime.size.height - body.r;
+    const escapeSpeed = 164;
+    const canEscape = elapsed <= body.escapeUntil;
+
+    if (body.x < left) {
+      const shouldEscape = canEscape && body.vx < -escapeSpeed;
+      if (!shouldEscape) {
+        body.x = left;
+        body.vx = Math.abs(body.vx) * runtime.config.restitution;
+      }
+    } else if (body.x > right) {
+      const shouldEscape = canEscape && body.vx > escapeSpeed;
+      if (!shouldEscape) {
+        body.x = right;
+        body.vx = -Math.abs(body.vx) * runtime.config.restitution;
+      }
     }
+
+    if (body.y < top) {
+      const shouldEscape = canEscape && body.vy < -escapeSpeed;
+      if (!shouldEscape) {
+        body.y = top;
+        body.vy = Math.abs(body.vy) * runtime.config.restitution;
+      }
+    } else if (body.y > bottom) {
+      const shouldEscape = canEscape && body.vy > escapeSpeed;
+      if (!shouldEscape) {
+        body.y = bottom;
+        body.vy = -Math.abs(body.vy) * runtime.config.restitution;
+      }
+    }
+  }
+
+  private keepMinimumMotion(body: LilyBody, minSpeed: number, seed: number): void {
+    const speed = Math.hypot(body.vx, body.vy);
+    if (speed >= minSpeed) {
+      return;
+    }
+
+    const angle = speed > 0.01 ? Math.atan2(body.vy, body.vx) : seed;
+    body.vx = Math.cos(angle) * minSpeed;
+    body.vy = Math.sin(angle) * minSpeed;
   }
 
   private leerJsonLocal(key: string): any {
@@ -609,57 +769,92 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private limitSpeed(body: LilyBody, maxSpeed: number): void {
+    const speed = Math.hypot(body.vx, body.vy);
+    if (speed <= maxSpeed) {
+      return;
+    }
+
+    const ratio = maxSpeed / speed;
+    body.vx *= ratio;
+    body.vy *= ratio;
+  }
+
+  private placeBodyWithoutOverlap(runtime: ZoneRuntime, body: LilyBody, occupied: LilyBody[]): void {
+    const margin = body.r + 10;
+    const minX = Math.min(runtime.size.width * 0.5, Math.max(margin, body.r));
+    const minY = Math.min(runtime.size.height * 0.5, Math.max(margin, body.r));
+    const maxX = Math.max(minX, runtime.size.width - margin);
+    const maxY = Math.max(minY, runtime.size.height - margin);
+
+    for (let attempt = 0; attempt < 42; attempt += 1) {
+      const x = this.randomBetween(minX, maxX);
+      const y = this.randomBetween(minY, maxY);
+      const overlaps = occupied.some((candidate) => this.areBodiesOverlapping(x, y, body.r, candidate));
+
+      if (!overlaps) {
+        body.x = x;
+        body.y = y;
+        return;
+      }
+
+      body.x = x;
+      body.y = y;
+    }
+  }
+
+  private queueZoneSync(): void {
+    if (!this.viewReady || this.syncFrameId) {
+      return;
+    }
+
+    this.zone.runOutsideAngular(() => {
+      this.syncFrameId = requestAnimationFrame(() => {
+        this.syncFrameId = 0;
+        this.syncZones();
+      });
+    });
+  }
+
   private randomBetween(min: number, max: number): number {
     return min + Math.random() * (max - min);
   }
 
-  private refreshStaticLilies(): void {
-    const usuario = this.usuarioLogueado();
-    const nombreCorto = usuario?.nombre ? String(usuario.nombre).split(' ')[0] : 'Tu perfil';
-
-    this.promoLilies.set(
-      this.promociones().slice(0, 3).map((promo) => ({
-        id: `promo-${promo.id}`,
-        zone: 'promos',
-        kind: 'promo',
-        label: promo.titulo,
-        subtitle: promo.descuentoTexto,
-        promo
-      }))
-    );
-
-    if (!this.reviewLilies().length) {
-      this.reviewLilies.set(this.takeNextReviewLilies(4));
-    }
-
-    this.profileLilies.set([
-      {
-        id: 'profile-entry',
-        zone: 'perfil',
-        kind: 'profile',
-        label: nombreCorto,
-        subtitle: usuario?.id ? 'Entrar en tu perfil' : 'Inicia sesión'
-      }
-    ]);
-
-    this.createLilies.set([
-      {
-        id: 'create-review-entry',
-        zone: 'crear',
-        kind: 'create',
-        label: '+ Reseña',
-        subtitle: usuario?.id ? 'Abrir modal' : 'Necesitas sesión'
-      }
-    ]);
-
-    this.scheduleZoneSync();
+  private removeZoneItem(zone: ZoneKey, bodyId: string): void {
+    this.zone.run(() => {
+      this.getSignalForZone(zone).update((items) => items.filter((item) => item.id !== bodyId));
+      this.queueZoneSync();
+    });
   }
 
-  private resolveCircleCollision(first: LilyBody, second: LilyBody): void {
+  private rescaleBodies(runtime: ZoneRuntime, nextWidth: number, nextHeight: number): void {
+    const previousWidth = runtime.size.width;
+    const previousHeight = runtime.size.height;
+
+    runtime.size.width = nextWidth;
+    runtime.size.height = nextHeight;
+
+    if (!previousWidth || !previousHeight) {
+      return;
+    }
+
+    const scaleX = nextWidth / previousWidth;
+    const scaleY = nextHeight / previousHeight;
+
+    runtime.bodies.forEach((body) => {
+      body.x *= scaleX;
+      body.y *= scaleY;
+      this.attachElement(body, runtime.host);
+      body.x = this.clamp(body.x, body.r, Math.max(body.r, nextWidth - body.r));
+      body.y = this.clamp(body.y, body.r, Math.max(body.r, nextHeight - body.r));
+    });
+  }
+
+  private resolveCircleCollision(first: LilyBody, second: LilyBody, restitution: number): void {
     const dx = second.x - first.x;
     const dy = second.y - first.y;
     const distance = Math.hypot(dx, dy) || 0.001;
-    const minDistance = first.radius + second.radius - 6;
+    const minDistance = first.r + second.r - 6;
 
     if (distance >= minDistance) {
       return;
@@ -679,195 +874,195 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     const relAlongNormal = relVx * nx + relVy * ny;
 
     if (relAlongNormal < 0) {
-      const impulse = (-(1 + 0.86) * relAlongNormal) / 2;
+      const impulse = (-(1 + restitution) * relAlongNormal) / 2;
       first.vx -= impulse * nx;
       first.vy -= impulse * ny;
       second.vx += impulse * nx;
       second.vy += impulse * ny;
+      first.angVel = this.clamp(first.angVel - relAlongNormal * 0.0014, -0.04, 0.04);
+      second.angVel = this.clamp(second.angVel + relAlongNormal * 0.0014, -0.04, 0.04);
     }
   }
 
-  private resolveWallBounce(body: LilyBody, width: number, height: number): void {
-    const margin = 12;
-    const left = body.radius + margin;
-    const right = width - body.radius - margin;
-    const top = body.radius + margin;
-    const bottom = height - body.radius - margin;
-
-    if (body.x <= left) {
-      body.x = left;
-      body.vx = Math.abs(body.vx);
-    } else if (body.x >= right) {
-      body.x = right;
-      body.vx = -Math.abs(body.vx);
-    }
-
-    if (body.y <= top) {
-      body.y = top;
-      body.vy = Math.abs(body.vy);
-    } else if (body.y >= bottom) {
-      body.y = bottom;
-      body.vy = -Math.abs(body.vy);
-    }
-  }
-
-  private resolveZoneCollisions(bodies: LilyBody[]): void {
-    for (let i = 0; i < bodies.length; i += 1) {
-      for (let j = i + 1; j < bodies.length; j += 1) {
-        this.resolveCircleCollision(bodies[i], bodies[j]);
-      }
-    }
-  }
-
-  private scheduleZoneSync(): void {
-    if (!this.viewReady || this.syncFrameId) {
+  private scheduleRespawn(zoneKey: ZoneKey, delayMs?: number): void {
+    const runtime = this.zoneRuntimes.get(zoneKey);
+    if (!runtime) {
       return;
     }
 
-    this.zone.runOutsideAngular(() => {
-      this.syncFrameId = requestAnimationFrame(() => {
-        this.syncFrameId = 0;
-        this.syncZones();
+    const timerId = window.setTimeout(() => {
+      const activeRuntime = this.zoneRuntimes.get(zoneKey);
+      activeRuntime?.respawnTimers.delete(timerId);
+      this.zone.run(() => this.respawnZoneItem(zoneKey));
+    }, Math.max(0, Math.round(delayMs ?? this.randomBetween(1500, 3000))));
+
+    runtime.respawnTimers.add(timerId);
+  }
+
+  private seedZoneLilies(): void {
+    this.promoLilies.set(this.takeInitialLilies('promos'));
+    this.reviewLilies.set(this.takeInitialLilies('resenas'));
+    this.profileLilies.set(this.takeInitialLilies('perfil'));
+    this.createLilies.set(this.takeInitialLilies('crear'));
+    this.queueZoneSync();
+  }
+
+  private respawnZoneItem(zone: ZoneKey): void {
+    const runtime = this.zoneRuntimes.get(zone);
+    if (!runtime) {
+      return;
+    }
+
+    const signalRef = this.getSignalForZone(zone);
+    if (signalRef().length >= runtime.config.targetCount) {
+      return;
+    }
+
+    const nextItem = this.createNextZoneItem(zone);
+    if (!nextItem) {
+      this.scheduleRespawn(zone, 2400);
+      return;
+    }
+
+    signalRef.update((items) => [...items, nextItem]);
+    this.queueZoneSync();
+  }
+
+  private syncZone(zoneKey: ZoneKey): void {
+    const host = this.getZoneHost(zoneKey);
+    if (!host || !host.clientWidth || !host.clientHeight) {
+      return;
+    }
+
+    const items = this.getSignalForZone(zoneKey)();
+    const config = this.zoneConfigs[zoneKey];
+    const existing = this.zoneRuntimes.get(zoneKey);
+
+    if (!existing) {
+      const runtime: ZoneRuntime = {
+        key: zoneKey,
+        host,
+        config,
+        respawnTimers: new Set<number>(),
+        bodies: [],
+        size: {
+          width: host.clientWidth,
+          height: host.clientHeight
+        }
+      };
+
+      runtime.bodies = [];
+      items.forEach((item) => {
+        runtime.bodies.push(this.createBody(runtime, item, runtime.bodies));
       });
-    });
+      this.zoneRuntimes.set(zoneKey, runtime);
+      this.applyZoneBodies(runtime.bodies);
+      return;
+    }
+
+    existing.host = host;
+    existing.config = config;
+    this.rescaleBodies(existing, host.clientWidth, host.clientHeight);
+
+    const currentBodies = new Map(existing.bodies.map((body) => [body.id, body]));
+    const nextBodies: LilyBody[] = [];
+
+    for (const item of items) {
+      const current = currentBodies.get(item.id);
+      if (current) {
+        current.dataRef = item;
+        this.attachElement(current, existing.host);
+        nextBodies.push(current);
+      } else {
+        nextBodies.push(this.createBody(existing, item, nextBodies));
+      }
+    }
+
+    existing.bodies = nextBodies;
+    this.applyZoneBodies(existing.bodies);
   }
 
   private syncZones(): void {
-    const configs: Array<{
-      host?: HTMLDivElement;
-      items: LilyView[];
-      key: ZoneKey;
-      maxSpeed: number;
-    }> = [
-      {
-        key: 'promos',
-        host: this.promosZoneRef?.nativeElement,
-        items: this.promoLilies(),
-        maxSpeed: this.getZoneMaxSpeed('promos')
-      },
-      {
-        key: 'resenas',
-        host: this.resenasZoneRef?.nativeElement,
-        items: this.reviewLilies(),
-        maxSpeed: this.getZoneMaxSpeed('resenas')
-      },
-      {
-        key: 'perfil',
-        host: this.perfilZoneRef?.nativeElement,
-        items: this.profileLilies(),
-        maxSpeed: this.getZoneMaxSpeed('perfil')
-      },
-      {
-        key: 'crear',
-        host: this.crearZoneRef?.nativeElement,
-        items: this.createLilies(),
-        maxSpeed: this.getZoneMaxSpeed('crear')
-      }
-    ];
-
-    this.zoneRuntimes.clear();
-
-    configs.forEach((config) => {
-      if (!config.host || !config.items.length || !config.host.clientWidth || !config.host.clientHeight) {
-        return;
-      }
-
-      const occupied: LilyBody[] = [];
-      const bodies = config.items.map((item) => {
-        const body = this.createBodyForItem(config.key, config.host!, item, config.maxSpeed, occupied);
-        occupied.push(body);
-        return body;
-      });
-
-      this.zoneRuntimes.set(config.key, {
-        key: config.key,
-        host: config.host,
-        bodies,
-        maxSpeed: config.maxSpeed
-      });
-      this.applyZoneBodies(bodies);
-    });
+    this.syncZone('promos');
+    this.syncZone('resenas');
+    this.syncZone('perfil');
+    this.syncZone('crear');
   }
 
-  private takeNextReviewLilies(count: number): LilyView[] {
-    const pool = this.resenas();
-    if (!pool.length) {
-      return [];
-    }
-
+  private takeInitialLilies(zone: ZoneKey): LilyView[] {
+    const targetCount = this.zoneConfigs[zone].targetCount;
     const nextItems: LilyView[] = [];
 
-    for (let i = 0; i < count; i += 1) {
-      const review = pool[this.reviewSpawnCursor % pool.length];
-      this.reviewSpawnCursor = (this.reviewSpawnCursor + 1) % pool.length;
-      nextItems.push(this.createReviewLily(review));
+    for (let index = 0; index < targetCount; index += 1) {
+      const item = this.createNextZoneItem(zone);
+      if (item) {
+        nextItems.push(item);
+      }
     }
 
     return nextItems;
   }
 
   private updateZone(runtime: ZoneRuntime, dt: number, elapsed: number): void {
-    const width = runtime.host.clientWidth;
-    const height = runtime.host.clientHeight;
-
-    if (!width || !height) {
-      return;
-    }
-
     const frameScale = dt * 60;
+    const escapedIds: string[] = [];
 
     runtime.bodies.forEach((body, index) => {
-      const drift = elapsed * 0.2 + body.driftSeed + index * 0.68;
-      body.vx += Math.cos(drift) * 1.7 * dt;
-      body.vy += Math.sin(drift * 0.88) * 1.45 * dt;
-      body.vx *= Math.pow(body.drag, frameScale);
-      body.vy *= Math.pow(body.drag, frameScale);
-      body.drag += (0.989 - body.drag) * 0.05 * frameScale;
-      body.speedCapMultiplier += (1 - body.speedCapMultiplier) * 0.05 * frameScale;
-      body.angVel += Math.sin(elapsed * 0.12 + body.driftSeed) * 0.0007;
-      body.angVel *= 0.988;
-      body.angVel = this.clamp(body.angVel, -0.018, 0.018);
+      if (!body.element) {
+        this.attachElement(body, runtime.host);
+      }
 
-      this.keepMinimumMotion(body, runtime.maxSpeed * 0.26, drift);
-      this.limitSpeed(body, runtime.maxSpeed * body.speedCapMultiplier);
+      body.vx *= Math.pow(runtime.config.damping, frameScale);
+      body.vy *= Math.pow(runtime.config.damping, frameScale);
+      body.angVel *= Math.pow(0.98, frameScale);
+
+      body.vx += Math.cos(elapsed * 0.72 + body.driftSeed + index) * 0.22 * frameScale;
+      body.vy += Math.sin(elapsed * 0.68 + body.driftSeed + index * 0.7) * 0.2 * frameScale;
+
+      this.keepMinimumMotion(body, runtime.config.minSpeed, body.driftSeed + elapsed);
+      this.limitSpeed(body, runtime.config.maxSpeed * 4.4);
 
       body.x += body.vx * dt;
       body.y += body.vy * dt;
       body.angle += body.angVel * 60 * dt;
 
-      this.resolveWallBounce(body, width, height);
+      this.handleBoundary(runtime, body, elapsed);
+
+      if (this.isBodyOutside(runtime, body)) {
+        escapedIds.push(body.id);
+      }
     });
 
-    this.resolveZoneCollisions(runtime.bodies);
-    runtime.bodies.forEach((body) => this.resolveWallBounce(body, width, height));
+    for (let i = 0; i < runtime.bodies.length; i += 1) {
+      for (let j = i + 1; j < runtime.bodies.length; j += 1) {
+        this.resolveCircleCollision(runtime.bodies[i], runtime.bodies[j], runtime.config.restitution);
+      }
+    }
+
+    runtime.bodies.forEach((body) => this.handleBoundary(runtime, body, elapsed));
     this.applyZoneBodies(runtime.bodies);
+
+    escapedIds.forEach((bodyId) => this.despawnBody(runtime, bodyId));
   }
 
-  private keepMinimumMotion(body: LilyBody, minSpeed: number, seed: number): void {
-    const speed = Math.hypot(body.vx, body.vy);
-    if (speed >= minSpeed) {
-      return;
-    }
-
-    const angle = speed > 0.01 ? Math.atan2(body.vy, body.vx) : seed;
-    body.vx = Math.cos(angle) * minSpeed;
-    body.vy = Math.sin(angle) * minSpeed;
+  private updateZoneItems(zone: ZoneKey, nextItems: LilyView[]): void {
+    this.getSignalForZone(zone).set(nextItems);
+    this.queueZoneSync();
   }
 
-  private limitSpeed(body: LilyBody, maxSpeed: number): void {
-    const speed = Math.hypot(body.vx, body.vy);
-    if (speed <= maxSpeed) {
-      return;
-    }
-
-    const ratio = maxSpeed / speed;
-    body.vx *= ratio;
-    body.vy *= ratio;
+  private isBodyOutside(runtime: ZoneRuntime, body: LilyBody): boolean {
+    return (
+      body.x < -body.r * 0.5 ||
+      body.x > runtime.size.width + body.r * 0.5 ||
+      body.y < -body.r * 0.5 ||
+      body.y > runtime.size.height + body.r * 0.5
+    );
   }
 
   private areBodiesOverlapping(x: number, y: number, radius: number, body: LilyBody): boolean {
     const dx = x - body.x;
     const dy = y - body.y;
-    return dx * dx + dy * dy < (radius + body.radius - 8) * (radius + body.radius - 8);
+    const minDistance = radius + body.r - 6;
+    return dx * dx + dy * dy < minDistance * minDistance;
   }
 }

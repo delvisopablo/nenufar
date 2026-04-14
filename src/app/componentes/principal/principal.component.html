@@ -3,21 +3,21 @@
 
   <header class="topbar">
     <div class="brand-lockup">
-      <img class="brand-logo" [src]="brandLogoSrc" alt="Flor de Nenúfar">
+      <img class="brand-logo" [src]="brandLogoSrc" alt="Flor de Nenufar">
       <div class="brand-copy">
-        <p class="brand-mark">Nenúfar</p>
+        <p class="brand-mark">Nenufar</p>
         <h1>Inicio</h1>
       </div>
     </div>
 
     <div class="topbar-lilies">
       <button type="button" class="top-lily top-lily--fresh" (click)="abrirInfo()">
-        <span>Menúfa</span>
+        <span>Menufa</span>
         <strong>Info</strong>
       </button>
 
       <button type="button" class="top-lily top-lily--fresh" (click)="abrirAyuda()">
-        <span>Menúfa</span>
+        <span>Menufa</span>
         <strong>Ayuda</strong>
       </button>
     </div>
@@ -55,20 +55,23 @@
   </div>
 
   <main class="pond-stage">
-    <section class="zone promos-zone" #promosZone>
+    <section class="zone zone--promos">
       <div class="zone-head">
-        <p class="zone-kicker">Promociones</p>
-        <h2>Zona izquierda inferior</h2>
+        <div class="zone-head__copy">
+          <p class="zone-kicker">Promociones</p>
+          <h2>Marco de promos seguidas</h2>
+        </div>
       </div>
 
-      <div class="zone-lily-field">
+      <div class="zone-lily-field" #promosField>
         @for (item of promoLilies(); track item.id) {
           <button
             type="button"
             class="zone-lily zone-lily--promo zone-lily--fresh"
             [attr.data-lily-id]="item.id"
             [attr.aria-label]="item.label"
-            (click)="manejarLilyClick(item)"
+            (pointerdown)="onLilyPointerDown($event, item)"
+            (contextmenu)="onLilyContextMenu($event, item)"
             (mouseenter)="mostrarTooltip($event, item)"
             (mousemove)="mostrarTooltip($event, item)"
             (mouseleave)="ocultarTooltip()"
@@ -81,24 +84,32 @@
           </button>
         }
       </div>
+
+      <div class="rock-frame top" aria-hidden="true"></div>
+      <div class="rock-frame right" aria-hidden="true"></div>
+      <div class="rock-frame bottom" aria-hidden="true"></div>
+      <div class="rock-frame left" aria-hidden="true"></div>
     </section>
 
-    <section class="zone resenas-zone" #resenasZone>
+    <section class="zone zone--resenas">
       <div class="zone-head">
-        <p class="zone-kicker">Reseñas</p>
-        <h2>Centro encajado</h2>
+        <div class="zone-head__copy">
+          <p class="zone-kicker">Resenas</p>
+          <h2>Marco central de opiniones</h2>
+        </div>
       </div>
 
-      <div class="zone-lily-field">
+      <div class="zone-lily-field" #resenasField>
         @for (item of reviewLilies(); track item.id) {
           <button
             type="button"
             class="zone-lily zone-lily--review"
-            [class.zone-lily--fresh]="(item.review?.puntuacion || 0) >= 3"
-            [class.zone-lily--mustio]="(item.review?.puntuacion || 0) < 3"
+            [class.zone-lily--fresh]="item.tone === 'fresh'"
+            [class.zone-lily--mustio]="item.tone === 'mustio'"
             [attr.data-lily-id]="item.id"
             [attr.aria-label]="item.label"
-            (click)="manejarLilyClick(item)"
+            (pointerdown)="onLilyPointerDown($event, item)"
+            (contextmenu)="onLilyContextMenu($event, item)"
             (mouseenter)="mostrarTooltip($event, item)"
             (mousemove)="mostrarTooltip($event, item)"
             (mouseleave)="ocultarTooltip()"
@@ -115,22 +126,34 @@
           </button>
         }
       </div>
+
+      <div class="rock-frame top" aria-hidden="true"></div>
+      <div class="rock-frame right" aria-hidden="true"></div>
+      <div class="rock-frame bottom" aria-hidden="true"></div>
+      <div class="rock-frame left" aria-hidden="true"></div>
     </section>
 
-    <section class="zone perfil-zone" #perfilZone>
+    <section class="zone zone--perfil">
       <div class="zone-head">
-        <p class="zone-kicker">Perfil</p>
-        <h2>Columna derecha</h2>
+        <div class="zone-head__copy">
+          <p class="zone-kicker">Perfil</p>
+          <h2>Tu zona privada</h2>
+        </div>
+
+        <button type="button" class="zone-quick-action" (click)="abrirPerfil()">
+          Abrir
+        </button>
       </div>
 
-      <div class="zone-lily-field">
+      <div class="zone-lily-field" #perfilField>
         @for (item of profileLilies(); track item.id) {
           <button
             type="button"
             class="zone-lily zone-lily--profile zone-lily--fresh"
             [attr.data-lily-id]="item.id"
             [attr.aria-label]="item.label"
-            (click)="manejarLilyClick(item)"
+            (pointerdown)="onLilyPointerDown($event, item)"
+            (contextmenu)="onLilyContextMenu($event, item)"
           >
             <span class="zone-lily__copy">
               <strong>{{ item.label }}</strong>
@@ -139,22 +162,34 @@
           </button>
         }
       </div>
+
+      <div class="rock-frame top" aria-hidden="true"></div>
+      <div class="rock-frame right" aria-hidden="true"></div>
+      <div class="rock-frame bottom" aria-hidden="true"></div>
+      <div class="rock-frame left" aria-hidden="true"></div>
     </section>
 
-    <section class="zone crear-zone" #crearZone>
+    <section class="zone zone--crear">
       <div class="zone-head">
-        <p class="zone-kicker">+ Reseña</p>
-        <h2>Acción rápida</h2>
+        <div class="zone-head__copy">
+          <p class="zone-kicker">+ Resena</p>
+          <h2>Accion rapida</h2>
+        </div>
+
+        <button type="button" class="zone-quick-action" (click)="abrirCrearResena()">
+          Crear
+        </button>
       </div>
 
-      <div class="zone-lily-field">
+      <div class="zone-lily-field" #crearField>
         @for (item of createLilies(); track item.id) {
           <button
             type="button"
             class="zone-lily zone-lily--create zone-lily--fresh"
             [attr.data-lily-id]="item.id"
             [attr.aria-label]="item.label"
-            (click)="manejarLilyClick(item)"
+            (pointerdown)="onLilyPointerDown($event, item)"
+            (contextmenu)="onLilyContextMenu($event, item)"
           >
             <span class="zone-lily__copy">
               <strong>{{ item.label }}</strong>
@@ -163,13 +198,12 @@
           </button>
         }
       </div>
-    </section>
 
-    <div class="rocks-layer" aria-hidden="true">
-      <img class="rock-divider rock-divider--one" src="assets/imagenes/ROCA_DIVIDER.png" alt="">
-      <img class="rock-divider rock-divider--two" src="assets/imagenes/ROCA_DIVIDER.png" alt="">
-      <img class="rock-divider rock-divider--three" src="assets/imagenes/ROCA_DIVIDER.png" alt="">
-    </div>
+      <div class="rock-frame top" aria-hidden="true"></div>
+      <div class="rock-frame right" aria-hidden="true"></div>
+      <div class="rock-frame bottom" aria-hidden="true"></div>
+      <div class="rock-frame left" aria-hidden="true"></div>
+    </section>
   </main>
 
   @if (hoveredTooltip(); as tooltip) {
@@ -193,65 +227,121 @@
         </button>
 
         @if (activePopup.kind === 'info') {
-          <p class="popup-kicker">Menúfa Info</p>
-          <h2>Qué es Nenúfar</h2>
+          <p class="popup-kicker">Menufa info</p>
+          <h2>Como funciona este inicio</h2>
           <p>
-            Nenúfar reúne promociones, reseñas y accesos rápidos en un único estanque. Pulsa en los
-            nenúfares para moverte por la app sin perder el contexto del fondo.
+            Cada zona mantiene su propio marco de roca y comparte el mismo fondo animado del
+            estanque. El click izquierdo empuja el nenufar y el click derecho abre su ficha.
           </p>
           <p>
-            La izquierda te enseña promos, el centro reseñas y la derecha concentra tu perfil y la
-            creación de nuevas opiniones.
+            Si una ficha sale completamente del marco, desaparece un rato y vuelve a entrar otra
+            nueva tras su cooldown.
           </p>
+
+          <div class="popup-actions">
+            <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
+          </div>
         }
 
         @if (activePopup.kind === 'ayuda') {
-          <p class="popup-kicker">Menúfa Ayuda</p>
-          <h2>Cómo usar el inicio</h2>
+          <p class="popup-kicker">Menufa ayuda</p>
+          <h2>Gestos del estanque</h2>
           <p>
-            Busca un negocio arriba, entra en promociones desde la izquierda o revisa reseñas en el
-            centro. El nenúfar de perfil te lleva a tu cuenta y el de abajo abre el modal para crear
-            reseñas nuevas.
+            Click izquierdo sobre un nenufar: impulso. Click derecho: ficha con detalle. Click en
+            el fondo: onda global.
           </p>
+          <p>
+            Perfil y +Resena mantienen acceso rapido con su boton de cabecera y tambien admiten
+            menu contextual en su nenufar.
+          </p>
+
+          <div class="popup-actions">
+            <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
+          </div>
         }
 
         @if (activePopup.kind === 'signin') {
           <p class="popup-kicker">Acceso necesario</p>
-          <h2>{{ activePopup.title || 'Inicia sesión' }}</h2>
+          <h2>{{ activePopup.title }}</h2>
           <p>{{ activePopup.message }}</p>
 
           <div class="popup-actions">
             <button type="button" class="primary-btn" (click)="irALogin()">Ir a login</button>
-            <button type="button" class="secondary-btn" (click)="cerrarPopup()">Seguir aquí</button>
+            <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
           </div>
         }
 
         @if (activePopup.kind === 'review') {
-          <p class="popup-kicker">Detalle de reseña</p>
-          <h2>{{ activePopup.review?.negocioNombre }}</h2>
+          <p class="popup-kicker">Detalle de resena</p>
+          <h2>{{ activePopup.review.negocioNombre }}</h2>
 
-          <div class="review-popup-meta">
-            <span>{{ activePopup.review?.autorNombre }}</span>
-            <span>{{ getEstrellas(activePopup.review?.puntuacion || 0) }}</span>
-            <span>{{ formatearFecha(activePopup.review?.fechaISO || '') }}</span>
+          <div class="popup-meta">
+            <span>{{ activePopup.review.autorNombre }}</span>
+            <span>{{ getEstrellas(activePopup.review.puntuacion) }}</span>
+            <span>{{ formatearFechaCompleta(activePopup.review.fechaISO) }}</span>
           </div>
 
-          <p>{{ activePopup.review?.contenidoCorto }}</p>
+          <p>{{ activePopup.review.contenido }}</p>
 
-          @if (activePopup.review?.selloNenufar) {
-            <span class="review-seal">Sello Nenúfar</span>
+          @if (activePopup.review.selloNenufar) {
+            <span class="review-seal">Sello Nenufar</span>
           }
 
           <div class="popup-actions">
-            @if (activePopup.review?.lanzable) {
-              <button type="button" class="primary-btn" (click)="lanzarReviewActiva()">
-                Lanzar
-              </button>
-            } @else {
-              <button type="button" class="secondary-btn" (click)="cerrarPopup()">
-                Cerrar
-              </button>
-            }
+            <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
+          </div>
+        }
+
+        @if (activePopup.kind === 'promo') {
+          <p class="popup-kicker">Detalle de promocion</p>
+          <h2>{{ activePopup.promo.titulo }}</h2>
+
+          <div class="popup-meta">
+            <span>{{ activePopup.promo.negocioNombre }}</span>
+            <span>{{ activePopup.promo.descuentoTexto }}</span>
+            <span>{{ formatearFechaCompleta(activePopup.promo.fechaCaducidadISO) }}</span>
+          </div>
+
+          <p>{{ activePopup.promo.descripcion }}</p>
+          <p class="popup-note">{{ activePopup.promo.condiciones }}</p>
+
+          <div class="popup-actions">
+            <button
+              type="button"
+              class="primary-btn"
+              (click)="seleccionarNegocio({ id: activePopup.promo.negocioId, nombre: activePopup.promo.negocioNombre, categoria: 'Promocion activa', descripcion: activePopup.promo.descripcionCorta })"
+            >
+              Ver negocio
+            </button>
+            <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
+          </div>
+        }
+
+        @if (activePopup.kind === 'profile') {
+          <p class="popup-kicker">Perfil</p>
+          <h2>{{ nombreUsuario() }}</h2>
+          <p>
+            Este nenufar sirve como acceso a tu perfil. Puedes seguir impulsandolo por el estanque
+            o abrir tu cuenta desde aqui.
+          </p>
+
+          <div class="popup-actions">
+            <button type="button" class="primary-btn" (click)="abrirPerfil()">Abrir perfil</button>
+            <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
+          </div>
+        }
+
+        @if (activePopup.kind === 'create') {
+          <p class="popup-kicker">Nueva resena</p>
+          <h2>Compartir una opinion</h2>
+          <p>
+            Usa esta zona para abrir el modal de nueva resena cuando quieras dejar otra ficha en el
+            estanque.
+          </p>
+
+          <div class="popup-actions">
+            <button type="button" class="primary-btn" (click)="abrirCrearResena()">Crear resena</button>
+            <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
           </div>
         }
       </section>
