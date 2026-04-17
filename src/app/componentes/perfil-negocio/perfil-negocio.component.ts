@@ -4,7 +4,15 @@ import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
 import { RouterLink } from '@angular/router';
-import { environment } from '../../../environments/environment';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { buildApiUrl } from '../../config/api.config';
+
+type AvailabilityResponse = {
+  date: string;
+  intervalo: number;
+  slots: string[];
+};
 
 @Component({
   selector: 'app-perfil-negocio',
@@ -14,14 +22,17 @@ import { environment } from '../../../environments/environment';
   styleUrl: './perfil-negocio.component.css'
 })
 export class PerfilNegocioComponent implements OnInit {
-  private readonly apiUrl = environment.apiUrl;
   negocio: any = null;
   esPropietario = false;
   horasDisponibles: string[] = [];
   esDueno = false;
   slots: string[] = [];
   modalAbierto: boolean = false;
-  usuarioActual: any = JSON.parse(localStorage.getItem('usuario')!);
+  usuarioActual: any = JSON.parse(
+    localStorage.getItem('usuarioLogueado') ||
+      localStorage.getItem('usuario') ||
+      'null',
+  );
   mediaPuntuacion: number = 0;
   resenas: any[] = [];
   negocioId!: number;
@@ -29,6 +40,7 @@ export class PerfilNegocioComponent implements OnInit {
   diasSemana: string[] = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   horasGeneradas: string[] = [];
   reservasOcupadas: { [dia: string]: string[] } = {};
+  private fechasSemana: Record<string, string> = {};
 
 
   constructor(private route: ActivatedRoute, private http: HttpClient, private router: Router) {}
@@ -37,40 +49,68 @@ export class PerfilNegocioComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) return;
 
+    this.inicializarSemanaActual();
     this.negocioId = +id;
-    this.http.get(`${this.apiUrl}/negocio/${id}`).subscribe((data: any) => {
+    this.http.get(buildApiUrl(`/negocios/${id}`)).subscribe((data: any) => {
       this.negocio = data;
       this.negocioId = data.id;
       this.refrescarResenas();
-      if (data?.dueño && this.usuarioActual?.id) {
-        this.esDueno = this.usuarioActual.id === data.dueño.id;
+      if (data?.dueno && this.usuarioActual?.id) {
+        this.esDueno = this.usuarioActual.id === data.dueno.id;
       } else {
         this.esDueno = false;
       }
       this.generarHorasDisponibles();
       this.verificarPropietario();
+      this.recargarReservas();
     });
 
-    this.http.get<any[]>(`${this.apiUrl}/resena/negocio/${id}`).subscribe((data) => {
+    this.http.get<any[]>(buildApiUrl(`/negocios/${id}/resenas`)).subscribe((data) => {
       this.resenas = data;
       if (data.length > 0) {
         const suma = data.reduce((acc, r) => acc + r.puntuacion, 0);
         this.mediaPuntuacion = Math.round((suma / data.length) * 10) / 10;
       }
     });
+  }
 
-    this.recargarReservas();
+  private inicializarSemanaActual() {
+    const hoy = new Date();
+    const diaActual = hoy.getDay();
+    const offsetLunes = diaActual === 0 ? -6 : 1 - diaActual;
+    const lunes = new Date(hoy);
+    lunes.setHours(0, 0, 0, 0);
+    lunes.setDate(hoy.getDate() + offsetLunes);
 
+    this.diasSemana.forEach((dia, index) => {
+      const fecha = new Date(lunes);
+      fecha.setDate(lunes.getDate() + index);
+      this.fechasSemana[dia] = fecha.toISOString().slice(0, 10);
+    });
   }
 
  generarHorasDisponibles() {
   if (!this.negocio?.horario) return;
-  const { apertura, cierre, intervalo } = this.negocio.horario;
+  const horario = this.negocio.horario;
+  const paso = Number(this.negocio.intervaloReserva || horario.intervalo || 30);
+
+  let apertura = horario.apertura;
+  let cierre = horario.cierre;
+
+  if (!apertura || !cierre) {
+    const ranges = Object.values(horario.weekly ?? {}).flat() as [string, string][];
+    if (ranges.length > 0) {
+      apertura = ranges[0][0];
+      cierre = ranges[ranges.length - 1][1];
+    }
+  }
+
+  if (!apertura || !cierre) return;
+
   const [hStart, mStart] = apertura.split(':').map(Number);
   const [hEnd, mEnd] = cierre.split(':').map(Number);
   const start = hStart * 60 + mStart;
   const end = hEnd * 60 + mEnd;
-  const paso = +intervalo || 30;
 
   const horas: string[] = [];
   for (let t = start; t < end; t += paso) {
@@ -86,25 +126,50 @@ export class PerfilNegocioComponent implements OnInit {
 }
 
 recargarReservas() {
-  this.http.get<any[]>(`${this.apiUrl}/reserva/negocio/${this.negocioId}`).subscribe({
-    next: (data) => {
-      // Inicializa estructura
-      this.diasSemana.forEach(dia => this.reservasOcupadas[dia] = []);
+  if (!this.negocioId || !this.horasGeneradas.length) {
+    this.diasSemana.forEach(dia => this.reservasOcupadas[dia] = []);
+    return;
+  }
 
-      data.forEach(res => {
-        if (this.diasSemana.includes(res.dia)) {
-          this.reservasOcupadas[res.dia].push(res.hora);
-        }
-      });
-    },
-    error: (err) => console.error('Error cargando reservas:', err)
+  const requests = this.diasSemana.map((dia) =>
+    this.http
+      .get<AvailabilityResponse>(
+        buildApiUrl(`/negocios/${this.negocioId}/availability?date=${this.fechasSemana[dia]}`),
+      )
+      .pipe(
+        catchError((err) => {
+          console.error(`Error cargando disponibilidad para ${dia}:`, err);
+          return of({
+            date: this.fechasSemana[dia],
+            intervalo: this.negocio?.intervaloReserva || 30,
+            slots: [],
+          });
+        }),
+      ),
+  );
+
+  forkJoin(requests).subscribe((responses) => {
+    responses.forEach((response, index) => {
+      const dia = this.diasSemana[index];
+      const disponibles = response.slots.map((slot) =>
+        new Date(slot).toLocaleTimeString('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }),
+      );
+
+      this.reservasOcupadas[dia] = this.horasGeneradas.filter(
+        (hora) => !disponibles.includes(hora),
+      );
+    });
   });
 }
 
 
   verificarPropietario() {
     if (!this.usuarioActual || !this.negocio) return;
-    this.esDueno = this.usuarioActual.id === this.negocio.usuarioId;
+    this.esDueno = this.usuarioActual.id === this.negocio.duenoId;
   }
 
   abrirModalResena() {
@@ -117,7 +182,7 @@ recargarReservas() {
 
  refrescarResenas() {
   if (!this.negocioId) return;
-  this.http.get<any[]>(`${this.apiUrl}/resena/negocio/${this.negocioId}`).subscribe({
+  this.http.get<any[]>(buildApiUrl(`/negocios/${this.negocioId}/resenas`)).subscribe({
     next: (res) => {
       this.resenas = res;
       console.log("🔁 Reseñas actualizadas:", res);
@@ -139,31 +204,20 @@ verPerfilUsuario(id: number) {
   if (id) this.router.navigate(['/perfil', id]);
 }
 
-
-  reservar(slot: string) {
-    const payload = {
-      usuarioId: this.usuarioActual.id,
-      negocioId: this.negocioId,
-      fecha: slot,
-    };
-    this.http.post(`${this.apiUrl}/reserva`, payload).subscribe({
-      next: () => alert('Reserva hecha'),
-      error: (err) => console.error('Error al reservar:', err)
-    });
-  }
-
   confirmarReserva(dia: string, hora: string) {
   const ok = confirm(`¿Reservar el ${dia} a las ${hora}?`);
   if (!ok) return;
 
-  const body = {
-    negocioId: this.negocio.id,
-    usuarioId: this.usuarioActual.id,
-    dia,
-    hora
-  };
+  const fechaBase = this.fechasSemana[dia];
+  if (!fechaBase) {
+    alert('No hemos podido calcular la fecha de la reserva.');
+    return;
+  }
 
-  this.http.post(`${this.apiUrl}/reserva`, body).subscribe({
+  const fecha = new Date(`${fechaBase}T${hora}:00`);
+  this.http.post(buildApiUrl(`/negocios/${this.negocio.id}/reservas`), {
+    fecha: fecha.toISOString(),
+  }).subscribe({
     next: () => {
       alert(`✅ ¡Reserva confirmada en ${this.negocio.nombre} a las ${hora}!`);
       this.recargarReservas(); // vuelve a cargar datos si quieres actualizar

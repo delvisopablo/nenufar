@@ -2,7 +2,11 @@ import { Component, Input, Output, EventEmitter, signal, OnInit } from '@angular
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { environment } from '../../../../environments/environment';
+import {
+  ApiListResponse,
+  buildApiUrl,
+  extractItems,
+} from '../../../config/api.config';
 
 @Component({
   selector: 'app-crear-resena-modal',
@@ -12,7 +16,6 @@ import { environment } from '../../../../environments/environment';
   styleUrl: './crear-resena-modal.component.css'
 })
 export class CrearResenaModalComponent implements OnInit {
-  private readonly apiUrl = environment.apiUrl;
   // @Output() cerrarModal = new EventEmitter<void>();
   @Output() resenaCreada = new EventEmitter<any>();
   @Input() visible = false;
@@ -44,9 +47,9 @@ export class CrearResenaModalComponent implements OnInit {
 
   ngOnInit() {
     // this.autenticarToken();
-    this.http.get<any[]>(`${this.apiUrl}/negocio`).subscribe({
+    this.http.get<ApiListResponse<any>>(buildApiUrl('/negocios')).subscribe({
       next: (data) => {
-        this.negocios = data;
+        this.negocios = extractItems(data);
         console.log('🟢 Negocios cargados:', data);
 
       },
@@ -111,7 +114,7 @@ cerrar() {
         usuarioId: this.usuarioActual.id
       };
 
-      this.http.post(`${this.apiUrl}/resena`, reseña).subscribe({
+      this.http.post(buildApiUrl('/resena'), reseña).subscribe({
         next: (res) => {
           console.log('✅ Reseña guardada:', res);
           alert('Genial!! Tu reseña se ha guardado.')

@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, tap } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { API_BASE_URL } from '../../config/api.config';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly baseUrl = environment.apiUrl;
+  private readonly baseUrl = API_BASE_URL;
   private token$ = new BehaviorSubject<string | null>(null);
 
   constructor(private http: HttpClient) {
@@ -52,7 +52,7 @@ usuarioExiste(usuario: string, email: string): boolean {
 
 
 registerNegocio(data: any) {
-  return this.http.post(`${this.baseUrl}/auth/register-negocio`, data);
+  return this.register(data);
 }
 
 

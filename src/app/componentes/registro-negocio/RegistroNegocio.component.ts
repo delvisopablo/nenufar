@@ -22,7 +22,11 @@ import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { AuthService } from '../../servicios/authService/auth.service';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
-import { environment } from '../../../environments/environment';
+import {
+  ApiListResponse,
+  buildApiUrl,
+  extractItems,
+} from '../../config/api.config';
 
 type Categoria = { id: number; nombre: string };
 
@@ -235,7 +239,6 @@ class PondBackgroundRenderer {
   styleUrls: ['./RegistroNegocio.component.css']
 })
 export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestroy {
-  private readonly apiUrl = environment.apiUrl;
   @ViewChild('pondCanvas') private pondCanvasRef?: ElementRef<HTMLCanvasElement>;
 
   private readonly fb = inject(FormBuilder);
@@ -431,9 +434,11 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   private cargarCategorias(): void {
-    this.http.get<Categoria[]>(`${this.apiUrl}/categorias`).subscribe({
+    this.http
+      .get<ApiListResponse<Categoria>>(buildApiUrl('/categorias'))
+      .subscribe({
       next: (data) => {
-        const categorias = Array.isArray(data) ? data : [];
+        const categorias = extractItems(data);
         this.categorias.set(categorias);
         this.categoriasFiltradas.set(categorias.slice(0, 8));
         this.cargandoCategorias.set(false);
