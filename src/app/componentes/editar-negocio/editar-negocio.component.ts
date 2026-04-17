@@ -6,6 +6,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-editar-negocio',
@@ -15,6 +16,7 @@ import { HttpClient } from '@angular/common/http';
   styleUrl: './editar-negocio.component.css'
 })
 export class EditarNegocioComponent implements OnInit {
+  private readonly apiUrl = environment.apiUrl;
   private fb = inject(FormBuilder);
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
@@ -66,7 +68,7 @@ export class EditarNegocioComponent implements OnInit {
   }
 
   cargarDatos() {
-    this.http.get<any>(`http://localhost:3000/negocio/${this.negocioId}`).subscribe({
+    this.http.get<any>(`${this.apiUrl}/negocio/${this.negocioId}`).subscribe({
       next: (negocio) => {
         this.negocioForm.patchValue({
           nombre: negocio.nombre,
@@ -127,7 +129,7 @@ export class EditarNegocioComponent implements OnInit {
     const datos = this.negocioForm.value;
     console.log('📦 Datos enviados al backend:', datos);
 
-    this.http.patch(`http://localhost:3000/negocio/${this.negocioId}`, datos).subscribe({
+    this.http.patch(`${this.apiUrl}/negocio/${this.negocioId}`, datos).subscribe({
       next: () => this.router.navigate(['/negocio', this.negocioId]),
       error: (err) => console.error('❌ Error al actualizar negocio:', err)
     });

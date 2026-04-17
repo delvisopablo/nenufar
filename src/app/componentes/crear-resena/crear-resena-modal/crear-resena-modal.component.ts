@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, OnInit } from '@angular
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-crear-resena-modal',
@@ -11,6 +12,7 @@ import { HttpClient, HttpClientModule } from '@angular/common/http';
   styleUrl: './crear-resena-modal.component.css'
 })
 export class CrearResenaModalComponent implements OnInit {
+  private readonly apiUrl = environment.apiUrl;
   // @Output() cerrarModal = new EventEmitter<void>();
   @Output() resenaCreada = new EventEmitter<any>();
   @Input() visible = false;
@@ -42,7 +44,7 @@ export class CrearResenaModalComponent implements OnInit {
 
   ngOnInit() {
     // this.autenticarToken();
-    this.http.get<any[]>('http://localhost:3000/negocio').subscribe({
+    this.http.get<any[]>(`${this.apiUrl}/negocio`).subscribe({
       next: (data) => {
         this.negocios = data;
         console.log('🟢 Negocios cargados:', data);
@@ -65,23 +67,6 @@ seleccionarNegocio(negocio: any) {
 
   // seleccionarEstrellas(valor: number) {
   //   this.estrellas.set(valor);
-  // }
-
-  // autenticarToken() {
-  //   const token = localStorage.getItem('token');
-
-  //   this.http.get('http://localhost:3000/ruta-protegida', {
-  //     headers: {
-  //       Authorization: `Bearer ${token}`
-  //     }
-  //   }).subscribe({
-  //     next: (res) => {
-  //       console.log('✅ Token autenticado:', res);
-  //     },
-  //     error: (err) => {
-  //       console.error('❌ Error al autenticar token:', err);
-  //     }
-  //   });
   // }
 
   // toggleSello() {
@@ -108,13 +93,6 @@ cerrar() {
 //   puntuacion: this.puntuacion
 // };
 
-// this.http.post(`http://localhost:3000/resena`, resena).subscribe({
-//   next: () => {
-//     this.cerrarModal.emit(); // o recargar
-//   },
-//   error: (err) => console.error('Error al enviar reseña:', err)
-// });
-
  toggleSello() {
     const actual = this.form.controls['selloNenufar'].value;
     this.form.controls['selloNenufar'].setValue(!actual);
@@ -133,7 +111,7 @@ cerrar() {
         usuarioId: this.usuarioActual.id
       };
 
-      this.http.post('http://localhost:3000/resena', reseña).subscribe({
+      this.http.post(`${this.apiUrl}/resena`, reseña).subscribe({
         next: (res) => {
           console.log('✅ Reseña guardada:', res);
           alert('Genial!! Tu reseña se ha guardado.')

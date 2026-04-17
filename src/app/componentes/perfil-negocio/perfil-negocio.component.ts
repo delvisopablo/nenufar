@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
 import { RouterLink } from '@angular/router';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-perfil-negocio',
@@ -13,6 +14,7 @@ import { RouterLink } from '@angular/router';
   styleUrl: './perfil-negocio.component.css'
 })
 export class PerfilNegocioComponent implements OnInit {
+  private readonly apiUrl = environment.apiUrl;
   negocio: any = null;
   esPropietario = false;
   horasDisponibles: string[] = [];
@@ -36,7 +38,7 @@ export class PerfilNegocioComponent implements OnInit {
     if (!id) return;
 
     this.negocioId = +id;
-    this.http.get(`http://localhost:3000/negocio/${id}`).subscribe((data: any) => {
+    this.http.get(`${this.apiUrl}/negocio/${id}`).subscribe((data: any) => {
       this.negocio = data;
       this.negocioId = data.id;
       this.refrescarResenas();
@@ -49,7 +51,7 @@ export class PerfilNegocioComponent implements OnInit {
       this.verificarPropietario();
     });
 
-    this.http.get<any[]>(`http://localhost:3000/resena/negocio/${id}`).subscribe((data) => {
+    this.http.get<any[]>(`${this.apiUrl}/resena/negocio/${id}`).subscribe((data) => {
       this.resenas = data;
       if (data.length > 0) {
         const suma = data.reduce((acc, r) => acc + r.puntuacion, 0);
@@ -84,7 +86,7 @@ export class PerfilNegocioComponent implements OnInit {
 }
 
 recargarReservas() {
-  this.http.get<any[]>(`http://localhost:3000/reserva/negocio/${this.negocioId}`).subscribe({
+  this.http.get<any[]>(`${this.apiUrl}/reserva/negocio/${this.negocioId}`).subscribe({
     next: (data) => {
       // Inicializa estructura
       this.diasSemana.forEach(dia => this.reservasOcupadas[dia] = []);
@@ -115,7 +117,7 @@ recargarReservas() {
 
  refrescarResenas() {
   if (!this.negocioId) return;
-  this.http.get<any[]>(`http://localhost:3000/resena/negocio/${this.negocioId}`).subscribe({
+  this.http.get<any[]>(`${this.apiUrl}/resena/negocio/${this.negocioId}`).subscribe({
     next: (res) => {
       this.resenas = res;
       console.log("🔁 Reseñas actualizadas:", res);
@@ -144,7 +146,7 @@ verPerfilUsuario(id: number) {
       negocioId: this.negocioId,
       fecha: slot,
     };
-    this.http.post(`http://localhost:3000/reserva`, payload).subscribe({
+    this.http.post(`${this.apiUrl}/reserva`, payload).subscribe({
       next: () => alert('Reserva hecha'),
       error: (err) => console.error('Error al reservar:', err)
     });
@@ -161,7 +163,7 @@ verPerfilUsuario(id: number) {
     hora
   };
 
-  this.http.post('http://localhost:3000/reserva', body).subscribe({
+  this.http.post(`${this.apiUrl}/reserva`, body).subscribe({
     next: () => {
       alert(`✅ ¡Reserva confirmada en ${this.negocio.nombre} a las ${hora}!`);
       this.recargarReservas(); // vuelve a cargar datos si quieres actualizar

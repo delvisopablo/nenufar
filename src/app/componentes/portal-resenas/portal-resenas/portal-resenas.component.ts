@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal, computed, Input } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../servicios/authService/auth.service';
+import { environment } from '../../../../environments/environment';
 
 interface Reseña {
   contenido: string;
@@ -18,6 +19,7 @@ interface Reseña {
   styleUrl: './portal-resenas.component.css'
 })
 export class PortalReseñasComponent implements OnInit {
+  private readonly apiUrl = environment.apiUrl;
   // ✅ Dependencias
   http = inject(HttpClient);
   auth = inject(AuthService);
@@ -45,7 +47,7 @@ export class PortalReseñasComponent implements OnInit {
       throw new Error('ID de usuario inválido');
     }
 
-    const url = `http://localhost:3000/resena/ultimas`;
+    const url = `${this.apiUrl}/resena/ultimas`;
     this.http.get<Reseña[]>(url).subscribe({
       next: (data) => this.reseñas.set(data),
       error: (err) => console.error('❌ Error cargando reseñas:', err)
@@ -56,7 +58,7 @@ export class PortalReseñasComponent implements OnInit {
 }
 
 cargarReseñasGlobales() {
-    this.http.get('http://localhost:3000/resena/ultimas')
+    this.http.get(`${this.apiUrl}/resena/ultimas`)
       .subscribe({
         next: (res: any) => {
           this.reseñas.set(res);
