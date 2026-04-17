@@ -3,7 +3,7 @@ const LOCAL_API_BASE_URL = 'http://localhost:3000';
 // TODO: Sustituye esta URL por la URL PUBLICA real de Railway.
 // No uses dominios internos tipo `railway.internal` en el frontend.
 const PROD_API_BASE_URL =
-'nenufar-backend-v2-copy-production.up.railway.app';
+'https://nenufar-backend-v2-copy-production.up.railway.app';
 
 const hostname =
   typeof window !== 'undefined' ? window.location.hostname : 'localhost';
