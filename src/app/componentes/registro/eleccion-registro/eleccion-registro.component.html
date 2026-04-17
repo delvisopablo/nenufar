@@ -3,37 +3,24 @@
 
   <div class="lily-layer">
     @for (lily of lilies(); track lily.id) {
-      @if (lily.isInteractive && lily.route) {
-        <button
-          type="button"
-          class="lily-pad lily-pad--interactive"
-          [class.lily-pad--business]="lily.id === 'negocio'"
-          [style.left.px]="lily.x"
-          [style.top.px]="lily.y"
-          [style.width.px]="lily.diameter"
-          [style.height.px]="lily.diameter"
-          [style.--lily-rotation]="lily.angle + 'deg'"
-          [style.--lily-tone]="lily.tone + 'deg'"
-          [attr.aria-label]="'Ir a registro de ' + lily.label.toLowerCase()"
-          (click)="irARuta(lily.route)"
-        >
-          <span class="lily-copy">
-            <strong>{{ lily.label }}</strong>
-            <small>{{ lily.subtitle }}</small>
-          </span>
-        </button>
-      } @else {
-        <div
-          class="lily-pad lily-pad--decorative"
-          [style.left.px]="lily.x"
-          [style.top.px]="lily.y"
-          [style.width.px]="lily.diameter"
-          [style.height.px]="lily.diameter"
-          [style.--lily-rotation]="lily.angle + 'deg'"
-          [style.--lily-tone]="lily.tone + 'deg'"
-          aria-hidden="true"
-        ></div>
-      }
+      <app-nenufar
+        [id]="lily.id"
+        [actionType]="lily.route ? 'navigate' : undefined"
+        [actionValue]="lily.route ?? undefined"
+        [badge]="lily.badge"
+        [clickable]="!!lily.route"
+        [contextMenuEnabled]="true"
+        [data]="lily"
+        [imageSrc]="lily.imageSrc"
+        [kind]="lily.kind"
+        [label]="lily.label"
+        [radius]="lily.radius"
+        [state]="lily.state"
+        [subtitle]="lily.subtitle"
+        [tooltipEnabled]="lily.kind !== 'empty'"
+        (leftClick)="onLilyLeftClick($event)"
+        (rightClick)="onLilyRightClick($event)"
+      ></app-nenufar>
     }
   </div>
 
@@ -45,6 +32,7 @@
         Elige cómo quieres entrar en Nenúfar. Los nenúfares grandes del fondo también funcionan
         como acceso directo a cada formulario.
       </p>
+      <p class="choice-hint">{{ contextHint() }}</p>
 
       <div class="option-list">
         <section class="option-block">

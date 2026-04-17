@@ -12,6 +12,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import * as THREE from 'three';
+import { NenufarEngine } from '../nenufar/nenufar-engine';
+import { NenufarEntity } from '../nenufar/nenufar.types';
 import { AuthService } from '../../servicios/authService/auth.service';
 import { CuentaAtrasService } from '../../servicios/cuentaAtrasServicio/cuenta-atras.service';
 
@@ -62,34 +64,37 @@ type PopupView = {
   y: number;
 };
 
-type LilyPadBody = {
+type LilyPadBody = NenufarEntity<number> & {
   activationUntil: number;
   activeThrowId: number;
   angVel: number;
   angularDamping: number;
+  appearT: number;
   baseScale: number;
   driftDir: THREE.Vector2;
   driftStrength: number;
   flowInfluence: number;
   glowMesh?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   haloMesh?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
-  id: number;
   isOriginal: boolean;
   lastTouchedAt: number;
   linearDamping: number;
+  maxSpeed: number;
+  maxSpin: number;
   mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   microPhase: number;
   microSpeed: number;
   pos: THREE.Vector2;
   prevPos: THREE.Vector2;
-  radius: number;
   rotation: number;
   shadowMesh?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   shimmerOffset: number;
   spawnDelayUntil: number;
   swayAmplitude: number;
   vel: THREE.Vector2;
+  wakeBoost: number;
   wakeStrength: number;
+  wrappedThisFrame: boolean;
 };
 
 type ThrowState = {
@@ -223,6 +228,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
   private hoverPad: LilyPadBody | null = null;
   private hudActivityUntil = 0;
   private lastFrameAt = 0;
+  private lilyEngine?: NenufarEngine<LilyPadBody>;
   private lilyPads: LilyPadBody[] = [];
   private pairScoreAt = new Map<string, number>();
   private padById = new Map<number, LilyPadBody>();
@@ -433,6 +439,8 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     this.renderer?.dispose();
 
     this.lilyPads = [];
+    this.lilyEngine?.clear();
+    this.lilyEngine = undefined;
     this.padById.clear();
     this.popups = [];
     this.ripples = [];
@@ -531,6 +539,22 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!viewport || this.destroyed) {
       return;
     }
+
+    this.lilyEngine = new NenufarEngine<LilyPadBody>({
+      bounds: this.bounds,
+      collision: {
+        impulseScale: 1.92,
+        restitution: this.collisionRestitution,
+        separationFactor: 0.58,
+        spinFromImpact: 0.06,
+        spinFromTangential: 0.085,
+        tangentTransfer: 0.07
+      },
+      defaultBoundsMode: 'wrap',
+      defaultMaxSpeed: this.maxSpeed,
+      defaultMaxSpin: this.maxSpin,
+      wrapBoost: this.wrapBoost
+    });
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20);
@@ -976,16 +1000,22 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       activeThrowId: -1,
       angVel: THREE.MathUtils.randFloat(-0.008, 0.008),
       angularDamping: isOriginal ? 0.993 : 0.9922,
+      appearT: 0,
       baseScale: radius * (isOriginal ? 2.7 : 2.45),
+      boundsMode: 'wrap',
+      collisionEnabled: true,
       driftDir: direction.clone(),
       driftStrength: THREE.MathUtils.randFloat(0.06, 0.12),
       flowInfluence: THREE.MathUtils.randFloat(0.9, 1.45),
       glowMesh,
       haloMesh,
       id: this.lilyPads.length,
+      isMustio: !isOriginal,
       isOriginal,
       lastTouchedAt: -10,
       linearDamping: isOriginal ? 0.9914 : 0.9908,
+      maxSpeed: this.maxSpeed,
+      maxSpin: this.maxSpin,
       mesh,
       microPhase: Math.random() * Math.PI * 2,
       microSpeed: THREE.MathUtils.randFloat(0.22, 0.52),
@@ -998,9 +1028,12 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       spawnDelayUntil,
       swayAmplitude: THREE.MathUtils.randFloat(0.16, 0.46),
       vel: direction.multiplyScalar(speed),
-      wakeStrength: 0
+      wakeBoost: 0,
+      wakeStrength: 0,
+      wrappedThisFrame: false
     };
 
+    this.lilyEngine?.addEntity(pad);
     mesh.userData['padId'] = pad.id;
     return pad;
   }
@@ -1018,7 +1051,6 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     this.waterMaterial.uniforms['uTime'].value = elapsed;
 
     this.updatePads(dt, elapsed);
-    this.resolveCollisions(elapsed);
     this.syncWakeUniforms(elapsed);
     this.syncFocalUniforms(elapsed);
     this.cleanupRipples(elapsed);
@@ -1036,7 +1068,8 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
 
     for (const pad of this.lilyPads) {
       const appearT = THREE.MathUtils.clamp((elapsed - pad.spawnDelayUntil) / 0.48, 0, 1);
-      const eased = appearT * appearT * (3 - 2 * appearT);
+      pad.appearT = appearT;
+      pad.wrappedThisFrame = false;
 
       pad.mesh.visible = appearT > 0;
       if (pad.glowMesh) {
@@ -1061,33 +1094,52 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
         const steering = personalCurrent.clone().add(flow).add(drift);
 
         pad.vel.addScaledVector(steering, dt * 1.18);
-        pad.vel.multiplyScalar(Math.pow(pad.linearDamping, frameScale));
 
         const cruiseFloor = pad.driftStrength * 0.88;
         if (pad.vel.length() < cruiseFloor) {
           pad.vel.addScaledVector(personalCurrent, dt * 2.6);
         }
 
-        this.clampVectorLength(pad.vel, this.maxSpeed);
-
         pad.angVel += Math.sin(elapsed * 0.24 + pad.shimmerOffset) * 0.00016 * frameScale;
-        pad.angVel *= Math.pow(pad.angularDamping, frameScale);
-        pad.angVel = THREE.MathUtils.clamp(pad.angVel, -this.maxSpin, this.maxSpin);
+      } else {
+        pad.wakeStrength = 0;
+        pad.wakeBoost = 0;
+      }
+    }
 
-        pad.pos.addScaledVector(pad.vel, dt);
-        const wrapped = this.wrapPad(pad);
-        const displacement = wrapped
+    this.lilyEngine?.step(dt, {
+      elapsed,
+      isActive: (pad) => pad.appearT >= 1,
+      onCollision: ({ a, b, closingSpeed, normal }) => {
+        this.handleEngineCollision(a, b, normal, closingSpeed, elapsed);
+      },
+      onOutOfBounds: ({ entity, mode }) => {
+        if (mode !== 'wrap') {
+          return;
+        }
+
+        entity.wrappedThisFrame = true;
+        entity.prevPos?.copy(entity.pos);
+      }
+    });
+
+    for (const pad of this.lilyPads) {
+      const appearT = pad.appearT;
+      const eased = appearT * appearT * (3 - 2 * appearT);
+
+      if (appearT >= 1) {
+        const displacement = pad.wrappedThisFrame
           ? pad.vel.length()
           : pad.pos.distanceTo(pad.prevPos) / Math.max(dt, 1e-4);
-
-        pad.wakeStrength = THREE.MathUtils.clamp(
+        const motionWake = THREE.MathUtils.clamp(
           THREE.MathUtils.mapLinear(displacement, 0.03, 0.5, 0.06, 1),
           0.02,
           1
         );
+
+        pad.wakeStrength = Math.max(pad.wakeBoost, motionWake);
+        pad.wakeBoost = 0;
         pad.rotation += pad.angVel * dt * 2.45;
-      } else {
-        pad.wakeStrength = 0;
       }
 
       const floatPulse = 1 + Math.sin(elapsed * 0.52 + pad.shimmerOffset) * 0.02;
@@ -1136,68 +1188,21 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private resolveCollisions(elapsed: number): void {
-    for (let i = 0; i < this.lilyPads.length; i += 1) {
-      const a = this.lilyPads[i];
-      if (!this.isPadActive(a, elapsed)) {
-        continue;
-      }
+  private handleEngineCollision(
+    a: LilyPadBody,
+    b: LilyPadBody,
+    normal: { x: number; y: number },
+    closingSpeed: number,
+    elapsed: number
+  ): void {
+    const normalVector = new THREE.Vector2(normal.x, normal.y);
+    const wakeBoost = THREE.MathUtils.clamp(closingSpeed * 2.2, 0.2, 1);
 
-      for (let j = i + 1; j < this.lilyPads.length; j += 1) {
-        const b = this.lilyPads[j];
-        if (!this.isPadActive(b, elapsed)) {
-          continue;
-        }
+    a.wakeBoost = Math.max(a.wakeBoost, wakeBoost);
+    b.wakeBoost = Math.max(b.wakeBoost, wakeBoost);
 
-        const delta = b.pos.clone().sub(a.pos);
-        let distance = delta.length();
-        const minDistance = a.radius + b.radius;
-
-        if (distance >= minDistance) {
-          continue;
-        }
-
-        if (distance < 1e-5) {
-          delta.set(THREE.MathUtils.randFloatSpread(1), THREE.MathUtils.randFloatSpread(1)).normalize();
-          distance = 1e-5;
-        }
-
-        const normal = delta.multiplyScalar(1 / distance);
-        const overlap = minDistance - distance;
-
-        a.pos.addScaledVector(normal, -overlap * 0.58);
-        b.pos.addScaledVector(normal, overlap * 0.58);
-
-        const relativeVelocity = b.vel.clone().sub(a.vel);
-        const relAlongNormal = relativeVelocity.dot(normal);
-        const closingSpeed = Math.max(0, -relAlongNormal);
-
-        if (relAlongNormal < 0) {
-          const impulseMagnitude = (-(1 + this.collisionRestitution) * relAlongNormal) / 2;
-          const impulse = normal.clone().multiplyScalar(impulseMagnitude * 1.92);
-          a.vel.addScaledVector(impulse, -1);
-          b.vel.add(impulse);
-        }
-
-        const tangent = new THREE.Vector2(-normal.y, normal.x);
-        const tangentialVelocity = relativeVelocity.dot(tangent);
-        a.vel.addScaledVector(tangent, tangentialVelocity * 0.07);
-        b.vel.addScaledVector(tangent, -tangentialVelocity * 0.07);
-
-        const spinKick = tangentialVelocity * 0.085 + closingSpeed * 0.06;
-        a.angVel = THREE.MathUtils.clamp(a.angVel - spinKick, -this.maxSpin, this.maxSpin);
-        b.angVel = THREE.MathUtils.clamp(b.angVel + spinKick, -this.maxSpin, this.maxSpin);
-
-        this.clampVectorLength(a.vel, this.maxSpeed);
-        this.clampVectorLength(b.vel, this.maxSpeed);
-
-        a.wakeStrength = Math.max(a.wakeStrength, THREE.MathUtils.clamp(closingSpeed * 2.2, 0.2, 1));
-        b.wakeStrength = Math.max(b.wakeStrength, THREE.MathUtils.clamp(closingSpeed * 2.2, 0.2, 1));
-
-        this.applyTouchTransfer(a, b, normal, elapsed);
-        this.handleCollisionScore(a, b, normal, closingSpeed, elapsed);
-      }
-    }
+    this.applyTouchTransfer(a, b, normalVector, elapsed);
+    this.handleCollisionScore(a, b, normalVector, closingSpeed, elapsed);
   }
 
   private applyTouchTransfer(
@@ -1211,14 +1216,14 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (aRecentlyTouched && !bRecentlyTouched) {
       b.vel.addScaledVector(normal, THREE.MathUtils.clamp(a.vel.length() * 3.6, 0, this.maxKick));
-      b.wakeStrength = Math.max(b.wakeStrength, 0.6);
+      b.wakeBoost = Math.max(b.wakeBoost, 0.6);
       this.clampVectorLength(b.vel, this.maxSpeed);
       return;
     }
 
     if (bRecentlyTouched && !aRecentlyTouched) {
       a.vel.addScaledVector(normal, -THREE.MathUtils.clamp(b.vel.length() * 3.6, 0, this.maxKick));
-      a.wakeStrength = Math.max(a.wakeStrength, 0.6);
+      a.wakeBoost = Math.max(a.wakeBoost, 0.6);
       this.clampVectorLength(a.vel, this.maxSpeed);
     }
   }
@@ -1261,7 +1266,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     target.vel.addScaledVector(direction, THREE.MathUtils.clamp(attacker.vel.length() * 3.7, 0, this.maxKick));
-    target.wakeStrength = Math.max(target.wakeStrength, 0.74);
+    target.wakeBoost = Math.max(target.wakeBoost, 0.74);
     this.clampVectorLength(target.vel, this.maxSpeed);
 
     attacker.activeThrowId = this.throwState.id;
@@ -1333,28 +1338,26 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private applyImpulseFromImpact(pad: LilyPadBody, point: THREE.Vector3, elapsed: number): void {
-    const center = pad.pos.clone();
-    const impactPoint = new THREE.Vector2(point.x, point.y);
-    const impactDir = center.sub(impactPoint);
+    const result = this.lilyEngine?.applyImpulse(
+      pad.id,
+      { x: point.x, y: point.y },
+      {
+        maxForce: this.maxForce,
+        minForce: this.minForce,
+        spinJitterFactor: 0.054,
+        spinJitterMin: 0.024,
+        timestamp: elapsed
+      }
+    );
 
-    if (impactDir.lengthSq() < 1e-6) {
-      impactDir.set(THREE.MathUtils.randFloatSpread(1), THREE.MathUtils.randFloatSpread(1));
+    if (!result) {
+      return;
     }
 
-    impactDir.normalize();
-
-    const dNorm = THREE.MathUtils.clamp(impactPoint.distanceTo(pad.pos) / pad.radius, 0, 1);
-    const force = THREE.MathUtils.lerp(this.minForce, this.maxForce, dNorm);
-
-    pad.vel.addScaledVector(impactDir, force);
-    pad.angVel = THREE.MathUtils.clamp(
-      pad.angVel + (Math.random() > 0.5 ? 1 : -1) * (0.024 + dNorm * 0.054),
-      -this.maxSpin,
-      this.maxSpin
+    pad.wakeBoost = Math.max(
+      pad.wakeBoost,
+      THREE.MathUtils.clamp(0.46 + result.distanceRatio * 0.88, 0.22, 1)
     );
-    pad.lastTouchedAt = elapsed;
-    pad.wakeStrength = Math.max(pad.wakeStrength, THREE.MathUtils.clamp(0.46 + dNorm * 0.88, 0.22, 1));
-    this.clampVectorLength(pad.vel, this.maxSpeed);
   }
 
   private performRaycast(event: PointerEvent): { pad: LilyPadBody | null; point: THREE.Vector3 | null } {
@@ -1681,6 +1684,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       top: this.camera.top,
       bottom: this.camera.bottom
     };
+    this.lilyEngine?.setBounds(this.bounds);
 
     this.waterMesh.position.set(0, 0, -0.2);
     this.waterMesh.scale.set(worldWidth, worldHeight, 1);

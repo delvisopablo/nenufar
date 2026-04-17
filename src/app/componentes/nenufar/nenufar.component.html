@@ -1,0 +1,64 @@
+@if (renderVisible) {
+  <div
+    class="nenufar-shell"
+    [style.left.px]="renderX"
+    [style.top.px]="renderY"
+    [style.width.px]="diameter"
+    [style.height.px]="diameter"
+  >
+    <div
+      class="nenufar-hit"
+      [class.is-clickable]="isInteractive"
+      [class.kind-empty]="kind === 'empty'"
+      [class.kind-menu]="kind === 'menu'"
+      [class.kind-promo]="kind === 'promo'"
+      [class.kind-review]="kind === 'review'"
+      [class.tone-fresh]="renderTone === 'fresh'"
+      [class.tone-mustio]="renderTone === 'mustio'"
+      [style.--nenufar-opacity]="renderOpacity"
+      [style.--nenufar-rotation]="renderRotation"
+      [style.--nenufar-scale]="renderScale"
+      [attr.aria-label]="ariaLabel"
+      [attr.role]="isInteractive ? 'button' : null"
+      [attr.tabindex]="isInteractive ? 0 : null"
+      (click)="onLeftClick($event)"
+      (contextmenu)="onRightClick($event)"
+      (mouseenter)="onHoverStart()"
+      (mouseleave)="onHoverEnd()"
+    >
+      <div class="nenufar-sprite">
+        <img [src]="imageSrc" [alt]="''" aria-hidden="true">
+      </div>
+
+      @if (shouldShowOverlay) {
+        <div class="nenufar-overlay" aria-hidden="true">
+          @if (badge) {
+            <span class="nenufar-badge">{{ badge }}</span>
+          }
+
+          <div class="nenufar-copy">
+            @if (label) {
+              <strong>{{ label }}</strong>
+            }
+
+            @if (subtitle) {
+              <small>{{ subtitle }}</small>
+            }
+          </div>
+        </div>
+      }
+
+      @if (shouldShowTooltip) {
+        <div class="nenufar-tooltip" role="tooltip">
+          @if (label) {
+            <strong>{{ label }}</strong>
+          }
+
+          @if (tooltipText) {
+            <span>{{ tooltipText }}</span>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}
