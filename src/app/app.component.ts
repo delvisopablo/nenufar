@@ -3,6 +3,7 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { HeaderComponent } from './componentes/HyF/header/header.component';
 import { EstanqueComponent } from './componentes/estanque/estanque.component';
+import { AuthService } from './servicios/authService/auth.service';
 import { CuentaAtrasService } from './servicios/cuentaAtrasServicio/cuenta-atras.service';
 import { LayoutService } from './servicios/layoutServicio/layout.service';
 
@@ -16,6 +17,7 @@ import { LayoutService } from './servicios/layoutServicio/layout.service';
 export class AppComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly cuentaAtrasService = inject(CuentaAtrasService);
+  private readonly authService = inject(AuthService);
 
   readonly layoutService = inject(LayoutService);
   readonly mostrarApp = signal(false);
@@ -23,6 +25,7 @@ export class AppComponent implements OnInit {
   readonly ocultarLayout = signal(false);
 
   ngOnInit(): void {
+    this.authService.hydrateSession().subscribe();
     this.sincronizarAccesoPersistido();
     this.actualizarEstadoRuta(this.router.url);
 

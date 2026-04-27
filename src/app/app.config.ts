@@ -5,10 +5,16 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { routes } from './app.routes';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { TokenInterceptor } from '../app/servicios/authService/token.interceptor';
+import { provideAppErrorHandling } from './core/errors/error.providers';
+import { httpErrorInterceptor } from './core/errors/http-error.interceptor';
 
 export const appConfig: ApplicationConfig = {
-  providers: [provideHttpClient( withInterceptors([TokenInterceptor])), provideRouter(routes), ReactiveFormsModule]
+  providers: [
+    provideHttpClient(withInterceptors([TokenInterceptor, httpErrorInterceptor])),
+    provideRouter(routes),
+    ReactiveFormsModule,
+    provideAppErrorHandling(),
+  ]
 };
-
 
 

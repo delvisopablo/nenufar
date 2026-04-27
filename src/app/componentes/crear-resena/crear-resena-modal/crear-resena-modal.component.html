@@ -18,10 +18,11 @@
         />
       </label>
 
-      <ul class="sugerencias" *ngIf="mostrarLista">
+      <ul class="sugerencias" *ngIf="mostrarLista()">
         <li *ngFor="let negocio of negocios" (click)="seleccionarNegocio(negocio)">
           {{ negocio.nombre }}
         </li>
+        <li *ngIf="cargandoNegocios()">Cargando negocios...</li>
       </ul>
 
       <label class="field">
@@ -50,6 +51,10 @@
       >
         🌿 Sello Nenúfar
       </div>
+
+      <p class="form-feedback" role="alert" *ngIf="errorMensaje()">
+        {{ errorMensaje() }}
+      </p>
 
       <div class="acciones">
         <button type="button" class="secondary-btn" (click)="cerrar()">Cancelar</button>

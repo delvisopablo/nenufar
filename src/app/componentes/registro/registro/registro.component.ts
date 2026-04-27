@@ -20,6 +20,7 @@ import {
 import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../servicios/authService/auth.service';
+import { getUserErrorMessage } from '../../../core/errors/error-parser';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
 
 type PondSource = {
@@ -297,16 +298,17 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
         nombre: datos.nombre?.trim(),
         nickname: datos.nickname?.trim(),
         email: datos.email?.trim(),
-        password: datos.password,
+        password: datos.password ?? '',
         biografia: datos.biografia?.trim() || ''
       })
       .subscribe({
-        next: (res: any) => {
-          this.persistirSesion(res);
+        next: () => {
+          localStorage.setItem('accesoPermitido', 'true');
+          localStorage.removeItem('guestMode');
           this.registrando.set(false);
           void this.router.navigate(['/inicio']);
         },
-        error: (error) => {
+        error: (error: unknown) => {
           this.registrando.set(false);
           this.errorMensaje.set(this.extraerMensajeError(error));
         }
@@ -377,24 +379,9 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
     return password === confirmacion ? null : { passwordMismatch: true };
   }
 
-  private persistirSesion(response: any): void {
-    localStorage.setItem('accesoPermitido', 'true');
-    localStorage.removeItem('guestMode');
-
-    if (response?.access_token) {
-      localStorage.setItem('token', response.access_token);
-      localStorage.setItem('access_token', response.access_token);
-    }
-
-    if (response?.usuario) {
-      localStorage.setItem('usuarioLogueado', JSON.stringify(response.usuario));
-    }
-  }
-
-  private extraerMensajeError(error: any): string {
-    return (
-      error?.error?.message ||
-      error?.error?.mensaje ||
+  private extraerMensajeError(error: unknown): string {
+    return getUserErrorMessage(
+      error,
       'No hemos podido crear la cuenta ahora mismo. Revisa los datos e inténtalo otra vez.'
     );
   }

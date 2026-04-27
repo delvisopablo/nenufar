@@ -1,0 +1,213 @@
+<div class="reservas-shell">
+  <header class="reservas-header">
+    <div>
+      <p class="reservas-kicker">Perfil de negocio</p>
+      <h1>Gestión de reservas</h1>
+      <p class="reservas-subtitle">
+        {{ fechaLabel(fechaSeleccionada()) }}
+      </p>
+    </div>
+
+    <div class="reservas-actions">
+      <a class="ghost-btn" [routerLink]="['/negocio', negocioId()]">Volver al perfil</a>
+      <a class="primary-btn" [routerLink]="['/negocios', negocioId(), 'dashboard']">Dashboard</a>
+    </div>
+  </header>
+
+  @if (error()) {
+    <section class="feedback-card feedback-card--error">
+      <strong>No disponible</strong>
+      <span>{{ error() }}</span>
+    </section>
+  }
+
+  @if (!tieneHorario()) {
+    <section class="feedback-card">
+      <strong>Horario pendiente</strong>
+      <span>Configura primero tu horario para gestionar reservas.</span>
+    </section>
+  }
+
+  <div class="reservas-layout">
+    <section class="panel-card">
+      <div class="panel-head">
+        <div>
+          <p class="panel-kicker">Agenda</p>
+          <h2>Franja del día</h2>
+        </div>
+
+        <label class="date-input">
+          <span>Fecha</span>
+          <input
+            type="date"
+            [ngModel]="fechaSeleccionada()"
+            (ngModelChange)="seleccionarFecha($event)"
+          >
+        </label>
+      </div>
+
+      <div class="week-strip">
+        @for (dia of semana(); track dia.iso) {
+          <button
+            type="button"
+            class="week-day"
+            [class.is-active]="dia.activa"
+            [class.is-today]="dia.hoy"
+            (click)="seleccionarDiaSemana(dia.iso)"
+          >
+            <span>{{ dia.nombre }}</span>
+            <strong>{{ dia.dia }}</strong>
+          </button>
+        }
+      </div>
+
+      @if (cargando()) {
+        <p class="empty-state">Cargando reservas y disponibilidad...</p>
+      } @else if (!slots().length) {
+        <p class="empty-state">No hay franjas configuradas para este día.</p>
+      } @else {
+        <div class="slots-grid">
+          @for (slot of slots(); track slot.hora) {
+            <div
+              class="slot-card"
+              [class.is-free]="slot.disponible"
+              [class.is-busy]="!slot.disponible"
+            >
+              <strong>{{ slot.hora }}</strong>
+              <span>
+                {{ slot.disponible ? 'Disponible' : 'Ocupado' }}
+              </span>
+              <small>{{ slot.ocupadas }}/{{ slot.capacidad }} ocupadas</small>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <aside class="panel-card side-panel">
+      <div class="panel-head">
+        <div>
+          <p class="panel-kicker">Demanda</p>
+          <h2>Horas punta</h2>
+        </div>
+      </div>
+
+      @if (horasPunta().length) {
+        <div class="peak-list">
+          @for (peak of horasPunta(); track peak.hora) {
+            <div class="peak-item" [class]="'tone-' + peak.tone">
+              <span>{{ peak.hora }}</span>
+              <strong>{{ peak.total }}</strong>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="empty-state">Todavía no hay histórico suficiente de reservas.</p>
+      }
+    </aside>
+  </div>
+
+  <section class="panel-card">
+    <div class="panel-head">
+      <div>
+        <p class="panel-kicker">Reservas del día</p>
+        <h2>Listado operativo</h2>
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <button
+        type="button"
+        class="filter-chip"
+        [class.is-active]="filtroEstado() === 'TODAS'"
+        (click)="filtroEstado.set('TODAS')"
+      >
+        Todas ({{ conteos().todas }})
+      </button>
+      <button
+        type="button"
+        class="filter-chip"
+        [class.is-active]="filtroEstado() === 'PENDIENTE'"
+        (click)="filtroEstado.set('PENDIENTE')"
+      >
+        Pendientes ({{ conteos().pendientes }})
+      </button>
+      <button
+        type="button"
+        class="filter-chip"
+        [class.is-active]="filtroEstado() === 'CONFIRMADA'"
+        (click)="filtroEstado.set('CONFIRMADA')"
+      >
+        Confirmadas ({{ conteos().confirmadas }})
+      </button>
+      <button
+        type="button"
+        class="filter-chip"
+        [class.is-active]="filtroEstado() === 'CANCELADA'"
+        (click)="filtroEstado.set('CANCELADA')"
+      >
+        Canceladas ({{ conteos().canceladas }})
+      </button>
+      <button
+        type="button"
+        class="filter-chip"
+        [class.is-active]="filtroEstado() === 'NO_SHOW'"
+        (click)="filtroEstado.set('NO_SHOW')"
+      >
+        No show ({{ conteos().noShow }})
+      </button>
+    </div>
+
+    @if (cargando()) {
+      <p class="empty-state">Cargando listado del día...</p>
+    } @else if (!reservasFiltradas().length) {
+      <p class="empty-state">No hay reservas para este filtro.</p>
+    } @else {
+      <div class="booking-list">
+        @for (reserva of reservasFiltradas(); track reserva.id) {
+          <article class="booking-card" [class]="'status-' + reserva.estado.toLowerCase()">
+            <div class="booking-avatar">
+              {{ reserva.usuario.nombre.charAt(0).toUpperCase() }}
+            </div>
+
+            <div class="booking-copy">
+              <div class="booking-copy__top">
+                <strong>{{ reserva.usuario.nombre }}</strong>
+                <span class="booking-state">{{ estadoLabel(reserva.estado) }}</span>
+              </div>
+
+              <p>
+                {{ horaLabel(reserva.fecha) }} · {{ reserva.numPersonas }}
+                {{ reserva.numPersonas === 1 ? 'persona' : 'personas' }}
+              </p>
+
+              @if (reserva.nota) {
+                <small>{{ reserva.nota }}</small>
+              }
+            </div>
+
+            @if (esAccionable(reserva)) {
+              <div class="booking-actions">
+                @if (reserva.estado === 'PENDIENTE') {
+                  <button type="button" class="tiny-btn tiny-btn--ok" (click)="confirmar(reserva)">
+                    Confirmar
+                  </button>
+                }
+                @if (reserva.estado !== 'CANCELADA') {
+                  <button type="button" class="tiny-btn tiny-btn--warn" (click)="cancelar(reserva)">
+                    Cancelar
+                  </button>
+                }
+                @if (reserva.estado === 'CONFIRMADA') {
+                  <button type="button" class="tiny-btn" (click)="marcarNoShow(reserva)">
+                    No show
+                  </button>
+                }
+              </div>
+            }
+          </article>
+        }
+      </div>
+    }
+  </section>
+</div>

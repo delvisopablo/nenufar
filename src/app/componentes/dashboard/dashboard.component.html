@@ -1,0 +1,127 @@
+<div class="dashboard-shell">
+  <header class="dashboard-header">
+    <div>
+      <p class="dashboard-kicker">Perfil de negocio</p>
+      <h1>Dashboard</h1>
+    </div>
+
+    <div class="dashboard-actions">
+      <a class="ghost-btn" [routerLink]="['/negocio', negocioId()]">Volver al perfil</a>
+      <a class="primary-btn" [routerLink]="['/negocios', negocioId(), 'reservas']">Ver reservas</a>
+    </div>
+  </header>
+
+  @if (error()) {
+    <section class="feedback-card feedback-card--error">
+      <strong>No disponible</strong>
+      <span>{{ error() }}</span>
+      <button type="button" class="ghost-btn" (click)="cargarDashboard()">Reintentar</button>
+    </section>
+  } @else if (cargando()) {
+    <section class="feedback-card">
+      <strong>Cargando dashboard</strong>
+      <span>Estamos preparando el resumen del negocio.</span>
+    </section>
+  } @else {
+    <section class="stats-grid">
+      @for (item of resumenEstado(); track item.label) {
+        <article class="stat-card" [class]="'tone-' + item.tone">
+          <span class="stat-label">{{ item.label }}</span>
+          <strong class="stat-value">{{ item.value }}</strong>
+        </article>
+      }
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="panel-card">
+        <div class="panel-head">
+          <div>
+            <p class="panel-kicker">Actividad reciente</p>
+            <h2>Reservas de los últimos 7 días</h2>
+          </div>
+        </div>
+
+        @if (metricas().length) {
+          <div class="metric-bars">
+            @for (item of metricas(); track item.label) {
+              <div class="metric-col">
+                <div class="metric-bar-wrap">
+                  <div
+                    class="metric-bar"
+                    [style.height.%]="(item.value / metricMax()) * 100"
+                  ></div>
+                </div>
+                <span class="metric-total">{{ item.value }}</span>
+                <span class="metric-label">{{ item.label }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-state">Todavía no hay suficiente actividad para mostrar la gráfica.</p>
+        }
+      </article>
+
+      <article class="panel-card">
+        <div class="panel-head">
+          <div>
+            <p class="panel-kicker">Estado del negocio</p>
+            <h2>Acceso a reservas</h2>
+          </div>
+        </div>
+
+        <div class="status-list">
+          <div class="status-row">
+            <span>Reservas activadas</span>
+            <strong [class.ok]="resumen()?.aceptaReservas" [class.warn]="!resumen()?.aceptaReservas">
+              {{ resumen()?.aceptaReservas ? 'Sí' : 'No' }}
+            </strong>
+          </div>
+          <div class="status-row">
+            <span>Horario configurado</span>
+            <strong [class.ok]="resumen()?.tieneHorario" [class.warn]="!resumen()?.tieneHorario">
+              {{ resumen()?.tieneHorario ? 'Sí' : 'No' }}
+            </strong>
+          </div>
+        </div>
+
+        @if (!resumen()?.tieneHorario) {
+          <p class="inline-warning">
+            Configura primero tu horario para gestionar reservas con normalidad.
+          </p>
+        }
+      </article>
+    </section>
+
+    <article class="panel-card">
+      <div class="panel-head">
+        <div>
+          <p class="panel-kicker">Próximas reservas</p>
+          <h2>Agenda del negocio</h2>
+        </div>
+      </div>
+
+      @if (proximasReservas().length) {
+        <div class="booking-list">
+          @for (reserva of proximasReservas(); track reserva.id) {
+            <div class="booking-item">
+              <div class="booking-avatar">
+                {{ reserva.usuario.nombre.charAt(0).toUpperCase() }}
+              </div>
+
+              <div class="booking-copy">
+                <strong>{{ reserva.usuario.nombre }}</strong>
+                <span>{{ formatFecha(reserva.fecha) }} · {{ reserva.numPersonas }} personas</span>
+              </div>
+
+              <span class="booking-status" [class]="'status-' + reserva.estado.toLowerCase()">
+                {{ estadoLabel(reserva.estado) }}
+              </span>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="empty-state">No hay reservas próximas para este negocio.</p>
+      }
+    </article>
+  }
+</div>

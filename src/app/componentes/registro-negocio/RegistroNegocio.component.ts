@@ -21,6 +21,7 @@ import {
 import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { AuthService } from '../../servicios/authService/auth.service';
+import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 import {
   ApiListResponse,
@@ -247,13 +248,13 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
   private readonly http = inject(HttpClient);
   private readonly title = inject(Title);
   private readonly zone = inject(NgZone);
-  private readonly developmentOwnerFallbackId = 1;
 
   private pondBackground?: PondBackgroundRenderer;
 
   readonly categorias = signal<Categoria[]>([]);
   readonly categoriasFiltradas = signal<Categoria[]>([]);
   readonly cargandoCategorias = signal(true);
+  readonly categoriasError = signal('');
   readonly registrando = signal(false);
   readonly errorMensaje = signal('');
   readonly mostrarSugerencias = signal(false);
@@ -313,7 +314,7 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
       nombre: datos.nombreDueño?.trim(),
       nickname: datos.nickname?.trim(),
       email: datos.email?.trim(),
-      password: datos.password,
+      password: datos.password ?? '',
       nombreNegocio: datos.nombreNegocio?.trim(),
       direccion: datos.direccion?.trim() || '',
       fechaFundacion: datos.fechaFundacion,
@@ -321,20 +322,16 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
       categoriaNombre: datos.categoriaNombre?.trim()
     };
 
-    const duenoId = this.obtenerDuenoId();
-    if (duenoId) {
-      payload['dueñoId'] = duenoId;
-    }
-
     this.registrando.set(true);
 
     this.auth.registerNegocio(payload).subscribe({
-      next: (res: any) => {
-        this.persistirSesion(res);
+      next: () => {
+        localStorage.setItem('accesoPermitido', 'true');
+        localStorage.removeItem('guestMode');
         this.registrando.set(false);
         void this.router.navigate(['/inicio']);
       },
-      error: (error) => {
+      error: (error: unknown) => {
         this.registrando.set(false);
         this.errorMensaje.set(this.extraerMensajeError(error));
       }
@@ -442,53 +439,22 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
         this.categorias.set(categorias);
         this.categoriasFiltradas.set(categorias.slice(0, 8));
         this.cargandoCategorias.set(false);
+        this.categoriasError.set('');
       },
-      error: (error) => {
-        console.error('❌ Error cargando categorías', error);
+      error: (error: unknown) => {
         this.cargandoCategorias.set(false);
+        this.categoriasError.set(
+          getUserErrorMessage(error, 'No hemos podido cargar las categorías.')
+        );
         this.categorias.set([]);
         this.categoriasFiltradas.set([]);
       }
     });
   }
 
-  private obtenerDuenoId(): number | null {
-    const raw = localStorage.getItem('usuarioLogueado');
-
-    if (raw) {
-      try {
-        const usuario = JSON.parse(raw);
-        const userId = Number(usuario?.id);
-        if (Number.isFinite(userId) && userId > 0) {
-          return userId;
-        }
-      } catch {
-        // Ignoramos sesiones antiguas mal guardadas y caemos al fallback temporal.
-      }
-    }
-
-    // Fallback temporal mientras el backend de alta conjunta no devuelve aún el dueño real.
-    return this.developmentOwnerFallbackId;
-  }
-
-  private persistirSesion(response: any): void {
-    localStorage.setItem('accesoPermitido', 'true');
-    localStorage.removeItem('guestMode');
-
-    if (response?.access_token) {
-      localStorage.setItem('token', response.access_token);
-      localStorage.setItem('access_token', response.access_token);
-    }
-
-    if (response?.usuario) {
-      localStorage.setItem('usuarioLogueado', JSON.stringify(response.usuario));
-    }
-  }
-
-  private extraerMensajeError(error: any): string {
-    return (
-      error?.error?.message ||
-      error?.error?.mensaje ||
+  private extraerMensajeError(error: unknown): string {
+    return getUserErrorMessage(
+      error,
       'No hemos podido registrar el negocio ahora mismo. Revisa los datos e inténtalo otra vez.'
     );
   }

@@ -7,6 +7,26 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { buildApiUrl } from '../../config/api.config';
+import { getUserErrorMessage } from '../../core/errors/error-parser';
+
+interface NegocioDetalle {
+  nombre?: string;
+  direccion?: string;
+  historia?: string;
+  aceptaReservas?: boolean;
+  dueno?: {
+    nickname?: string;
+  };
+  categoria?: {
+    nombre?: string;
+  };
+  horario?: {
+    apertura?: string;
+    cierre?: string;
+    intervalo?: number;
+    diasAbre?: string[];
+  };
+}
 
 @Component({
   selector: 'app-editar-negocio',
@@ -25,6 +45,9 @@ export class EditarNegocioComponent implements OnInit {
   negocioId!: number;
   diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   matrizHoraria: { hora: string, ocupado: boolean }[][] = [];
+  cargando = true;
+  guardando = false;
+  errorMensaje = '';
 
   ngOnInit(): void {
     this.negocioId = Number(this.route.snapshot.paramMap.get('id'));
@@ -67,7 +90,10 @@ export class EditarNegocioComponent implements OnInit {
   }
 
   cargarDatos() {
-    this.http.get<any>(buildApiUrl(`/negocios/${this.negocioId}`)).subscribe({
+    this.errorMensaje = '';
+    this.cargando = true;
+
+    this.http.get<NegocioDetalle>(buildApiUrl(`/negocios/${this.negocioId}`)).subscribe({
       next: (negocio) => {
         this.negocioForm.patchValue({
           nombre: negocio.nombre,
@@ -88,8 +114,12 @@ export class EditarNegocioComponent implements OnInit {
         }
 
         this.generarMatrizHoraria();
+        this.cargando = false;
       },
-      error: (err) => console.error('Error cargando negocio:', err)
+      error: (error: unknown) => {
+        this.cargando = false;
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
+      }
     });
   }
 
@@ -123,14 +153,25 @@ export class EditarNegocioComponent implements OnInit {
   }
 
   guardarCambios() {
-    if (this.negocioForm.invalid) return;
+    this.errorMensaje = '';
+
+    if (this.negocioForm.invalid) {
+      this.negocioForm.markAllAsTouched();
+      return;
+    }
 
     const datos = this.negocioForm.value;
-    console.log('📦 Datos enviados al backend:', datos);
+    this.guardando = true;
 
     this.http.patch(buildApiUrl(`/negocios/${this.negocioId}`), datos).subscribe({
-      next: () => this.router.navigate(['/negocio', this.negocioId]),
-      error: (err) => console.error('❌ Error al actualizar negocio:', err)
+      next: () => {
+        this.guardando = false;
+        void this.router.navigate(['/negocio', this.negocioId]);
+      },
+      error: (error: unknown) => {
+        this.guardando = false;
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar el negocio.');
+      }
     });
   }
 }

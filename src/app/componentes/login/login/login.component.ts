@@ -1,5 +1,4 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
 import {
   AfterViewInit,
   Component,
@@ -15,12 +14,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../servicios/authService/auth.service';
+import { getUserErrorMessage, isAppErrorModel } from '../../../core/errors/error-parser';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
-
-type LoginResponse = {
-  access_token: string;
-  usuario: unknown;
-};
 
 type PondSource = {
   x: number;
@@ -302,12 +297,12 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loginSubmitting.set(true);
 
     this.authService.login(identifier, password).subscribe({
-      next: (response: LoginResponse) => {
-        this.persistirSesion(response);
+      next: () => {
+        this.persistirSesion();
         this.loginSubmitting.set(false);
         void this.redirigirTrasLogin();
       },
-      error: (error: HttpErrorResponse) => {
+      error: (error: unknown) => {
         this.loginSubmitting.set(false);
         this.loginError.set(this.obtenerMensajeError(error));
       }
@@ -343,33 +338,19 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     await this.router.navigate(['/inicio']);
   }
 
-  private persistirSesion(response: LoginResponse): void {
+  private persistirSesion(): void {
     localStorage.setItem('accesoPermitido', 'true');
     localStorage.removeItem('guestMode');
-
-    if (response?.access_token) {
-      localStorage.setItem('token', response.access_token);
-      localStorage.setItem('access_token', response.access_token);
-    }
-
-    if (response?.usuario) {
-      localStorage.setItem('usuarioLogueado', JSON.stringify(response.usuario));
-    }
   }
 
-  private obtenerMensajeError(error: HttpErrorResponse): string {
-    if (error.status === 401) {
+  private obtenerMensajeError(error: unknown): string {
+    if (isAppErrorModel(error) && (error.status === 401 || error.kind === 'auth')) {
       return 'Correo o contraseña incorrectos.';
     }
 
-    return (
-      this.extraerMensajeError(error) ||
+    return getUserErrorMessage(
+      error,
       'No hemos podido iniciar sesión ahora mismo. Revisa los datos e inténtalo otra vez.'
     );
-  }
-
-  private extraerMensajeError(error: HttpErrorResponse): string {
-    const rawMessage = error?.error?.message ?? error?.error?.mensaje ?? '';
-    return Array.isArray(rawMessage) ? rawMessage.join(' ') : String(rawMessage || '');
   }
 }

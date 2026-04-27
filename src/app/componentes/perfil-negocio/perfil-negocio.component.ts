@@ -7,12 +7,33 @@ import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { buildApiUrl } from '../../config/api.config';
+import { getUserErrorMessage } from '../../core/errors/error-parser';
 
 type AvailabilityResponse = {
   date: string;
   intervalo: number;
   slots: string[];
 };
+
+function readStoredUser(): any | null {
+  if (typeof localStorage === 'undefined') {
+    return null;
+  }
+
+  const raw =
+    localStorage.getItem('usuarioLogueado') ||
+    localStorage.getItem('usuario');
+
+  if (!raw || raw === 'undefined' || raw === 'null') {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 @Component({
   selector: 'app-perfil-negocio',
@@ -28,19 +49,20 @@ export class PerfilNegocioComponent implements OnInit {
   esDueno = false;
   slots: string[] = [];
   modalAbierto: boolean = false;
-  usuarioActual: any = JSON.parse(
-    localStorage.getItem('usuarioLogueado') ||
-      localStorage.getItem('usuario') ||
-      'null',
-  );
+  usuarioActual: any = readStoredUser();
   mediaPuntuacion: number = 0;
   resenas: any[] = [];
   negocioId!: number;
+  errorMensaje = '';
+  reservaError = '';
+  puedeGestionarReservas = false;
+  mensajeReservasConfiguracion = 'Configura primero tu horario para gestionar reservas.';
 
   diasSemana: string[] = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   horasGeneradas: string[] = [];
   reservasOcupadas: { [dia: string]: string[] } = {};
   private fechasSemana: Record<string, string> = {};
+  private readonly authOptions = { withCredentials: true };
 
 
   constructor(private route: ActivatedRoute, private http: HttpClient, private router: Router) {}
@@ -51,26 +73,38 @@ export class PerfilNegocioComponent implements OnInit {
 
     this.inicializarSemanaActual();
     this.negocioId = +id;
-    this.http.get(buildApiUrl(`/negocios/${id}`)).subscribe((data: any) => {
-      this.negocio = data;
-      this.negocioId = data.id;
-      this.refrescarResenas();
-      if (data?.dueno && this.usuarioActual?.id) {
-        this.esDueno = this.usuarioActual.id === data.dueno.id;
-      } else {
-        this.esDueno = false;
-      }
-      this.generarHorasDisponibles();
-      this.verificarPropietario();
-      this.recargarReservas();
+    this.http.get(buildApiUrl(`/negocios/${id}`), this.authOptions).subscribe({
+      next: (data: any) => {
+        this.errorMensaje = '';
+        this.negocio = data;
+        this.negocioId = data.id;
+        this.refrescarResenas();
+        if (data?.dueno && this.usuarioActual?.id) {
+          this.esDueno = this.usuarioActual.id === data.dueno.id;
+        } else {
+          this.esDueno = false;
+        }
+        this.generarHorasDisponibles();
+        this.verificarPropietario();
+        this.actualizarAccesosGestion();
+        this.recargarReservas();
+      },
+      error: (error: unknown) => {
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
+      },
     });
 
-    this.http.get<any[]>(buildApiUrl(`/negocios/${id}/resenas`)).subscribe((data) => {
-      this.resenas = data;
-      if (data.length > 0) {
-        const suma = data.reduce((acc, r) => acc + r.puntuacion, 0);
-        this.mediaPuntuacion = Math.round((suma / data.length) * 10) / 10;
-      }
+    this.http.get<any[]>(buildApiUrl(`/negocios/${id}/resenas`), this.authOptions).subscribe({
+      next: (data) => {
+        this.resenas = data;
+        if (data.length > 0) {
+          const suma = data.reduce((acc, r) => acc + r.puntuacion, 0);
+          this.mediaPuntuacion = Math.round((suma / data.length) * 10) / 10;
+        }
+      },
+      error: (error: unknown) => {
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar las reseñas.');
+      },
     });
   }
 
@@ -135,10 +169,14 @@ recargarReservas() {
     this.http
       .get<AvailabilityResponse>(
         buildApiUrl(`/negocios/${this.negocioId}/availability?date=${this.fechasSemana[dia]}`),
+        this.authOptions,
       )
       .pipe(
-        catchError((err) => {
-          console.error(`Error cargando disponibilidad para ${dia}:`, err);
+        catchError((error: unknown) => {
+          this.reservaError = getUserErrorMessage(
+            error,
+            'No hemos podido cargar toda la disponibilidad.',
+          );
           return of({
             date: this.fechasSemana[dia],
             intervalo: this.negocio?.intervaloReserva || 30,
@@ -170,6 +208,28 @@ recargarReservas() {
   verificarPropietario() {
     if (!this.usuarioActual || !this.negocio) return;
     this.esDueno = this.usuarioActual.id === this.negocio.duenoId;
+    this.actualizarAccesosGestion();
+  }
+
+  private actualizarAccesosGestion() {
+    this.puedeGestionarReservas =
+      this.esDueno &&
+      (Boolean(this.negocio?.aceptaReservas) || this.tieneHorarioConfigurado());
+  }
+
+  private tieneHorarioConfigurado(): boolean {
+    const horario = this.negocio?.horario;
+
+    if (!horario) {
+      return false;
+    }
+
+    if (horario.apertura && horario.cierre) {
+      return true;
+    }
+
+    const weekly = Object.values(horario.weekly ?? {}).flat();
+    return weekly.length > 0;
   }
 
   abrirModalResena() {
@@ -182,10 +242,9 @@ recargarReservas() {
 
  refrescarResenas() {
   if (!this.negocioId) return;
-  this.http.get<any[]>(buildApiUrl(`/negocios/${this.negocioId}/resenas`)).subscribe({
+  this.http.get<any[]>(buildApiUrl(`/negocios/${this.negocioId}/resenas`), this.authOptions).subscribe({
     next: (res) => {
       this.resenas = res;
-      console.log("🔁 Reseñas actualizadas:", res);
 
       if (res.length > 0) {
         const suma = res.reduce((acc, r) => acc + (r.puntuacion || 0), 0);
@@ -194,8 +253,8 @@ recargarReservas() {
         this.mediaPuntuacion = 0;
       }
     },
-    error: (err) => {
-      console.error("❌ Error al cargar reseñas:", err);
+    error: (error: unknown) => {
+      this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar las reseñas.');
     }
   });
 }
@@ -210,21 +269,21 @@ verPerfilUsuario(id: number) {
 
   const fechaBase = this.fechasSemana[dia];
   if (!fechaBase) {
-    alert('No hemos podido calcular la fecha de la reserva.');
+    this.reservaError = 'No hemos podido calcular la fecha de la reserva.';
     return;
   }
 
   const fecha = new Date(`${fechaBase}T${hora}:00`);
+  this.reservaError = '';
   this.http.post(buildApiUrl(`/negocios/${this.negocio.id}/reservas`), {
     fecha: fecha.toISOString(),
-  }).subscribe({
+  }, this.authOptions).subscribe({
     next: () => {
       alert(`✅ ¡Reserva confirmada en ${this.negocio.nombre} a las ${hora}!`);
       this.recargarReservas(); // vuelve a cargar datos si quieres actualizar
     },
-    error: (err) => {
-      console.error('Error al reservar:', err);
-      alert('❌ Hubo un problema al hacer la reserva');
+    error: (error: unknown) => {
+      this.reservaError = getUserErrorMessage(error, 'Hubo un problema al hacer la reserva.');
     }
   });
 }
@@ -241,6 +300,22 @@ verPerfilUsuario(id: number) {
 
 volver() {
   this.router.navigateByUrl('/inicio'); // o usa location.back()
+}
+
+irADashboardNegocio() {
+  if (this.negocio?.id) {
+    void this.router.navigate(['/negocios', this.negocio.id, 'dashboard']);
+  }
+}
+
+irAReservasNegocio() {
+  if (!this.puedeGestionarReservas) {
+    return;
+  }
+
+  if (this.negocio?.id) {
+    void this.router.navigate(['/negocios', this.negocio.id, 'reservas']);
+  }
 }
 
 }

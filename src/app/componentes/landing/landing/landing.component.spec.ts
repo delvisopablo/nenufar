@@ -17,8 +17,9 @@ describe('LandingComponent', () => {
     routerSpy.navigate.and.resolveTo(true);
 
     cuentaAtrasSpy = jasmine.createSpyObj('CuentaAtrasService', ['desbloquearAcceso']);
-    authServiceSpy = jasmine.createSpyObj('AuthService', ['login']);
-    authServiceSpy.login.and.returnValue(of({ access_token: 'token', usuario: { id: 1 } }));
+    authServiceSpy = jasmine.createSpyObj('AuthService', ['login', 'isAuthenticated']);
+    authServiceSpy.login.and.returnValue(of({ id: 1, nombre: 'Demo' }));
+    authServiceSpy.isAuthenticated.and.returnValue(false);
 
     localStorage.removeItem('accesoPermitido');
     localStorage.removeItem('token');

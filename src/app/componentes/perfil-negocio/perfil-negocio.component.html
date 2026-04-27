@@ -1,6 +1,10 @@
 <button class="volver-btn" (click)="volver()">Volver</button>
 
 <div class="negocio-container">
+  <p class="form-feedback" role="alert" *ngIf="errorMensaje">
+    {{ errorMensaje }}
+  </p>
+
   <section class="cabecera-perfil">
     <img
       [src]="negocio?.foto || '../../../../assets/imagenes/rana2_negocio_foto.png'"
@@ -15,15 +19,39 @@
           <p class="categoria">{{ negocio?.categoria?.nombre || 'Sin categoría' }}</p>
         </div>
 
-        <button class="configurar-btn" (click)="irAEditarNegocio()">Configurar</button>
+        @if (esDueno) {
+          <div class="gestion-negocio">
+            <button class="ghost-action-btn" type="button" (click)="irADashboardNegocio()">
+              Dashboard
+            </button>
+            <button
+              class="ghost-action-btn"
+              type="button"
+              [class.is-disabled]="!puedeGestionarReservas"
+              [disabled]="!puedeGestionarReservas"
+              (click)="irAReservasNegocio()"
+            >
+              Reservas
+            </button>
+            <button class="configurar-btn" type="button" (click)="irAEditarNegocio()">
+              Configurar
+            </button>
+          </div>
+        }
       </div>
 
       <p class="historia">{{ negocio?.historia || 'Este negocio aún no tiene biografía' }}</p>
+      @if (esDueno && !puedeGestionarReservas) {
+        <p class="reserva-helper">{{ mensajeReservasConfiguracion }}</p>
+      }
     </div>
   </section>
 
   <section>
     <h3>Reservas de esta semana</h3>
+    <p class="form-feedback" role="alert" *ngIf="reservaError">
+      {{ reservaError }}
+    </p>
     <div class="tabla-calendario">
       <div class="cabecera-dia">
         <div class="celda-hora"></div>

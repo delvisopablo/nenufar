@@ -16,6 +16,7 @@ import { NenufarEngine } from '../nenufar/nenufar-engine';
 import { NenufarEntity } from '../nenufar/nenufar.types';
 import { AuthService } from '../../servicios/authService/auth.service';
 import { CuentaAtrasService } from '../../servicios/cuentaAtrasServicio/cuenta-atras.service';
+import { getUserErrorMessage, isAppErrorModel } from '../../core/errors/error-parser';
 
 type ClickRipple = {
   startAt: number;
@@ -498,22 +499,20 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.markForCheck();
 
     this.authService.login(email, password).subscribe({
-      next: (response) => {
+      next: () => {
         this.habilitarAcceso();
-        if (response?.access_token) {
-          localStorage.setItem('token', response.access_token);
-          localStorage.setItem('access_token', response.access_token);
-        }
-
         this.loginSubmitting = false;
         this.loginModalOpen = false;
         this.cdr.markForCheck();
 
         void this.router.navigate(['/inicio']);
       },
-      error: (error) => {
+      error: (error: unknown) => {
         this.loginSubmitting = false;
-        this.loginError = error?.error?.message || 'No hemos podido iniciar sesión. Revisa los datos.';
+        this.loginError =
+          isAppErrorModel(error) && error.kind === 'auth'
+            ? 'Correo o contraseña incorrectos.'
+            : getUserErrorMessage(error, 'No hemos podido iniciar sesión. Revisa los datos.');
         this.cdr.markForCheck();
       }
     });

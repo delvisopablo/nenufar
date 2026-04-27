@@ -142,6 +142,8 @@
                     }
                   } @else if (cargandoCategorias()) {
                     <div class="suggestion-empty">Cargando categorías...</div>
+                  } @else if (categoriasError()) {
+                    <div class="suggestion-empty" role="alert">{{ categoriasError() }}</div>
                   } @else {
                     <div class="suggestion-empty">No hemos encontrado categorías con ese nombre.</div>
                   }

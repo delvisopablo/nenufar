@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CuentaAtrasService } from '../../../servicios/cuentaAtrasServicio/cuenta-atras.service';
 import { AuthService } from '../../../servicios/authService/auth.service';
+import { getUserErrorMessage, isAppErrorModel } from '../../../core/errors/error-parser';
 
 type PondPad = {
   xRatio: number;
@@ -63,7 +64,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     if (accesoPermitido) {
       this.shouldAnimate = false;
       this.cuentaAtrasService.desbloquearAcceso();
-      const destino = localStorage.getItem('token') ? '/inicio' : '/login';
+      const destino = this.authService.isAuthenticated() ? '/inicio' : '/login';
       this.router.navigate([destino]);
     }
   }
@@ -117,17 +118,21 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loginError.set('');
 
     this.authService.login(usuario, password).subscribe({
-      next: (response) => {
+      next: () => {
         localStorage.setItem('accesoPermitido', 'true');
-        localStorage.setItem('access_token', response.access_token);
+        localStorage.removeItem('guestMode');
         this.cuentaAtrasService.desbloquearAcceso();
         this.modalOpen.set(false);
         this.loginPending.set(false);
         this.router.navigate(['/inicio']);
       },
-      error: () => {
+      error: (error: unknown) => {
         this.loginPending.set(false);
-        this.loginError.set('No hemos podido iniciar sesión. Revisa tus datos.');
+        this.loginError.set(
+          isAppErrorModel(error) && error.kind === 'auth'
+            ? 'Correo o contraseña incorrectos.'
+            : getUserErrorMessage(error, 'No hemos podido iniciar sesión. Revisa tus datos.')
+        );
       }
     });
   }

@@ -103,6 +103,43 @@ section {
   transition: var(--transicion-suave);
 }
 
+.gestion-negocio {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.ghost-action-btn {
+  width: fit-content;
+  padding: 0.78rem 1rem;
+  border: 1px solid var(--secondary-button-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-weight: 800;
+  cursor: pointer;
+  transition: var(--transicion-suave);
+}
+
+.ghost-action-btn.is-disabled,
+.ghost-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.reserva-helper {
+  margin: 0;
+  padding: 0.82rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(192, 184, 122, 0.24);
+  background: rgba(192, 184, 122, 0.1);
+  color: var(--text-secondary);
+  font-size: 0.94rem;
+  line-height: 1.5;
+}
+
 h3 {
   margin: 0 0 1rem;
   padding-bottom: 0.55rem;
@@ -255,6 +292,7 @@ h3 {
 }
 
 .volver-btn:hover,
+.ghost-action-btn:hover:not(:disabled),
 .configurar-btn:hover,
 .bloque-reserva:hover,
 .btn-flotante:hover {

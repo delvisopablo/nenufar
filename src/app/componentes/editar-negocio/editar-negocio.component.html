@@ -2,6 +2,12 @@
 
 <h2>Editar Negocio</h2>
 
+<p *ngIf="cargando">Cargando negocio...</p>
+
+<p class="form-feedback" role="alert" *ngIf="errorMensaje">
+  {{ errorMensaje }}
+</p>
+
 <form [formGroup]="negocioForm" (ngSubmit)="guardarCambios()">
   <input formControlName="nombre" placeholder="Nombre del negocio" />
   <input formControlName="nickname" placeholder="Nickname del dueño" />
@@ -46,7 +52,7 @@
     </div>
   </div>
 
-  <button type="submit">Guardar</button>
+  <button type="submit" [disabled]="guardando">{{ guardando ? 'Guardando...' : 'Guardar' }}</button>
 </form>
   
 </div>
