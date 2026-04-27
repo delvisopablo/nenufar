@@ -1,52 +1,138 @@
-<!-- Botón para volver -->
-<!-- <button class="btn-volver">← Volver</button> -->
+<div class="perfil-root">
 
-<div class="usuario-container">
-  <!-- Botón de editar -->
-  <!-- <button class="btn-editar">Editar perfil</button> -->
+  <!-- Navegación superior -->
+  <nav class="perfil-topbar">
+    <a class="back-link" routerLink="/inicio">← Inicio</a>
+    <button class="edit-btn" type="button" (click)="modoEdicion.set(!modoEdicion())">
+      {{ modoEdicion() ? 'Cancelar' : 'Editar perfil' }}
+    </button>
+  </nav>
 
- <div class="info-perfil">
-  <img [src]="usuarioLogueado()?.foto_perfil || '../../../../assets/imagenes/rana1_profile_foto.png'" alt="Foto de perfil" class="foto-usuario" />
+  <!-- Hero card -->
+  <section class="hero-card">
+    <div class="avatar-ring">
+      <img
+        class="hero-avatar"
+        [src]="usuarioLogueado()?.foto_perfil || 'assets/imagenes/rana1_profile_foto.png'"
+        alt="Foto de perfil"
+      >
+    </div>
 
-  <div class="datos-usuario">
-    <h2>{{ usuarioLogueado()?.nombre || 'Nombre no disponible' }}</h2>
-    <p class="nickname">&#64; {{ usuarioLogueado()?.nickname || 'sin_nickname' }}</p>
-    <p class="bio">{{ usuarioLogueado()?.biografia || 'Este usuario aún no ha escrito una biografía.' }}</p>
+    <div class="hero-body">
+      <div class="name-row">
+        <h1 class="hero-name">{{ usuarioLogueado()?.nombre || 'Nombre no disponible' }}</h1>
+        <span class="hero-nick">&#64;{{ usuarioLogueado()?.nickname || 'sin_nickname' }}</span>
+      </div>
+
+      @if (!modoEdicion()) {
+        <p class="hero-bio">
+          {{ usuarioLogueado()?.biografia || 'Este usuario aún no ha escrito una biografía.' }}
+        </p>
+      } @else {
+        <textarea
+          class="bio-editor"
+          [(ngModel)]="nuevaBio"
+          placeholder="Escribe algo sobre ti…"
+          rows="3"
+        ></textarea>
+        <button class="save-btn" type="button" (click)="guardarCambios()">Guardar cambios</button>
+      }
+
+      <div class="hero-meta">
+        @if (usuarioLogueado()?.petalosSaldo != null) {
+          <span class="meta-chip meta-chip--gold">
+            🌸 {{ usuarioLogueado()?.petalosSaldo }} pétalos
+          </span>
+        }
+        @if (usuarioLogueado()?.creadoEn) {
+          <span class="meta-chip">
+            Miembro desde {{ usuarioLogueado()?.creadoEn | date:'yyyy' }}
+          </span>
+        }
+        @if (usuarioLogueado()?.rolGlobal && usuarioLogueado()?.rolGlobal !== 'USUARIO') {
+          <span class="meta-chip meta-chip--role">{{ usuarioLogueado()?.rolGlobal }}</span>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Estadísticas -->
+  <div class="stats-band">
+    <div class="stat-item">
+      <span class="stat-num">{{ resenas().length }}</span>
+      <span class="stat-label">Reseñas</span>
+    </div>
+    <div class="stat-divider" aria-hidden="true"></div>
+    <div class="stat-item">
+      <span class="stat-num">{{ reservas().length }}</span>
+      <span class="stat-label">Reservas</span>
+    </div>
+    <div class="stat-divider" aria-hidden="true"></div>
+    <div class="stat-item">
+      <span class="stat-num">—</span>
+      <span class="stat-label">Logros</span>
+    </div>
   </div>
-</div>
 
+  <!-- Mis reseñas -->
+  <section class="profile-section">
+    <h2 class="section-title">
+      <span class="section-icon">🌿</span>
+      Mis reseñas
+    </h2>
 
-  <section *ngIf="resenas().length > 0">
-  <h3>Mis Reseñas</h3>
-  <div class="tarjeta-resena" *ngFor="let resena of resenas()">
-  <div class="encabezado">
-    <span class="estrella">⭐ {{ resena.puntuacion }}</span>
-    <span class="fecha">📅 {{ resena.fecha | date:'mediumDate' }}</span>
-  </div>
+    @if (resenas().length === 0) {
+      <p class="empty-state">Todavía no has dejado ninguna reseña.</p>
+    }
 
-  <div class="comentario">
-    <p>{{ resena.comentario || 'Sin comentario' }}</p>
-  </div>
+    @for (resena of resenas(); track resena.id) {
+      <article class="review-card">
+        <header class="review-card-header">
+          <div class="review-stars">{{ getStars(resena.puntuacion) }}</div>
+          <time class="review-date">{{ resena.fecha | date:'d MMM yyyy' }}</time>
+        </header>
 
-  <div class="extra">
-    <span class="negocio">🛍️ Publicado en <strong>{{ resena.negocio?.nombre }}</strong></span>
-    <span *ngIf="resena.selloNenufar" class="sello">🌿 ¡Con sello Nenúfar!</span>
-  </div>
-</div>
-</section>
+        <p class="review-text">{{ resena.comentario || resena.contenido || 'Sin comentario' }}</p>
 
-<section *ngIf="resenas().length === 0">
-  <h3>Mis Reseñas</h3>
-  <p class="empty-copy">Todavía no has dejado ninguna reseña.</p>
-</section>
+        <footer class="review-card-foot">
+          <span class="review-negocio">
+            En <strong>{{ resena.negocio?.nombre || 'Negocio' }}</strong>
+          </span>
+          @if (resena.selloNenufar) {
+            <span class="nenufar-seal">Sello Nenúfar</span>
+          }
+        </footer>
+      </article>
+    }
+  </section>
 
+  <!-- Mis reservas -->
+  <section class="profile-section">
+    <h2 class="section-title">
+      <span class="section-icon">📅</span>
+      Mis reservas
+    </h2>
 
+    @if (reservas().length === 0) {
+      <p class="empty-state">No tienes reservas aún.</p>
+    }
 
- <section>
-  <h3>Mis Reservas</h3>
-  <div class="reserva" *ngFor="let r of reservas()">
-    <p>📅 {{ r.fecha?.split('T')[0] }} · {{ r.fecha?.split('T')[1]?.substring(0,5) }}h en {{ r.negocio?.nombre }}</p>
-  </div>
-</section>
+    @for (r of reservas(); track r.id) {
+      <article class="reserva-card">
+        <div class="reserva-info">
+          <strong class="reserva-negocio">{{ r.negocio?.nombre || 'Negocio' }}</strong>
+          <span class="reserva-fecha">
+            {{ r.fecha | date:'d MMM yyyy' }} · {{ r.fecha?.split('T')[1]?.substring(0,5) }}h
+          </span>
+          @if (r.nota) {
+            <span class="reserva-nota">{{ r.nota }}</span>
+          }
+        </div>
+        <span class="estado-tag estado-tag--{{ r.estado?.toLowerCase() }}">
+          {{ r.estado || 'PENDIENTE' }}
+        </span>
+      </article>
+    }
+  </section>
 
 </div>

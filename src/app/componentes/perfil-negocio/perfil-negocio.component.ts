@@ -1,9 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
-import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { buildApiUrl } from '../../config/api.config';
@@ -16,23 +15,10 @@ type AvailabilityResponse = {
 };
 
 function readStoredUser(): any | null {
-  if (typeof localStorage === 'undefined') {
-    return null;
-  }
-
-  const raw =
-    localStorage.getItem('usuarioLogueado') ||
-    localStorage.getItem('usuario');
-
-  if (!raw || raw === 'undefined' || raw === 'null') {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  if (typeof localStorage === 'undefined') return null;
+  const raw = localStorage.getItem('usuarioLogueado') || localStorage.getItem('usuario');
+  if (!raw || raw === 'undefined' || raw === 'null') return null;
+  try { return JSON.parse(raw); } catch { return null; }
 }
 
 @Component({
@@ -48,9 +34,9 @@ export class PerfilNegocioComponent implements OnInit {
   horasDisponibles: string[] = [];
   esDueno = false;
   slots: string[] = [];
-  modalAbierto: boolean = false;
+  modalAbierto = false;
   usuarioActual: any = readStoredUser();
-  mediaPuntuacion: number = 0;
+  mediaPuntuacion = 0;
   resenas: any[] = [];
   negocioId!: number;
   errorMensaje = '';
@@ -64,8 +50,11 @@ export class PerfilNegocioComponent implements OnInit {
   private fechasSemana: Record<string, string> = {};
   private readonly authOptions = { withCredentials: true };
 
-
-  constructor(private route: ActivatedRoute, private http: HttpClient, private router: Router) {}
+  constructor(
+    private route: ActivatedRoute,
+    private http: HttpClient,
+    private router: Router,
+  ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -73,17 +62,14 @@ export class PerfilNegocioComponent implements OnInit {
 
     this.inicializarSemanaActual();
     this.negocioId = +id;
+
     this.http.get(buildApiUrl(`/negocios/${id}`), this.authOptions).subscribe({
       next: (data: any) => {
         this.errorMensaje = '';
         this.negocio = data;
         this.negocioId = data.id;
         this.refrescarResenas();
-        if (data?.dueno && this.usuarioActual?.id) {
-          this.esDueno = this.usuarioActual.id === data.dueno.id;
-        } else {
-          this.esDueno = false;
-        }
+        this.esDueno = !!this.usuarioActual?.id && this.usuarioActual.id === data.dueno?.id;
         this.generarHorasDisponibles();
         this.verificarPropietario();
         this.actualizarAccesosGestion();
@@ -108,7 +94,39 @@ export class PerfilNegocioComponent implements OnInit {
     });
   }
 
-  private inicializarSemanaActual() {
+  getStars(n: number): string {
+    return '⭐'.repeat(Math.max(0, Math.min(5, Math.round(n))));
+  }
+
+  getHorarioLineas(): string[] {
+    const h = this.negocio?.horario;
+    if (!h) return [];
+
+    if (h.apertura && h.cierre) {
+      return [`${h.apertura} – ${h.cierre}`];
+    }
+
+    if (h.weekly && typeof h.weekly === 'object') {
+      return Object.entries(h.weekly).map(([dia, rango]: [string, any]) => {
+        const r = Array.isArray(rango) ? rango.join(' – ') : String(rango);
+        return `${dia}: ${r}`;
+      });
+    }
+
+    return ['Consultar horario directamente'];
+  }
+
+  getMapsUrl(): string {
+    if (this.negocio?.latitud && this.negocio?.longitud) {
+      return `https://www.google.com/maps?q=${this.negocio.latitud},${this.negocio.longitud}`;
+    }
+    const partes = [this.negocio?.direccion, this.negocio?.ciudad, this.negocio?.provincia]
+      .filter(Boolean)
+      .join(', ');
+    return `https://www.google.com/maps/search/${encodeURIComponent(partes)}`;
+  }
+
+  private inicializarSemanaActual(): void {
     const hoy = new Date();
     const diaActual = hoy.getDay();
     const offsetLunes = diaActual === 0 ? -6 : 1 - diaActual;
@@ -123,199 +141,131 @@ export class PerfilNegocioComponent implements OnInit {
     });
   }
 
- generarHorasDisponibles() {
-  if (!this.negocio?.horario) return;
-  const horario = this.negocio.horario;
-  const paso = Number(this.negocio.intervaloReserva || horario.intervalo || 30);
+  generarHorasDisponibles(): void {
+    if (!this.negocio?.horario) return;
+    const horario = this.negocio.horario;
+    const paso = Number(this.negocio.intervaloReserva || horario.intervalo || 30);
 
-  let apertura = horario.apertura;
-  let cierre = horario.cierre;
+    let apertura = horario.apertura;
+    let cierre = horario.cierre;
 
-  if (!apertura || !cierre) {
-    const ranges = Object.values(horario.weekly ?? {}).flat() as [string, string][];
-    if (ranges.length > 0) {
-      apertura = ranges[0][0];
-      cierre = ranges[ranges.length - 1][1];
+    if (!apertura || !cierre) {
+      const ranges = Object.values(horario.weekly ?? {}).flat() as [string, string][];
+      if (ranges.length > 0) {
+        apertura = ranges[0][0];
+        cierre = ranges[ranges.length - 1][1];
+      }
     }
-  }
 
-  if (!apertura || !cierre) return;
+    if (!apertura || !cierre) return;
 
-  const [hStart, mStart] = apertura.split(':').map(Number);
-  const [hEnd, mEnd] = cierre.split(':').map(Number);
-  const start = hStart * 60 + mStart;
-  const end = hEnd * 60 + mEnd;
+    const [hStart, mStart] = apertura.split(':').map(Number);
+    const [hEnd, mEnd] = cierre.split(':').map(Number);
+    const start = hStart * 60 + mStart;
+    const end = hEnd * 60 + mEnd;
 
-  const horas: string[] = [];
-  for (let t = start; t < end; t += paso) {
-    const h = Math.floor(t / 60).toString().padStart(2, '0');
-    const m = (t % 60).toString().padStart(2, '0');
-    horas.push(`${h}:${m}`);
-  }
+    const horas: string[] = [];
+    for (let t = start; t < end; t += paso) {
+      const h = Math.floor(t / 60).toString().padStart(2, '0');
+      const m = (t % 60).toString().padStart(2, '0');
+      horas.push(`${h}:${m}`);
+    }
 
-  this.horasGeneradas = horas;
-
-  // Inicializa reservas vacías
-  this.diasSemana.forEach(dia => this.reservasOcupadas[dia] = []);
-}
-
-recargarReservas() {
-  if (!this.negocioId || !this.horasGeneradas.length) {
+    this.horasGeneradas = horas;
     this.diasSemana.forEach(dia => this.reservasOcupadas[dia] = []);
-    return;
   }
 
-  const requests = this.diasSemana.map((dia) =>
-    this.http
-      .get<AvailabilityResponse>(
-        buildApiUrl(`/negocios/${this.negocioId}/availability?date=${this.fechasSemana[dia]}`),
-        this.authOptions,
-      )
-      .pipe(
-        catchError((error: unknown) => {
-          this.reservaError = getUserErrorMessage(
-            error,
-            'No hemos podido cargar toda la disponibilidad.',
-          );
-          return of({
-            date: this.fechasSemana[dia],
-            intervalo: this.negocio?.intervaloReserva || 30,
-            slots: [],
-          });
-        }),
-      ),
-  );
+  recargarReservas(): void {
+    if (!this.negocioId || !this.horasGeneradas.length) {
+      this.diasSemana.forEach(dia => this.reservasOcupadas[dia] = []);
+      return;
+    }
 
-  forkJoin(requests).subscribe((responses) => {
-    responses.forEach((response, index) => {
-      const dia = this.diasSemana[index];
-      const disponibles = response.slots.map((slot) =>
-        new Date(slot).toLocaleTimeString('es-ES', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        }),
-      );
+    const requests = this.diasSemana.map((dia) =>
+      this.http
+        .get<AvailabilityResponse>(
+          buildApiUrl(`/negocios/${this.negocioId}/availability?date=${this.fechasSemana[dia]}`),
+          this.authOptions,
+        )
+        .pipe(
+          catchError((error: unknown) => {
+            this.reservaError = getUserErrorMessage(error, 'No hemos podido cargar toda la disponibilidad.');
+            return of({ date: this.fechasSemana[dia], intervalo: this.negocio?.intervaloReserva || 30, slots: [] });
+          }),
+        ),
+    );
 
-      this.reservasOcupadas[dia] = this.horasGeneradas.filter(
-        (hora) => !disponibles.includes(hora),
-      );
+    forkJoin(requests).subscribe((responses) => {
+      responses.forEach((response, index) => {
+        const dia = this.diasSemana[index];
+        const disponibles = response.slots.map((slot) =>
+          new Date(slot).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        );
+        this.reservasOcupadas[dia] = this.horasGeneradas.filter((hora) => !disponibles.includes(hora));
+      });
     });
-  });
-}
+  }
 
-
-  verificarPropietario() {
+  verificarPropietario(): void {
     if (!this.usuarioActual || !this.negocio) return;
     this.esDueno = this.usuarioActual.id === this.negocio.duenoId;
     this.actualizarAccesosGestion();
   }
 
-  private actualizarAccesosGestion() {
+  private actualizarAccesosGestion(): void {
     this.puedeGestionarReservas =
-      this.esDueno &&
-      (Boolean(this.negocio?.aceptaReservas) || this.tieneHorarioConfigurado());
+      this.esDueno && (Boolean(this.negocio?.aceptaReservas) || this.tieneHorarioConfigurado());
   }
 
   private tieneHorarioConfigurado(): boolean {
     const horario = this.negocio?.horario;
-
-    if (!horario) {
-      return false;
-    }
-
-    if (horario.apertura && horario.cierre) {
-      return true;
-    }
-
-    const weekly = Object.values(horario.weekly ?? {}).flat();
-    return weekly.length > 0;
+    if (!horario) return false;
+    if (horario.apertura && horario.cierre) return true;
+    return Object.values(horario.weekly ?? {}).flat().length > 0;
   }
 
-  abrirModalResena() {
-    this.modalAbierto = true;
+  abrirModalResena(): void { this.modalAbierto = true; }
+
+  refrescarResenas(): void {
+    if (!this.negocioId) return;
+    this.http.get<any[]>(buildApiUrl(`/negocios/${this.negocioId}/resenas`), this.authOptions).subscribe({
+      next: (res) => {
+        this.resenas = res;
+        if (res.length > 0) {
+          const suma = res.reduce((acc, r) => acc + (r.puntuacion || 0), 0);
+          this.mediaPuntuacion = Math.round((suma / res.length) * 10) / 10;
+        } else {
+          this.mediaPuntuacion = 0;
+        }
+      },
+      error: (error: unknown) => {
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar las reseñas.');
+      },
+    });
   }
 
-  cerrarModalResena() {
-    this.modalAbierto = false;
+  confirmarReserva(dia: string, hora: string): void {
+    const ok = confirm(`¿Reservar el ${dia} a las ${hora}?`);
+    if (!ok) return;
+
+    const fechaBase = this.fechasSemana[dia];
+    if (!fechaBase) { this.reservaError = 'No hemos podido calcular la fecha de la reserva.'; return; }
+
+    const fecha = new Date(`${fechaBase}T${hora}:00`);
+    this.reservaError = '';
+    this.http.post(buildApiUrl(`/negocios/${this.negocio.id}/reservas`), { fecha: fecha.toISOString() }, this.authOptions).subscribe({
+      next: () => {
+        alert(`✅ ¡Reserva confirmada en ${this.negocio.nombre} a las ${hora}!`);
+        this.recargarReservas();
+      },
+      error: (error: unknown) => {
+        this.reservaError = getUserErrorMessage(error, 'Hubo un problema al hacer la reserva.');
+      },
+    });
   }
 
- refrescarResenas() {
-  if (!this.negocioId) return;
-  this.http.get<any[]>(buildApiUrl(`/negocios/${this.negocioId}/resenas`), this.authOptions).subscribe({
-    next: (res) => {
-      this.resenas = res;
-
-      if (res.length > 0) {
-        const suma = res.reduce((acc, r) => acc + (r.puntuacion || 0), 0);
-        this.mediaPuntuacion = Math.round((suma / res.length) * 10) / 10;
-      } else {
-        this.mediaPuntuacion = 0;
-      }
-    },
-    error: (error: unknown) => {
-      this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar las reseñas.');
-    }
-  });
-}
-
-verPerfilUsuario(id: number) {
-  if (id) this.router.navigate(['/perfil', id]);
-}
-
-  confirmarReserva(dia: string, hora: string) {
-  const ok = confirm(`¿Reservar el ${dia} a las ${hora}?`);
-  if (!ok) return;
-
-  const fechaBase = this.fechasSemana[dia];
-  if (!fechaBase) {
-    this.reservaError = 'No hemos podido calcular la fecha de la reserva.';
-    return;
-  }
-
-  const fecha = new Date(`${fechaBase}T${hora}:00`);
-  this.reservaError = '';
-  this.http.post(buildApiUrl(`/negocios/${this.negocio.id}/reservas`), {
-    fecha: fecha.toISOString(),
-  }, this.authOptions).subscribe({
-    next: () => {
-      alert(`✅ ¡Reserva confirmada en ${this.negocio.nombre} a las ${hora}!`);
-      this.recargarReservas(); // vuelve a cargar datos si quieres actualizar
-    },
-    error: (error: unknown) => {
-      this.reservaError = getUserErrorMessage(error, 'Hubo un problema al hacer la reserva.');
-    }
-  });
-}
-
-
-
- irAEditarNegocio() {
-  if (this.negocio?.id) {
-    this.router.navigate(['/negocio-editar', this.negocio.id]);
-  } else {
-    console.warn('Negocio no cargado todavía');
-  }
-}
-
-volver() {
-  this.router.navigateByUrl('/inicio'); // o usa location.back()
-}
-
-irADashboardNegocio() {
-  if (this.negocio?.id) {
-    void this.router.navigate(['/negocios', this.negocio.id, 'dashboard']);
-  }
-}
-
-irAReservasNegocio() {
-  if (!this.puedeGestionarReservas) {
-    return;
-  }
-
-  if (this.negocio?.id) {
-    void this.router.navigate(['/negocios', this.negocio.id, 'reservas']);
-  }
-}
-
+  volver(): void { this.router.navigateByUrl('/inicio'); }
+  irAEditarNegocio(): void { if (this.negocio?.id) this.router.navigate(['/negocio-editar', this.negocio.id]); }
+  irADashboardNegocio(): void { if (this.negocio?.id) void this.router.navigate(['/negocios', this.negocio.id, 'dashboard']); }
+  irAReservasNegocio(): void { if (this.puedeGestionarReservas && this.negocio?.id) void this.router.navigate(['/negocios', this.negocio.id, 'reservas']); }
 }

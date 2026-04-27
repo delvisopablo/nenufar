@@ -15,7 +15,6 @@
   --topSafe: clamp(70px, 10vh, 92px);
   --rockH: clamp(34px, 4.2vh, 56px);
   --rockW: clamp(34px, 4.2vh, 56px);
-  --frameT: var(--rockH);
   --lilySize: clamp(68px, 11.5vw, 128px);
   --tooltipW: clamp(180px, 48vw, 280px);
   --pagePad: clamp(8px, 1.2vw, 16px);
@@ -59,20 +58,56 @@
   z-index: 0;
 }
 
+/* ── Grid principal con muros de roca como separadores ── */
 .home-layout {
   position: relative;
   z-index: 1;
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 0.8fr);
-  grid-template-areas: 'promos resenas right';
-  gap: var(--gap);
+  grid-template-columns:
+    minmax(0, 1fr)
+    var(--rockW)
+    minmax(0, 1.2fr)
+    var(--rockW)
+    minmax(0, 0.8fr);
+  grid-template-areas: 'promos vwall1 resenas vwall2 right';
+  gap: 0;
   padding:
     calc(var(--topSafe) + var(--pagePad))
     var(--pagePad)
     var(--pagePad);
   overflow: hidden;
+}
+
+/* ── Muros de roca ── */
+.rock-wall {
+  pointer-events: none;
+  background-image: url('/assets/imagenes/ROCA_DIVIDER.png');
+  background-color: transparent;
+  z-index: 5;
+  align-self: stretch;
+}
+
+.rock-wall--v1 {
+  grid-area: vwall1;
+  background-repeat: repeat-y;
+  background-size: var(--rockW) auto;
+  background-position: center top;
+}
+
+.rock-wall--v2 {
+  grid-area: vwall2;
+  background-repeat: repeat-y;
+  background-size: var(--rockW) auto;
+  background-position: center top;
+}
+
+.rock-wall--h {
+  background-repeat: repeat-x;
+  background-size: auto var(--rockH);
+  background-position: left center;
+  height: var(--rockH);
 }
 
 .right-rail,
@@ -306,11 +341,12 @@
   font-size: 0.8rem;
 }
 
+/* ── Zonas ── */
 .zone {
   position: relative;
   overflow: hidden;
   pointer-events: none;
-  border-radius: clamp(18px, 2.2vw, 28px);
+  border-radius: clamp(14px, 1.8vw, 22px);
   --zoneLilySize: var(--lilySize);
 }
 
@@ -340,21 +376,23 @@
   --zoneLilySize: calc(var(--lilySize) * 0.88);
 }
 
+/* ── Rail derecho con muro horizontal interno ── */
 .right-rail {
   grid-area: right;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--gap);
+  grid-template-rows: minmax(0, 1fr) var(--rockH) minmax(0, 1fr);
+  gap: 0;
   position: relative;
   z-index: 2;
   overflow: hidden;
 }
 
+/* ── Cabecera de zona ── */
 .zone-head {
   position: absolute;
-  top: calc(var(--frameT) * 0.34);
-  left: calc(var(--frameT) * 0.28);
-  right: calc(var(--frameT) * 0.28);
+  top: 10px;
+  left: 10px;
+  right: 10px;
   z-index: 5;
   display: flex;
   align-items: flex-start;
@@ -414,15 +452,16 @@
   transition: transform 160ms ease;
 }
 
+/* ── Campo de nenúfares ── */
 .zone-lily-field {
   position: absolute;
   inset:
-    calc(var(--frameT) + var(--zoneHeadH) + 6px)
-    calc(var(--frameT) + 6px)
-    calc(var(--frameT) + 6px)
-    calc(var(--frameT) + 6px);
+    calc(var(--zoneHeadH) + 18px)
+    8px
+    8px
+    8px;
   overflow: hidden;
-  border-radius: clamp(14px, 2vw, 24px);
+  border-radius: clamp(10px, 1.6vw, 18px);
   pointer-events: none;
   z-index: 2;
 }
@@ -468,49 +507,7 @@
   filter: saturate(0.88) brightness(0.96) contrast(1.02);
 }
 
-.rock-frame {
-  position: absolute;
-  background-image: url('/assets/imagenes/ROCA_DIVIDER.png');
-  background-position: center;
-  background-color: transparent;
-  pointer-events: none;
-  z-index: 4;
-}
-
-.rock-frame.top,
-.rock-frame.bottom {
-  left: 0;
-  right: 0;
-  height: var(--frameT);
-  background-repeat: repeat-x;
-  background-size: auto var(--rockH);
-}
-
-.rock-frame.left,
-.rock-frame.right {
-  top: 0;
-  bottom: 0;
-  width: var(--frameT);
-  background-repeat: repeat-y;
-  background-size: var(--rockW) auto;
-}
-
-.rock-frame.top {
-  top: 0;
-}
-
-.rock-frame.bottom {
-  bottom: 0;
-}
-
-.rock-frame.left {
-  left: 0;
-}
-
-.rock-frame.right {
-  right: 0;
-}
-
+/* ── Tooltip de hover ── */
 .hover-tooltip {
   position: fixed;
   z-index: 30;
@@ -583,6 +580,7 @@
   color: var(--create-accent);
 }
 
+/* ── Popup modal ── */
 .popup-overlay {
   position: fixed;
   inset: 0;
@@ -663,6 +661,7 @@
   letter-spacing: 0.04em;
 }
 
+/* ── Focus visible ── */
 .top-action:focus-visible,
 .zone-lily:focus-visible,
 .search-btn:focus-visible,
@@ -676,13 +675,19 @@
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08), 0 0 0 5px rgba(243, 106, 164, 0.14);
 }
 
+/* ── Responsive ── */
 @media (max-width: 1100px) {
   .inicio-root {
     --lilySize: clamp(66px, 12.8vw, 118px);
   }
 
   .home-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.86fr);
+    grid-template-columns:
+      minmax(0, 1fr)
+      var(--rockW)
+      minmax(0, 1fr)
+      var(--rockW)
+      minmax(0, 0.86fr);
   }
 }
 
@@ -698,6 +703,12 @@
     grid-template-areas:
       'resenas resenas'
       'promos right';
+    gap: var(--gap);
+  }
+
+  .rock-wall--v1,
+  .rock-wall--v2 {
+    display: none;
   }
 
   .topbar {
@@ -759,6 +770,10 @@
     grid-template-rows: minmax(0, 1fr);
   }
 
+  .zone--perfil { grid-column: 1; grid-row: 1; }
+  .zone--crear  { grid-column: 2; grid-row: 1; }
+  .rock-wall--h { display: none; }
+
   .zone-head {
     gap: 0.45rem;
     padding: 0.44rem 0.54rem;
@@ -800,11 +815,6 @@
 
   .brand-copy h1 {
     font-size: 0.88rem;
-  }
-
-  .zone-head {
-    left: calc(var(--frameT) * 0.24);
-    right: calc(var(--frameT) * 0.24);
   }
 
   .zone-head h2 {

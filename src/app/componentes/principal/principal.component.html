@@ -12,7 +12,7 @@
       </div>
 
       <div class="topbar-actions">
-        <button type="button" class="top-action" (click)="abrirInfo()">Como funciona</button>
+        <button type="button" class="top-action" (click)="abrirInfo()">Cómo funciona</button>
         <button type="button" class="top-action top-action--ghost" (click)="abrirAyuda()">
           Gestos
         </button>
@@ -54,8 +54,8 @@
     <section class="zone zone--promos">
       <div class="zone-head">
         <div class="zone-head__copy">
-          <p class="zone-kicker">Promociones</p>
-          <h2>Promos que flotan por el estanque</h2>
+          <p class="zone-kicker">Promos</p>
+          <h2>Ofertas que emergen del estanque</h2>
         </div>
       </div>
 
@@ -77,18 +77,15 @@
           </button>
         }
       </div>
-
-      <div class="rock-frame top" aria-hidden="true"></div>
-      <div class="rock-frame right" aria-hidden="true"></div>
-      <div class="rock-frame bottom" aria-hidden="true"></div>
-      <div class="rock-frame left" aria-hidden="true"></div>
     </section>
+
+    <div class="rock-wall rock-wall--v1" aria-hidden="true"></div>
 
     <section class="zone zone--resenas">
       <div class="zone-head">
         <div class="zone-head__copy">
-          <p class="zone-kicker">Resenas</p>
-          <h2>Opiniones vivas y sin etiquetas fijas</h2>
+          <p class="zone-kicker">Reseñas</p>
+          <h2>Voces que brotan del agua</h2>
         </div>
       </div>
 
@@ -112,19 +109,16 @@
           </button>
         }
       </div>
-
-      <div class="rock-frame top" aria-hidden="true"></div>
-      <div class="rock-frame right" aria-hidden="true"></div>
-      <div class="rock-frame bottom" aria-hidden="true"></div>
-      <div class="rock-frame left" aria-hidden="true"></div>
     </section>
+
+    <div class="rock-wall rock-wall--v2" aria-hidden="true"></div>
 
     <aside class="right-rail">
       <section class="zone zone--perfil">
         <div class="zone-head">
           <div class="zone-head__copy">
-            <p class="zone-kicker">Perfil</p>
-            <h2>Tu acceso privado</h2>
+            <p class="zone-kicker">Mi rincón</p>
+            <h2>Tu espacio en Nenúfar</h2>
           </div>
 
           <button type="button" class="zone-quick-action" (click)="abrirPerfil()">Abrir</button>
@@ -148,18 +142,15 @@
             </button>
           }
         </div>
-
-        <div class="rock-frame top" aria-hidden="true"></div>
-        <div class="rock-frame right" aria-hidden="true"></div>
-        <div class="rock-frame bottom" aria-hidden="true"></div>
-        <div class="rock-frame left" aria-hidden="true"></div>
       </section>
+
+      <div class="rock-wall rock-wall--h" aria-hidden="true"></div>
 
       <section class="zone zone--crear">
         <div class="zone-head">
           <div class="zone-head__copy">
-            <p class="zone-kicker">Nueva resena</p>
-            <h2>Entrada rapida</h2>
+            <p class="zone-kicker">Opinar</p>
+            <h2>Deja tu huella aquí</h2>
           </div>
 
           <button type="button" class="zone-quick-action" (click)="abrirCrearResena()">
@@ -185,11 +176,6 @@
             </button>
           }
         </div>
-
-        <div class="rock-frame top" aria-hidden="true"></div>
-        <div class="rock-frame right" aria-hidden="true"></div>
-        <div class="rock-frame bottom" aria-hidden="true"></div>
-        <div class="rock-frame left" aria-hidden="true"></div>
       </section>
     </aside>
   </div>
@@ -238,11 +224,11 @@
           <p class="popup-kicker">Gestos</p>
           <h2>Interacciones del estanque</h2>
           <p>
-            Click izquierdo sobre un nenufar: impulso con direccion y fuerza segun el punto de
+            Click izquierdo sobre un nenufar: impulso con dirección y fuerza según el punto de
             impacto.
           </p>
           <p>
-            Click derecho: popup de detalle sin abrir el menu del navegador. Click en el fondo:
+            Click derecho: popup de detalle sin abrir el menú del navegador. Click en el fondo:
             onda global.
           </p>
 
@@ -263,7 +249,7 @@
         }
 
         @if (activePopup.kind === 'review') {
-          <p class="popup-kicker">Detalle de resena</p>
+          <p class="popup-kicker">Detalle de reseña</p>
           <h2>{{ activePopup.review.negocioNombre }}</h2>
 
           <div class="popup-meta">
@@ -287,7 +273,7 @@
         }
 
         @if (activePopup.kind === 'promo') {
-          <p class="popup-kicker">Detalle de promocion</p>
+          <p class="popup-kicker">Detalle de promoción</p>
           <h2>{{ activePopup.promo.titulo }}</h2>
 
           <div class="popup-meta">
@@ -311,8 +297,8 @@
           <p class="popup-kicker">Perfil</p>
           <h2>{{ nombreUsuario() }}</h2>
           <p>
-            Este nenufar sirve como acceso a tu perfil. Sigue lanzandolo si quieres o abre tu zona
-            privada desde aqui.
+            Este nenúfar sirve como acceso a tu perfil. Sigue lanzándolo si quieres o abre tu zona
+            privada desde aquí.
           </p>
 
           <div class="popup-actions">
@@ -322,15 +308,15 @@
         }
 
         @if (activePopup.kind === 'create') {
-          <p class="popup-kicker">Nueva resena</p>
-          <h2>Compartir una opinion</h2>
+          <p class="popup-kicker">Nueva reseña</p>
+          <h2>Compartir una opinión</h2>
           <p>
-            Usa este nenufar para abrir el modal de nueva resena sin recargar la escena ni perder
+            Usa este nenúfar para abrir el modal de nueva reseña sin recargar la escena ni perder
             el layout.
           </p>
 
           <div class="popup-actions">
-            <button type="button" class="primary-btn" (click)="abrirCrearResena()">Crear resena</button>
+            <button type="button" class="primary-btn" (click)="abrirCrearResena()">Crear reseña</button>
             <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
           </div>
         }

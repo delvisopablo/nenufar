@@ -1,130 +1,286 @@
-<button class="volver-btn" (click)="volver()">Volver</button>
+<div class="negocio-root">
 
-<div class="negocio-container">
-  <p class="form-feedback" role="alert" *ngIf="errorMensaje">
-    {{ errorMensaje }}
-  </p>
+  <!-- Topbar -->
+  <nav class="negocio-topbar">
+    <button class="back-btn" type="button" (click)="volver()">← Volver</button>
 
-  <section class="cabecera-perfil">
-    <img
-      [src]="negocio?.foto || '../../../../assets/imagenes/rana2_negocio_foto.png'"
-      alt="Foto negocio"
-      class="foto-negocio"
-    />
+    @if (esDueno) {
+      <div class="owner-actions">
+        <button class="owner-btn" type="button" (click)="irADashboardNegocio()">Dashboard</button>
+        <button
+          class="owner-btn"
+          type="button"
+          [class.owner-btn--disabled]="!puedeGestionarReservas"
+          [disabled]="!puedeGestionarReservas"
+          (click)="irAReservasNegocio()"
+        >Reservas</button>
+        <button class="owner-btn owner-btn--primary" type="button" (click)="irAEditarNegocio()">
+          Configurar
+        </button>
+      </div>
+    }
+  </nav>
 
-    <div class="datos-negocio">
-      <div class="top-header">
-        <div class="title-group">
-          <h2>{{ negocio?.nombre || 'Nombre no disponible' }}</h2>
-          <p class="categoria">{{ negocio?.categoria?.nombre || 'Sin categoría' }}</p>
+  <!-- Error -->
+  @if (errorMensaje) {
+    <div class="alert-error" role="alert">{{ errorMensaje }}</div>
+  }
+
+  <!-- Hero: portada + identidad -->
+  <div class="negocio-hero">
+    <div class="cover-wrap">
+      <img
+        class="cover-img"
+        [src]="negocio?.fotoPortada || negocio?.fotoPerfil || 'assets/imagenes/rana2_negocio_foto.png'"
+        alt="Portada del negocio"
+      >
+      <div class="cover-overlay"></div>
+    </div>
+
+    <div class="identity-strip">
+      <div class="identity-avatar-wrap">
+        <img
+          class="identity-avatar"
+          [src]="negocio?.fotoPerfil || 'assets/imagenes/rana2_negocio_foto.png'"
+          alt="Foto del negocio"
+        >
+      </div>
+
+      <div class="identity-body">
+        <div class="identity-name-row">
+          <h1 class="business-name">{{ negocio?.nombre || 'Cargando…' }}</h1>
+          @if (negocio?.verificado) {
+            <span class="verified-badge">✓ Verificado</span>
+          }
         </div>
 
-        @if (esDueno) {
-          <div class="gestion-negocio">
-            <button class="ghost-action-btn" type="button" (click)="irADashboardNegocio()">
-              Dashboard
-            </button>
-            <button
-              class="ghost-action-btn"
-              type="button"
-              [class.is-disabled]="!puedeGestionarReservas"
-              [disabled]="!puedeGestionarReservas"
-              (click)="irAReservasNegocio()"
-            >
-              Reservas
-            </button>
-            <button class="configurar-btn" type="button" (click)="irAEditarNegocio()">
-              Configurar
-            </button>
+        <p class="business-cat">
+          {{ negocio?.categoria?.nombre || negocio?.categoria || 'Sin categoría' }}
+          @if (negocio?.subcategoria?.nombre) {
+            · {{ negocio.subcategoria.nombre }}
+          }
+        </p>
+
+        @if (mediaPuntuacion > 0) {
+          <div class="rating-row">
+            <span class="rating-stars">{{ getStars(mediaPuntuacion) }}</span>
+            <span class="rating-num">{{ mediaPuntuacion }}/5</span>
+            <span class="rating-count">({{ resenas.length }} reseñas)</span>
           </div>
         }
-      </div>
 
-      <p class="historia">{{ negocio?.historia || 'Este negocio aún no tiene biografía' }}</p>
-      @if (esDueno && !puedeGestionarReservas) {
-        <p class="reserva-helper">{{ mensajeReservasConfiguracion }}</p>
+        @if (negocio?.ciudad) {
+          <p class="business-location">📍 {{ negocio?.ciudad }}{{ negocio?.provincia ? ', ' + negocio.provincia : '' }}</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid de contenido: columna principal + sidebar -->
+  <div class="negocio-grid">
+
+    <!-- Columna principal -->
+    <div class="main-col">
+
+      <!-- Descripción -->
+      @if (negocio?.descripcionCorta || negocio?.historia) {
+        <section class="n-section">
+          <h2 class="n-section-title">Sobre nosotros</h2>
+
+          @if (negocio?.descripcionCorta) {
+            <p class="descripcion-corta">{{ negocio.descripcionCorta }}</p>
+          }
+
+          @if (negocio?.historia) {
+            <p class="historia">{{ negocio.historia }}</p>
+          }
+
+          @if (negocio?.fechaFundacion) {
+            <p class="fundacion">
+              Fundado en {{ negocio.fechaFundacion | date:'yyyy' }}
+            </p>
+          }
+        </section>
       }
-    </div>
-  </section>
 
-  <section>
-    <h3>Reservas de esta semana</h3>
-    <p class="form-feedback" role="alert" *ngIf="reservaError">
-      {{ reservaError }}
-    </p>
-    <div class="tabla-calendario">
-      <div class="cabecera-dia">
-        <div class="celda-hora"></div>
-        <div class="celda-dia" *ngFor="let dia of diasSemana">{{ dia }}</div>
-      </div>
+      <!-- Disponibilidad / Reservas -->
+      @if (horasGeneradas.length > 0) {
+        <section class="n-section">
+          <h2 class="n-section-title">Disponibilidad esta semana</h2>
 
-      <div class="fila-hora" *ngFor="let hora of horasGeneradas">
-        <div class="celda-hora">{{ hora }}</div>
-        <div class="celda-dia" *ngFor="let dia of diasSemana">
-          <button
-            *ngIf="!esDueno && !reservasOcupadas[dia]?.includes(hora)"
-            class="bloque-reserva"
-            (click)="confirmarReserva(dia, hora)"
-          >
-            Reservar
-          </button>
-          <div *ngIf="reservasOcupadas[dia]?.includes(hora)" class="bloque-ocupado">
-            Ocupado
+          @if (reservaError) {
+            <p class="alert-inline" role="alert">{{ reservaError }}</p>
+          }
+
+          @if (esDueno && !puedeGestionarReservas) {
+            <p class="helper-note">{{ mensajeReservasConfiguracion }}</p>
+          }
+
+          <div class="tabla-calendario">
+            <div class="cal-head">
+              <div class="cel-hora"></div>
+              @for (dia of diasSemana; track dia) {
+                <div class="cel-dia cel-dia--head">{{ dia }}</div>
+              }
+            </div>
+
+            @for (hora of horasGeneradas; track hora) {
+              <div class="cal-row">
+                <div class="cel-hora">{{ hora }}</div>
+                @for (dia of diasSemana; track dia) {
+                  <div class="cel-dia">
+                    @if (!esDueno && !reservasOcupadas[dia]?.includes(hora)) {
+                      <button class="slot-libre" type="button" (click)="confirmarReserva(dia, hora)">
+                        Reservar
+                      </button>
+                    } @else if (reservasOcupadas[dia]?.includes(hora)) {
+                      <div class="slot-ocupado">Ocupado</div>
+                    }
+                  </div>
+                }
+              </div>
+            }
           </div>
-        </div>
-      </div>
+        </section>
+      }
+
+      <!-- Reseñas -->
+      <section class="n-section">
+        <h2 class="n-section-title">Reseñas de clientes</h2>
+
+        @if (resenas.length === 0) {
+          <p class="empty-state">Este negocio aún no tiene reseñas. ¡Sé el primero!</p>
+        }
+
+        @for (resena of resenas; track resena.id) {
+          <article class="review-item">
+            <img
+              class="review-avatar"
+              [src]="resena.usuario?.foto || 'assets/imagenes/rana1_profile_foto.png'"
+              alt="Avatar"
+            >
+
+            <div class="review-body">
+              <div class="review-head">
+                @if (resena.usuario) {
+                  <a
+                    class="review-author"
+                    [routerLink]="['/perfil', resena.usuario.id]"
+                  >{{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}</a>
+                } @else {
+                  <p class="review-author">Cliente de Nenúfar</p>
+                }
+                <span class="review-stars">{{ getStars(resena.puntuacion) }}</span>
+              </div>
+
+              @if (resena.creadoEn || resena.fecha) {
+                <time class="review-date">
+                  {{ (resena.creadoEn || resena.fecha) | date:'d MMM yyyy' }}
+                </time>
+              }
+
+              <p class="review-text">{{ resena.contenido }}</p>
+
+              @if (resena.selloNenufar) {
+                <span class="nenufar-seal">Sello Nenúfar</span>
+              }
+            </div>
+          </article>
+        }
+      </section>
     </div>
-  </section>
 
-  <section class="nota-media">
-    <h3>Nota media del negocio</h3>
-    <p class="media-numero">{{ mediaPuntuacion }} / 5 ⭐</p>
-  </section>
+    <!-- Sidebar -->
+    <aside class="side-col">
 
-  <section>
-    <h3>Reseñas de clientes</h3>
+      <!-- Calificación destacada -->
+      @if (mediaPuntuacion > 0) {
+        <section class="n-section rating-card">
+          <p class="rating-big">{{ mediaPuntuacion }}</p>
+          <p class="rating-max">sobre 5 ⭐</p>
+          <p class="rating-sub">Basado en {{ resenas.length }} reseña{{ resenas.length !== 1 ? 's' : '' }}</p>
+        </section>
+      }
 
-    <div *ngIf="resenas.length > 0; else noResenas">
-      <article *ngFor="let resena of resenas" class="resena-negocio">
-        <img
-          [src]="resena.usuario?.foto || '../../../../assets/imagenes/rana1_profile_foto.png'"
-          alt="Usuario"
-          class="avatar-resena"
-        />
+      <!-- Contacto -->
+      @if (negocio?.telefono || negocio?.emailContacto || negocio?.web || negocio?.instagram) {
+        <section class="n-section">
+          <h3 class="n-side-title">Contacto</h3>
+          <ul class="contact-list">
+            @if (negocio?.telefono) {
+              <li class="contact-item">
+                <span class="contact-icon">📞</span>
+                <a [href]="'tel:' + negocio.telefono">{{ negocio.telefono }}</a>
+              </li>
+            }
+            @if (negocio?.emailContacto) {
+              <li class="contact-item">
+                <span class="contact-icon">✉️</span>
+                <a [href]="'mailto:' + negocio.emailContacto">{{ negocio.emailContacto }}</a>
+              </li>
+            }
+            @if (negocio?.web) {
+              <li class="contact-item">
+                <span class="contact-icon">🌐</span>
+                <a [href]="negocio.web" target="_blank" rel="noopener">Web oficial</a>
+              </li>
+            }
+            @if (negocio?.instagram) {
+              <li class="contact-item">
+                <span class="contact-icon">📸</span>
+                <a [href]="negocio.instagram" target="_blank" rel="noopener">Instagram</a>
+              </li>
+            }
+          </ul>
+        </section>
+      }
 
-        <div class="contenido-resena">
-          <div class="resena-header">
-            <ng-container *ngIf="resena.usuario; else autorSinPerfil">
-              <a class="nombre-usuario" [routerLink]="['/perfil', resena.usuario.id]">
-                {{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}
-              </a>
-            </ng-container>
-
-            <ng-template #autorSinPerfil>
-              <p class="nombre-usuario">Cliente de Nenúfar</p>
-            </ng-template>
-
-            <p class="puntuacion-resena">{{ '⭐'.repeat(resena.puntuacion || 0) }}</p>
+      <!-- Horario -->
+      @if (negocio?.horario) {
+        <section class="n-section">
+          <h3 class="n-side-title">Horario</h3>
+          <div class="horario-display">
+            @for (linea of getHorarioLineas(); track $index) {
+              <p class="horario-linea">{{ linea }}</p>
+            }
           </div>
+        </section>
+      }
 
-          <p class="texto-resena">{{ resena.contenido }}</p>
-        </div>
-      </article>
-    </div>
+      <!-- Ubicación -->
+      @if (negocio?.direccion || negocio?.ciudad) {
+        <section class="n-section">
+          <h3 class="n-side-title">Ubicación</h3>
+          <address class="address-block">
+            @if (negocio?.direccion) { <span>{{ negocio.direccion }}</span> }
+            @if (negocio?.ciudad) {
+              <span>{{ negocio.ciudad }}{{ negocio?.codigoPostal ? ' ' + negocio.codigoPostal : '' }}</span>
+            }
+            @if (negocio?.provincia) { <span>{{ negocio.provincia }}</span> }
+          </address>
+          @if (negocio?.latitud && negocio?.longitud) {
+            <a class="maps-link" [href]="getMapsUrl()" target="_blank" rel="noopener">
+              Ver en Google Maps →
+            </a>
+          }
+        </section>
+      }
 
-    <ng-template #noResenas>
-      <p class="empty-reviews">Este negocio todavía no tiene reseñas. ¡Sé el primero!</p>
-    </ng-template>
-  </section>
+    </aside>
+  </div>
+
+  <!-- Botón flotante nueva reseña -->
+  <button class="btn-flotante" type="button" (click)="abrirModalResena()" aria-label="Nueva reseña">
+    ＋
+  </button>
+
+  <app-crear-resena-modal
+    [visible]="modalAbierto"
+    [negocioId]="negocioId"
+    [resenas]="resenas"
+    [negocio]="negocio"
+    (cerrarModal)="modalAbierto = false"
+    (resenaCreada)="refrescarResenas()"
+  ></app-crear-resena-modal>
+
 </div>
-
-<button class="btn-flotante" (click)="abrirModalResena()">＋</button>
-
-<app-crear-resena-modal
-  [visible]="modalAbierto"
-  [negocioId]="negocioId"
-  [resenas]="resenas"
-  [negocio]="negocio"
-  (cerrarModal)="modalAbierto = false"
-  (resenaCreada)="refrescarResenas()">
-</app-crear-resena-modal>
