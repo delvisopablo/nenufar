@@ -129,11 +129,11 @@
                 <div class="cel-hora">{{ hora }}</div>
                 @for (dia of diasSemana; track dia) {
                   <div class="cel-dia">
-                    @if (!esDueno && !reservasOcupadas[dia]?.includes(hora)) {
+                    @if (!esDueno && !reservasOcupadas[dia].includes(hora)) {
                       <button class="slot-libre" type="button" (click)="confirmarReserva(dia, hora)">
                         Reservar
                       </button>
-                    } @else if (reservasOcupadas[dia]?.includes(hora)) {
+                    } @else if (reservasOcupadas[dia].includes(hora)) {
                       <div class="slot-ocupado">Ocupado</div>
                     }
                   </div>

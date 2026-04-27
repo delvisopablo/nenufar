@@ -2,55 +2,6 @@
   <app-estanque-background class="pond-background"></app-estanque-background>
 
   <div class="home-layout">
-    <header class="topbar">
-      <div class="brand-lockup">
-        <img class="brand-logo" [src]="brandLogoSrc" alt="Flor de Nenufar">
-        <div class="brand-copy">
-          <p class="brand-mark">Nenufar</p>
-          <h1>Inicio</h1>
-        </div>
-      </div>
-
-      <div class="topbar-actions">
-        <button type="button" class="top-action" (click)="abrirInfo()">Cómo funciona</button>
-        <button type="button" class="top-action top-action--ghost" (click)="abrirAyuda()">
-          Gestos
-        </button>
-        <div class="search-shell">
-          <form class="searchbar" (ngSubmit)="buscarPrimerNegocio()">
-            <label class="searchbar-field" for="pond-search">
-              <input
-                id="pond-search"
-                type="search"
-                name="pondSearch"
-                [ngModel]="busqueda()"
-                (ngModelChange)="onSearchTermChange($event)"
-                placeholder="Buscar negocio"
-                autocomplete="off"
-              >
-            </label>
-
-            <button type="submit" class="search-btn">Buscar</button>
-          </form>
-
-          @if (resultadosBusqueda().length) {
-            <div class="search-results" role="list">
-              @for (negocio of resultadosBusqueda(); track negocio.id) {
-                <button type="button" class="search-result" (click)="seleccionarNegocio(negocio)">
-                  <strong>{{ negocio.nombre }}</strong>
-                  <span>{{ negocio.categoria }}</span>
-                </button>
-              }
-            </div>
-          } @else if (busquedaEstado() === 'loading') {
-            <div class="search-empty">Buscando negocios...</div>
-          } @else if (sinResultadosBusqueda()) {
-            <div class="search-empty">No encontrado.</div>
-          }
-        </div>
-      </div>
-    </header>
-
     <section class="zone zone--promos">
       <div class="zone-head">
         <div class="zone-head__copy">

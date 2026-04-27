@@ -1,18 +1,47 @@
+<header class="header">
+  <button type="button" class="brand-button" (click)="irAEstanque()" aria-label="Ir a estanque">
+    <img class="brand-logo" [src]="logoSrc" alt="Logo Nenufar">
+  </button>
 
-<div class="header">
-    <h1 class="titulo">
-      <img src="assets/imagenes/logo_nenufar.png" alt="Logo Nenúfar" class="logo">
-    </h1>
+  <div class="header-actions">
+    <div class="topbar-actions">
+      <button type="button" class="top-action" (click)="irAInicio()">Inicio</button>
+      <button type="button" class="top-action" (click)="abrirInfo()">Cómo funciona</button>
+      <button type="button" class="top-action top-action--ghost" (click)="abrirAyuda()">
+        Gestos
+      </button>
+
+      <div class="search-shell">
+        <form class="searchbar" (ngSubmit)="buscarPrimerNegocio()">
+          <label class="searchbar-field" for="header-business-search">
+            <input
+              id="header-business-search"
+              type="search"
+              name="headerBusinessSearch"
+              [formControl]="searchControl"
+              placeholder="Buscar negocio"
+              autocomplete="off"
+            >
+          </label>
+
+          <button type="submit" class="search-btn">Buscar</button>
+        </form>
+
+        @if (resultadosBusqueda().length) {
+          <div class="search-results" role="list">
+            @for (negocio of resultadosBusqueda(); track negocio.id) {
+              <button type="button" class="search-result" (click)="seleccionarNegocio(negocio)">
+                <strong>{{ negocio.nombre }}</strong>
+                <span>{{ getCategoriaNombre(negocio) }}</span>
+              </button>
+            }
+          </div>
+        } @else if (busquedaEstado() === 'loading') {
+          <div class="search-empty">Buscando negocios...</div>
+        } @else if (sinResultadosBusqueda()) {
+          <div class="search-empty">Sin resultados.</div>
+        }
+      </div>
+    </div>
   </div>
-  
-
-    <!-- <div class="buscador">
-        <input type="text" placeholder="Buscar">
-        <button type="button">Buscar</button>
-
-    </div> -->
-    
-
-    
-
-
+</header>

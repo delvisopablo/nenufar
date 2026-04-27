@@ -10,10 +10,10 @@ import {
   OnInit,
   ViewChild,
   computed,
+  effect,
   inject,
   signal
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -22,13 +22,11 @@ import { PromoMock, PROMOS_MOCK } from '../promocion/promocion/promocionesMock';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 import { RESENAS_MOCK, ResenaMock } from './resenasMock';
 import { AuthService, AuthUser } from '../../servicios/authService/auth.service';
-import { NegocioSearchResult, NegocioService } from '../../servicios/negocioService/negocio.service';
+import { HomeHeaderService } from '../../servicios/homeHeaderServicio/home-header.service';
 
 type ZoneKey = 'promos' | 'resenas' | 'perfil' | 'crear';
 type LilyKind = 'promo' | 'review' | 'profile' | 'create';
 type TooltipTone = 'promo' | 'review' | 'profile' | 'create';
-type SearchStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
-
 type HoverTooltip = {
   placement: 'above' | 'below';
   text: string;
@@ -141,7 +139,7 @@ function readJson<T>(key: string): T | null {
 @Component({
   selector: 'app-principal',
   standalone: true,
-  imports: [CommonModule, FormsModule, CrearResenaModalComponent, EstanqueBackgroundComponent],
+  imports: [CommonModule, CrearResenaModalComponent, EstanqueBackgroundComponent],
   templateUrl: './principal.component.html',
   styleUrl: './principal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -159,20 +157,16 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly zone = inject(NgZone);
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly authService = inject(AuthService);
-  private readonly negocioService = inject(NegocioService);
+  private readonly homeHeaderService = inject(HomeHeaderService);
 
-  readonly brandLogoSrc = 'assets/imagenes/flor_logo.png';
   readonly freshLilyImageSrc = 'assets/imagenes/nenufar.jpeg';
   readonly mustioLilyImageSrc = 'assets/imagenes/nenufar_mustio.png';
 
-  readonly busqueda = signal('');
-  readonly busquedaEstado = signal<SearchStatus>('idle');
   readonly crearResenaAbierto = signal(false);
   readonly hoveredTooltip = signal<HoverTooltip | null>(null);
   readonly popup = signal<HomePopup | null>(null);
   readonly promociones = signal<PromoMock[]>(PROMOS_MOCK);
   readonly promoLilies = signal<LilyView[]>([]);
-  readonly resultadosBusqueda = signal<BusinessCatalogItem[]>([]);
   readonly reviewLilies = signal<LilyView[]>([]);
   readonly resenas = signal<ResenaMock[]>(RESENAS_MOCK);
   readonly usuarioLogueado = signal<AuthUser | null>(null);
@@ -184,7 +178,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     return nombre ? String(nombre).split(' ')[0] : 'Invitado';
   });
 
-  readonly businessCatalog = computed<BusinessCatalogItem[]>(() => {
+  readonly businessCatalog = computed(() => {
     const catalog = new Map<number, BusinessCatalogItem>();
 
     for (const promo of this.promociones()) {
@@ -210,12 +204,6 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     return Array.from(catalog.values());
   });
 
-  readonly sinResultadosBusqueda = computed(
-    () =>
-      Boolean(this.busqueda().trim()) &&
-      (this.busquedaEstado() === 'empty' || this.busquedaEstado() === 'error')
-  );
-
   private readonly zoneConfigs: Record<ZoneKey, ZonePhysicsConfig> = {
     promos: { targetCount: 3, maxSpeed: 92, minSpeed: 9, damping: 0.989, restitution: 0.76 },
     resenas: { targetCount: 4, maxSpeed: 84, minSpeed: 8, damping: 0.99, restitution: 0.78 },
@@ -232,16 +220,30 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private promoSpawnCursor = 0;
   private profileSpawnCursor = 0;
   private createSpawnCursor = 0;
-  private searchDebounceId = 0;
-  private searchRequestSubscription?: Subscription;
   private sessionHydrationSubscription?: Subscription;
   private syncFrameId = 0;
   private viewReady = false;
   private hoveredTarget: HoveredLilyTarget | null = null;
-  private readonly searchDebounceMs = 220;
   private readonly tooltipSyncCadenceMs = 84;
   private readonly tooltipViewportPadding = 12;
   private readonly zoneRuntimes = new Map<ZoneKey, ZoneRuntime>();
+
+  constructor() {
+    effect(() => {
+      const pendingPopup = this.homeHeaderService.pendingPopup();
+      if (!pendingPopup) {
+        return;
+      }
+
+      if (pendingPopup.kind === 'info') {
+        this.abrirInfo();
+      } else {
+        this.abrirAyuda();
+      }
+
+      this.homeHeaderService.clearPopup(pendingPopup.nonce);
+    }, { allowSignalWrites: true });
+  }
 
   ngOnInit(): void {
     this.title.setTitle('Inicio');
@@ -284,13 +286,8 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       cancelAnimationFrame(this.syncFrameId);
     }
 
-    if (this.searchDebounceId) {
-      window.clearTimeout(this.searchDebounceId);
-    }
-
     this.resizeObserver?.disconnect();
     this.hoveredTarget = null;
-    this.searchRequestSubscription?.unsubscribe();
     this.sessionHydrationSubscription?.unsubscribe();
 
     this.zoneRuntimes.forEach((runtime) => {
@@ -342,40 +339,6 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       title: 'Inicia sesion',
       message: 'Necesitas iniciar sesion para entrar en tu perfil y recuperar tu actividad.'
     });
-  }
-
-  onSearchTermChange(value: string): void {
-    this.busqueda.set(value);
-
-    if (this.searchDebounceId) {
-      window.clearTimeout(this.searchDebounceId);
-      this.searchDebounceId = 0;
-    }
-
-    const termino = value.trim();
-    if (!termino) {
-      this.resetearBusqueda();
-      return;
-    }
-
-    this.busquedaEstado.set('loading');
-    this.searchDebounceId = window.setTimeout(() => {
-      this.searchDebounceId = 0;
-      this.buscarNegociosRemoto(termino);
-    }, this.searchDebounceMs);
-  }
-
-  buscarPrimerNegocio(): void {
-    const primerResultado = this.resultadosBusqueda()[0];
-    if (primerResultado) {
-      this.seleccionarNegocio(primerResultado);
-      return;
-    }
-
-    const termino = this.busqueda().trim();
-    if (termino) {
-      this.buscarNegociosRemoto(termino, true);
-    }
   }
 
   cerrarCrearResena(): void {
@@ -555,9 +518,8 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     const target = event.target as Element | null;
     if (
       target?.closest(
-        '.zone-lily, .topbar, .brand-lockup, .search-shell, .searchbar, .search-results, ' +
-          '.search-result, .popup-overlay, .popup-card, .popup-close, .modal, .modal-backdrop, ' +
-          'input, textarea, button, .zone-quick-action, .top-action'
+        '.zone-lily, .popup-overlay, .popup-card, .popup-close, .modal, .modal-backdrop, ' +
+          'input, textarea, button, .zone-quick-action'
       )
     ) {
       return;
@@ -565,12 +527,6 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.ocultarTooltip();
     this.emitRipple(event.clientX, event.clientY, 1);
-  }
-
-  seleccionarNegocio(negocio: BusinessCatalogItem): void {
-    this.busqueda.set(negocio.nombre);
-    this.resetearBusqueda(false);
-    void this.router.navigate(['/negocio', negocio.id]);
   }
 
   verPromo(promo: PromoMock): void {
@@ -769,46 +725,6 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     this.actualizarNenufaresDeSesion();
   }
 
-  private buscarNegociosRemoto(termino: string, navegarAlPrimero = false): void {
-    const query = termino.trim();
-    if (!query) {
-      this.resetearBusqueda();
-      return;
-    }
-
-    this.searchRequestSubscription?.unsubscribe();
-    this.busquedaEstado.set('loading');
-
-    this.searchRequestSubscription = this.negocioService.buscarNegocios(query).subscribe({
-      next: (results) => {
-        if (query !== this.busqueda().trim()) {
-          return;
-        }
-
-        const items = results
-          .slice(0, 5)
-          .map((item) => this.mapearResultadoNegocio(item));
-
-        this.resultadosBusqueda.set(items);
-        this.busquedaEstado.set(items.length ? 'ready' : 'empty');
-        this.changeDetector.markForCheck();
-
-        if (navegarAlPrimero && items[0]) {
-          this.seleccionarNegocio(items[0]);
-        }
-      },
-      error: () => {
-        if (query !== this.busqueda().trim()) {
-          return;
-        }
-
-        this.resultadosBusqueda.set([]);
-        this.busquedaEstado.set('error');
-        this.changeDetector.markForCheck();
-      }
-    });
-  }
-
   private createBody(runtime: ZoneRuntime, item: LilyView, occupied: LilyBody[]): LilyBody {
     const body: LilyBody = {
       id: item.id,
@@ -924,15 +840,6 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (usuario) => this.aplicarUsuarioHydratado(usuario),
       error: () => this.aplicarUsuarioHydratado(null)
     });
-  }
-
-  private mapearResultadoNegocio(item: NegocioSearchResult): BusinessCatalogItem {
-    return {
-      id: item.id,
-      nombre: item.nombre,
-      categoria: item.categoria,
-      descripcion: item.descripcion
-    };
   }
 
   private despawnBody(runtime: ZoneRuntime, bodyId: string): void {
@@ -1099,17 +1006,6 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private randomBetween(min: number, max: number): number {
     return min + Math.random() * (max - min);
-  }
-
-  private resetearBusqueda(limpiarTermino = false): void {
-    if (limpiarTermino) {
-      this.busqueda.set('');
-    }
-
-    this.resultadosBusqueda.set([]);
-    this.busquedaEstado.set('idle');
-    this.searchRequestSubscription?.unsubscribe();
-    this.changeDetector.markForCheck();
   }
 
   private removeZoneItem(zone: ZoneKey, bodyId: string): void {

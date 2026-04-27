@@ -6,9 +6,7 @@ import {
   catchError,
   map,
   of,
-  switchMap,
   tap,
-  throwError
 } from 'rxjs';
 import { buildApiUrl } from '../../config/api.config';
 import { environment } from '../../../environments/environment';
@@ -41,6 +39,8 @@ export type LoginResponse = AuthResponse | AuthUser;
 
 export interface RegisterPayload {
   nombre?: string;
+  nombreDueño?: string;
+  nombreDueno?: string;
   nickname?: string;
   email?: string;
   password?: string;
@@ -50,16 +50,17 @@ export interface RegisterPayload {
   fechaFundacion?: string | null;
   historia?: string;
   categoriaNombre?: string;
+  categoriaId?: number;
+  subcategoriaId?: number;
+  intervaloReserva?: number;
+  horario?: unknown;
+  duenoId?: number;
+  usuarioId?: number;
   [key: string]: unknown;
 }
 
 type HydrateSessionOptions = {
   forceRemote?: boolean;
-};
-
-type CategoriaApi = {
-  id?: number;
-  nombre?: string;
 };
 
 function readStorageJson<T>(key: string): T | null {
@@ -186,23 +187,26 @@ export class AuthService {
   }
 
   registerNegocio(data: RegisterPayload): Observable<AuthResponse> {
-    return this.register(data).pipe(
-      switchMap((response) =>
-        this.obtenerUsuarioRegistrado(response).pipe(
-          switchMap((usuario) => {
-            const userId = Number(usuario?.id);
-
-            if (!Number.isFinite(userId) || userId <= 0) {
-              return throwError(() => new Error('No hemos podido identificar al dueño del negocio.'));
-            }
-
-            return this.crearNegocioParaUsuario(data, userId).pipe(
-              map(() => response)
-            );
-          })
-        )
-      )
-    );
+    return this.http
+      .post<AuthResponse>(
+        `${this.apiUrl}/auth/registro-negocio`,
+        {
+          nombreDueno:
+            data.nombreDueno?.trim() ||
+            data.nombreDueño?.trim() ||
+            data.nombre?.trim() ||
+            '',
+          nickname: data.nickname?.trim() || '',
+          email: data.email?.trim() || '',
+          password: data.password || '',
+          nombreNegocio: data.nombreNegocio?.trim() || '',
+          direccion: data.direccion?.trim() || '',
+          fechaFundacion: data.fechaFundacion ?? null,
+          historia: data.historia?.trim() || '',
+          categoriaNombre: data.categoriaNombre?.trim() || ''
+        },
+        { withCredentials: true }
+      );
   }
 
   persistSession(token: string, usuario?: AuthUser | null): void {
@@ -288,79 +292,6 @@ export class AuthService {
       catchError(() => of(null)),
       tap(() => this.clearSession())
     );
-  }
-
-  private crearNegocioParaUsuario(data: RegisterPayload, duenoId: number): Observable<unknown> {
-    const payloadBase: Record<string, unknown> = {
-      nombre: data.nombreNegocio?.trim() || '',
-      direccion: data.direccion?.trim() || '',
-      fechaFundacion: data.fechaFundacion ?? null,
-      historia: data.historia?.trim() || '',
-      duenoId
-    };
-
-    const categoriaNombre = data.categoriaNombre?.trim();
-    const primerIntento = categoriaNombre
-      ? { ...payloadBase, categoriaNombre }
-      : payloadBase;
-
-    return this.http
-      .post(`${this.apiUrl}/negocios`, primerIntento, { withCredentials: true })
-      .pipe(
-        catchError((error) => {
-          if (!categoriaNombre) {
-            return throwError(() => error);
-          }
-
-          return this.resolverCategoriaId(categoriaNombre).pipe(
-            switchMap((categoriaId) => {
-              if (!categoriaId) {
-                return throwError(() => error);
-              }
-
-              const payloadConCategoriaId = {
-                ...payloadBase,
-                categoriaId
-              };
-
-              return this.http.post(
-                `${this.apiUrl}/negocios`,
-                payloadConCategoriaId,
-                { withCredentials: true }
-              );
-            }),
-            catchError(() => throwError(() => error))
-          );
-        })
-      );
-  }
-
-  private obtenerUsuarioRegistrado(response: AuthResponse): Observable<AuthUser | null> {
-    const usuario = this.normalizarUsuario(response);
-    if (usuario?.id) {
-      return of(usuario);
-    }
-
-    return this.me().pipe(
-      map((me) => me ?? usuario)
-    );
-  }
-
-  private resolverCategoriaId(categoriaNombre: string): Observable<number | null> {
-    return this.http
-      .get<CategoriaApi[]>(buildApiUrl('/categorias'))
-      .pipe(
-        map((categorias) => {
-          const exacta = categorias.find(
-            (categoria) =>
-              categoria.nombre?.trim().toLowerCase() === categoriaNombre.trim().toLowerCase()
-          );
-
-          const categoriaId = Number(exacta?.id);
-          return Number.isFinite(categoriaId) && categoriaId > 0 ? categoriaId : null;
-        }),
-        catchError(() => of(null))
-      );
   }
 
   private clearSession(): void {

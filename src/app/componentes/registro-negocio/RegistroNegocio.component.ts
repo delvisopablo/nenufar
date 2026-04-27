@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import {
   AfterViewInit,
   Component,
@@ -20,7 +20,10 @@ import {
 } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
-import { AuthService } from '../../servicios/authService/auth.service';
+import {
+  AuthResponse,
+  AuthService,
+} from '../../servicios/authService/auth.service';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 import {
@@ -310,28 +313,43 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     const datos = this.negocioForm.getRawValue();
+
     const payload: Record<string, unknown> = {
-      nombre: datos.nombreDueño?.trim(),
+      nombreDueno: datos.nombreDueño?.trim(),
       nickname: datos.nickname?.trim(),
       email: datos.email?.trim(),
-      password: datos.password ?? '',
+      password: datos.password,
       nombreNegocio: datos.nombreNegocio?.trim(),
       direccion: datos.direccion?.trim() || '',
       fechaFundacion: datos.fechaFundacion,
       historia: datos.historia?.trim() || '',
-      categoriaNombre: datos.categoriaNombre?.trim()
+      categoriaNombre: datos.categoriaNombre?.trim() || ''
     };
 
     this.registrando.set(true);
 
     this.auth.registerNegocio(payload).subscribe({
-      next: () => {
+      next: (response: AuthResponse) => {
+        const token =
+          response.access_token ??
+          response.accessToken ??
+          response.token ??
+          null;
+        const usuario = response.usuario ?? response.user ?? response.data ?? null;
+
+        if (typeof token === 'string' && token.trim()) {
+          this.auth.persistSession(token.trim(), usuario);
+        } else if (usuario && typeof usuario === 'object') {
+          this.auth.guardarUsuario(usuario);
+        }
+
         localStorage.setItem('accesoPermitido', 'true');
         localStorage.removeItem('guestMode');
         this.registrando.set(false);
         void this.router.navigate(['/inicio']);
       },
       error: (error: unknown) => {
+        console.error('[RegistroNegocio] Error al crear negocio:', error);
         this.registrando.set(false);
         this.errorMensaje.set(this.extraerMensajeError(error));
       }
@@ -453,6 +471,24 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   private extraerMensajeError(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 409) {
+        return 'Ese email o nickname ya esta en uso. Prueba con otro distinto.';
+      }
+
+      if (error.status === 400) {
+        return 'Hay datos pendientes o invalidos. Revisa el formulario e intentalo otra vez.';
+      }
+
+      if (error.status === 401) {
+        return 'No hemos podido iniciar la sesion del nuevo negocio. Intentalo de nuevo.';
+      }
+
+      if (error.status >= 500) {
+        return 'Ahora mismo el servidor no puede completar el alta. Prueba en unos minutos.';
+      }
+    }
+
     return getUserErrorMessage(
       error,
       'No hemos podido registrar el negocio ahora mismo. Revisa los datos e inténtalo otra vez.'

@@ -65,6 +65,7 @@
   --secondary-button-bg-hover: rgba(192, 184, 122, 0.26);
   --secondary-button-border: rgba(192, 184, 122, 0.32);
   --secondary-button-text: var(--nenufar-cream-200);
+  --app-header-height: 64px;
 
   /* Compatibilidad con estilos antiguos */
   --color-primario: var(--nenufar-green-900);
@@ -133,6 +134,7 @@
 
 html {
   width: 100%;
+  height: 100%;
   min-height: 100%;
   margin: 0;
   background: var(--app-bg-base);
@@ -141,6 +143,7 @@ html {
 }
 
 body {
+  height: 100%;
   min-height: 100vh;
   margin: 0;
   background: var(--app-bg);
@@ -150,9 +153,16 @@ body {
   line-height: 1.5;
 }
 
+html.no-scroll,
+body.no-scroll {
+  height: 100%;
+  overflow: hidden;
+}
+
 app-root,
 main {
   display: block;
+  height: 100%;
   min-height: 100vh;
 }
 
@@ -176,4 +186,12 @@ a {
 ::selection {
   background: rgba(244, 92, 156, 0.22);
   color: var(--text-on-accent);
+}
+
+@media (max-width: 720px) {
+  :root,
+  :root[data-theme='garden'],
+  :root[data-theme='dark'] {
+    --app-header-height: 72px;
+  }
 }
