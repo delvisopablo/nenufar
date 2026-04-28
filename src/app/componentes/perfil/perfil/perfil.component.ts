@@ -2,9 +2,10 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { ReservaService } from '../../../servicios/reservaService/reserva.service';
 import { ResenaService } from '../../../servicios/reviewServicio/resena.service';
+import { AuthService } from '../../../servicios/authService/auth.service';
+import { UsuarioServiceService } from '../../../servicios/usuarioServicio/usuarioService.service';
 
 @Component({
   selector: 'app-perfil',
@@ -25,7 +26,8 @@ export class PerfilComponent implements OnInit {
   nuevaReserva = { fecha: '', nota: '' };
 
   constructor(
-    private http: HttpClient,
+    private authService: AuthService,
+    private usuarioService: UsuarioServiceService,
     private reservaService: ReservaService,
     private resenaService: ResenaService,
   ) {}
@@ -60,20 +62,40 @@ export class PerfilComponent implements OnInit {
 
   guardarCambios(): void {
     const user = this.usuarioLogueado();
-    if (!user) return;
+    if (!user?.id) return;
 
-    user.biografia = this.nuevaBio;
+    const negocioActualizado =
+      user.rol === 'negocio'
+        ? {
+            ...(user.negocio || {}),
+            horario: {
+              apertura: this.nuevoHorario.apertura,
+              cierre: this.nuevoHorario.cierre,
+            },
+          }
+        : user.negocio;
 
-    if (user.rol === 'negocio') {
-      user.negocio.horario = {
-        apertura: this.nuevoHorario.apertura,
-        cierre: this.nuevoHorario.cierre,
-      };
-    }
+    this.usuarioService.updatePerfil(user.id, {
+      biografia: this.nuevaBio,
+    }).subscribe({
+      next: (response) => {
+        const usuarioActualizado = {
+          ...user,
+          ...response,
+          foto_perfil:
+            response.foto_perfil ??
+            response.foto ??
+            user.foto_perfil,
+          negocio: negocioActualizado ?? response.negocios?.[0] ?? user.negocio,
+        };
 
-    localStorage.setItem('usuarioLogueado', JSON.stringify(user));
-    this.usuarioLogueado.set({ ...user });
-    this.modoEdicion.set(false);
+        this.authService.guardarUsuario(usuarioActualizado);
+        this.usuarioLogueado.set(usuarioActualizado);
+        this.nuevaBio = usuarioActualizado.biografia || '';
+        this.modoEdicion.set(false);
+      },
+      error: (err: unknown) => console.error('Error al guardar perfil:', err),
+    });
   }
 
   hacerReserva(): void {

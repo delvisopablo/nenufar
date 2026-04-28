@@ -77,13 +77,16 @@ describe('AuthService', () => {
     });
 
     req.flush({
-      access_token: 'token-login',
-      usuario: { id: 44, email: 'pablo@example.com' }
+      id: 44,
+      email: 'pablo@example.com',
+      biografia: 'Bio persistida',
+      foto_perfil: 'avatar.png'
     });
 
     expect(localStorage.getItem('token')).toBeNull();
     expect(localStorage.getItem('access_token')).toBeNull();
     expect(service.obtenerUsuario()?.id).toBe(44);
+    expect(service.obtenerUsuario()?.biografia).toBe('Bio persistida');
   });
 
   it('registerNegocio uses /auth/registro-negocio and persists only the returned user', () => {
@@ -151,12 +154,12 @@ describe('AuthService', () => {
     expect(req.request.withCredentials).toBeTrue();
     req.flush(
       {
-        usuario: { id: 99, nombre: 'Fresh user' }
+        usuario: { id: 99, nombre: 'Fresh user', biografia: 'Desde backend' }
       }
     );
 
-    expect(hydratedUser).toEqual({ id: 99, nombre: 'Fresh user' });
-    expect(service.obtenerUsuario()).toEqual({ id: 99, nombre: 'Fresh user' });
+    expect(hydratedUser).toEqual({ id: 99, nombre: 'Fresh user', biografia: 'Desde backend' });
+    expect(service.obtenerUsuario()).toEqual({ id: 99, nombre: 'Fresh user', biografia: 'Desde backend' });
 
     service.me().subscribe((user) => {
       hydratedUser = user;
