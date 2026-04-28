@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { Component } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { AppComponent } from './app.component';
 import { HeaderComponent } from './componentes/HyF/header/header.component';
 import { EstanqueComponent } from './componentes/estanque/estanque.component';
+import { AuthService } from './servicios/authService/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -20,12 +22,19 @@ class MockHeaderComponent {}
 class MockEstanqueComponent {}
 
 describe('AppComponent', () => {
+  let authServiceSpy: jasmine.SpyObj<AuthService>;
+
   beforeEach(async () => {
     localStorage.clear();
+    authServiceSpy = jasmine.createSpyObj<AuthService>('AuthService', ['me']);
+    authServiceSpy.me.and.returnValue(of(null));
 
     await TestBed.configureTestingModule({
       imports: [AppComponent],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: authServiceSpy },
+      ],
     })
       .overrideComponent(AppComponent, {
         remove: { imports: [HeaderComponent, EstanqueComponent] },
@@ -50,6 +59,7 @@ describe('AppComponent', () => {
 
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('app-estanque')).not.toBeNull();
+    expect(authServiceSpy.me).toHaveBeenCalled();
   });
 
   it('muestra la app cuando hay acceso persistido', () => {

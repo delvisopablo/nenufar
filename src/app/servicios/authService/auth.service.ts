@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
-  BehaviorSubject,
   Observable,
   catchError,
   map,
@@ -9,7 +8,6 @@ import {
   tap,
 } from 'rxjs';
 import { buildApiUrl } from '../../config/api.config';
-import { environment } from '../../../environments/environment';
 
 export interface AuthUser {
   id?: number;
@@ -125,12 +123,7 @@ function removeStorageKey(key: string): void {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly apiUrl = this.resolveApiUrl();
-  private readonly token$ = new BehaviorSubject<string | null>(null);
-
-  constructor(private http: HttpClient) {
-    this.token$.next(this.getToken());
-  }
+  constructor(private http: HttpClient) {}
 
   usuarioExiste(usuario: string, email: string): boolean {
     const registrados = readStorageJson<Array<{ nickname?: string; email?: string }>>(
@@ -145,51 +138,32 @@ export class AuthService {
   login(email: string, password: string): Observable<LoginResponse> {
     return this.http
       .post<LoginResponse>(
-        `${this.apiUrl}/auth/login`,
-        { email, password },
-        { withCredentials: true }
+        buildApiUrl('/auth/login'),
+        { email, password }
       )
       .pipe(
-        tap((response) => {
-          const token = this.extraerToken(response as AuthResponse);
-          const usuario = this.normalizarUsuario(response);
-
-          if (token) {
-            this.persistSession(token, usuario);
-          } else if (usuario) {
-            this.guardarUsuario(usuario);
-          }
-        })
+        tap((response) => this.persistirUsuarioDesdeRespuesta(response))
       );
   }
 
   register(data: RegisterPayload): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>(`${this.apiUrl}/auth/registro`, {
+      .post<AuthResponse>(buildApiUrl('/auth/registro'), {
         nombre: data.nombre,
         nickname: data.nickname,
         email: data.email,
         password: data.password,
         biografia: data.biografia
-      }, { withCredentials: true })
+      })
       .pipe(
-        tap((response) => {
-          const token = this.extraerToken(response);
-          const usuario = this.normalizarUsuario(response);
-
-          if (token) {
-            this.persistSession(token, usuario);
-          } else if (usuario) {
-            this.guardarUsuario(usuario);
-          }
-        })
+        tap((response) => this.persistirUsuarioDesdeRespuesta(response))
       );
   }
 
   registerNegocio(data: RegisterPayload): Observable<AuthResponse> {
     return this.http
       .post<AuthResponse>(
-        `${this.apiUrl}/auth/registro-negocio`,
+        buildApiUrl('/auth/registro-negocio'),
         {
           nombreDueno:
             data.nombreDueno?.trim() ||
@@ -204,30 +178,21 @@ export class AuthService {
           fechaFundacion: data.fechaFundacion ?? null,
           historia: data.historia?.trim() || '',
           categoriaNombre: data.categoriaNombre?.trim() || ''
-        },
-        { withCredentials: true }
+        }
+      )
+      .pipe(
+        tap((response) => this.persistirUsuarioDesdeRespuesta(response))
       );
   }
 
-  persistSession(token: string, usuario?: AuthUser | null): void {
-    this.guardarToken(token);
-
-    if (usuario) {
-      this.guardarUsuario(usuario);
-    }
-  }
-
   hydrateSession(options: HydrateSessionOptions = {}): Observable<AuthUser | null> {
-    const token = this.getToken();
     const usuario = this.obtenerUsuario();
-
-    this.token$.next(token);
 
     if (usuario) {
       return of(usuario);
     }
 
-    if (!options.forceRemote && !token) {
+    if (!options.forceRemote) {
       return of(null);
     }
 
@@ -237,18 +202,51 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return Boolean(this.obtenerUsuario() || this.getToken());
+    return Boolean(this.obtenerUsuario());
   }
 
   me(): Observable<AuthUser | null> {
-    return this.http.get<unknown>(`${this.apiUrl}/auth/me`, { withCredentials: true }).pipe(
+    return this.http.get<unknown>(buildApiUrl('/auth/me')).pipe(
       map((response) => this.normalizarUsuario(response)),
-      catchError(() => of(this.obtenerUsuario())),
       tap((usuario) => {
         if (usuario) {
           this.guardarUsuario(usuario);
+          return;
         }
+
+        removeStorageKey('usuarioLogueado');
+      }),
+      catchError(() => {
+        removeStorageKey('usuarioLogueado');
+        return of(null);
       })
+    );
+  }
+
+  persistirUsuarioDesdeRespuesta(response: unknown): void {
+    const usuario = this.normalizarUsuario(response);
+
+    if (usuario) {
+      this.guardarUsuario(usuario);
+    }
+  }
+
+  clearStoredUser(): void {
+    removeStorageKey('usuarioLogueado');
+  }
+
+  clearSession(): void {
+    removeStorageKey('token');
+    removeStorageKey('access_token');
+    removeStorageKey('usuarioLogueado');
+    removeStorageKey('accesoPermitido');
+    removeStorageKey('guestMode');
+  }
+
+  logout(): Observable<unknown> {
+    return this.http.post(buildApiUrl('/auth/logout'), {}).pipe(
+      catchError(() => of(null)),
+      tap(() => this.clearSession())
     );
   }
 
@@ -258,47 +256,6 @@ export class AuthService {
 
   obtenerUsuario(): AuthUser | null {
     return readStorageJson<AuthUser>('usuarioLogueado');
-  }
-
-  guardarToken(token: string): void {
-    if (typeof localStorage === 'undefined') {
-      return;
-    }
-
-    const normalizedToken = token?.trim();
-
-    if (!normalizedToken) {
-      removeStorageKey('token');
-      removeStorageKey('access_token');
-      this.token$.next(null);
-      return;
-    }
-
-    localStorage.setItem('token', normalizedToken);
-    localStorage.setItem('access_token', normalizedToken);
-    this.token$.next(normalizedToken);
-  }
-
-  getToken(): string | null {
-    if (typeof localStorage === 'undefined') {
-      return null;
-    }
-
-    return localStorage.getItem('token') || localStorage.getItem('access_token');
-  }
-
-  logout(): Observable<unknown> {
-    return this.http.post(`${this.apiUrl}/auth/logout`, {}, { withCredentials: true }).pipe(
-      catchError(() => of(null)),
-      tap(() => this.clearSession())
-    );
-  }
-
-  private clearSession(): void {
-    removeStorageKey('token');
-    removeStorageKey('access_token');
-    removeStorageKey('usuarioLogueado');
-    this.token$.next(null);
   }
 
   private normalizarUsuario(response: unknown): AuthUser | null {
@@ -313,20 +270,5 @@ export class AuthService {
     };
 
     return wrapper.usuario ?? wrapper.user ?? wrapper.data ?? (response as AuthUser);
-  }
-
-  private extraerToken(response: AuthResponse | null | undefined): string | null {
-    const token = response?.access_token ?? response?.accessToken ?? response?.token;
-    return typeof token === 'string' && token.trim() ? token.trim() : null;
-  }
-
-  private resolveApiUrl(): string {
-    const envUrl = environment.api?.trim();
-
-    if (envUrl) {
-      return envUrl.replace(/\/+$/, '');
-    }
-
-    return buildApiUrl('/api').replace(/\/+$/, '');
   }
 }

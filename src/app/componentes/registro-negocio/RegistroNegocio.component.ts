@@ -329,20 +329,7 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
     this.registrando.set(true);
 
     this.auth.registerNegocio(payload).subscribe({
-      next: (response: AuthResponse) => {
-        const token =
-          response.access_token ??
-          response.accessToken ??
-          response.token ??
-          null;
-        const usuario = response.usuario ?? response.user ?? response.data ?? null;
-
-        if (typeof token === 'string' && token.trim()) {
-          this.auth.persistSession(token.trim(), usuario);
-        } else if (usuario && typeof usuario === 'object') {
-          this.auth.guardarUsuario(usuario);
-        }
-
+      next: (_response: AuthResponse) => {
         localStorage.setItem('accesoPermitido', 'true');
         localStorage.removeItem('guestMode');
         this.registrando.set(false);

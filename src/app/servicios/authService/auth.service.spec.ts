@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   HttpTestingController,
   provideHttpClientTesting
 } from '@angular/common/http/testing';
 
 import { AuthService } from './auth.service';
+import { CredentialsInterceptor } from './credentials.interceptor';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -15,7 +16,10 @@ describe('AuthService', () => {
     localStorage.clear();
 
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(withInterceptors([CredentialsInterceptor])),
+        provideHttpClientTesting(),
+      ],
     });
 
     service = TestBed.inject(AuthService);
@@ -31,7 +35,7 @@ describe('AuthService', () => {
     expect(service).toBeTruthy();
   });
 
-  it('register uses /auth/registro and persists the returned session', () => {
+  it('register uses /auth/registro and persists only user info', () => {
     service.register({
       nombre: 'Pablo',
       nickname: 'pablo',
@@ -56,12 +60,12 @@ describe('AuthService', () => {
       usuario: { id: 21, nombre: 'Pablo', email: 'pablo@example.com' }
     });
 
-    expect(localStorage.getItem('token')).toBe('token-registro');
-    expect(localStorage.getItem('access_token')).toBe('token-registro');
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(localStorage.getItem('access_token')).toBeNull();
     expect(service.obtenerUsuario()?.id).toBe(21);
   });
 
-  it('login keeps using /auth/login and stores session data', () => {
+  it('login keeps using /auth/login and stores only the returned user', () => {
     service.login('pablo@example.com', 'secret123').subscribe();
 
     const req = httpMock.expectOne('http://localhost:3000/api/auth/login');
@@ -77,11 +81,12 @@ describe('AuthService', () => {
       usuario: { id: 44, email: 'pablo@example.com' }
     });
 
-    expect(localStorage.getItem('token')).toBe('token-login');
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(localStorage.getItem('access_token')).toBeNull();
     expect(service.obtenerUsuario()?.id).toBe(44);
   });
 
-  it('registerNegocio uses /auth/registro-negocio and persists the returned session', () => {
+  it('registerNegocio uses /auth/registro-negocio and persists only the returned user', () => {
     service.registerNegocio({
       nombreDueño: 'Paula',
       nickname: 'paula-cafe',
@@ -98,7 +103,7 @@ describe('AuthService', () => {
     expect(req.request.method).toBe('POST');
     expect(req.request.withCredentials).toBeTrue();
     expect(req.request.body).toEqual({
-      nombreDueño: 'Paula',
+      nombreDueno: 'Paula',
       nickname: 'paula-cafe',
       email: 'paula@example.com',
       password: 'secret123',
@@ -124,12 +129,68 @@ describe('AuthService', () => {
       }
     });
 
-    expect(localStorage.getItem('token')).toBe('token-negocio');
-    expect(localStorage.getItem('access_token')).toBe('token-negocio');
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(localStorage.getItem('access_token')).toBeNull();
     expect(service.obtenerUsuario()?.id).toBe(101);
     expect(service.obtenerUsuario()?.negocio).toEqual({
       id: 55,
       nombre: 'Cafe Nenufar'
     });
+  });
+
+  it('me hydrates the stored user and clears stale storage on 401', () => {
+    localStorage.setItem('usuarioLogueado', JSON.stringify({ id: 7, nombre: 'Stale' }));
+
+    let hydratedUser: unknown;
+    service.me().subscribe((user) => {
+      hydratedUser = user;
+    });
+
+    const req = httpMock.expectOne('http://localhost:3000/api/auth/me');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.withCredentials).toBeTrue();
+    req.flush(
+      {
+        usuario: { id: 99, nombre: 'Fresh user' }
+      }
+    );
+
+    expect(hydratedUser).toEqual({ id: 99, nombre: 'Fresh user' });
+    expect(service.obtenerUsuario()).toEqual({ id: 99, nombre: 'Fresh user' });
+
+    service.me().subscribe((user) => {
+      hydratedUser = user;
+    });
+
+    const unauthorizedReq = httpMock.expectOne('http://localhost:3000/api/auth/me');
+    expect(unauthorizedReq.request.withCredentials).toBeTrue();
+    unauthorizedReq.flush(
+      { message: 'Unauthorized' },
+      { status: 401, statusText: 'Unauthorized' }
+    );
+
+    expect(hydratedUser).toBeNull();
+    expect(service.obtenerUsuario()).toBeNull();
+  });
+
+  it('logout calls /auth/logout and clears local auth flags', () => {
+    localStorage.setItem('usuarioLogueado', JSON.stringify({ id: 12 }));
+    localStorage.setItem('accesoPermitido', 'true');
+    localStorage.setItem('guestMode', 'true');
+    localStorage.setItem('token', 'legacy-token');
+    localStorage.setItem('access_token', 'legacy-access-token');
+
+    service.logout().subscribe();
+
+    const req = httpMock.expectOne('http://localhost:3000/api/auth/logout');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.withCredentials).toBeTrue();
+    req.flush({});
+
+    expect(localStorage.getItem('usuarioLogueado')).toBeNull();
+    expect(localStorage.getItem('accesoPermitido')).toBeNull();
+    expect(localStorage.getItem('guestMode')).toBeNull();
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(localStorage.getItem('access_token')).toBeNull();
   });
 });

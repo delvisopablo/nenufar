@@ -84,23 +84,22 @@ function normalizeCollection<T>(response: unknown): T[] {
 @Injectable({ providedIn: 'root' })
 export class DashboardService {
   private readonly http = inject(HttpClient);
-  private readonly authOptions = { withCredentials: true };
 
   obtenerNegocio(negocioId: number): Observable<DashboardNegocio> {
     return this.http
-      .get<unknown>(buildApiUrl(`/negocios/${negocioId}`), this.authOptions)
+      .get<unknown>(buildApiUrl(`/negocios/${negocioId}`))
       .pipe(map((response) => this.normalizeNegocio(response)));
   }
 
   obtenerHorario(negocioId: number): Observable<DashboardNegocio['horario'] | null> {
     return this.http
-      .get<unknown>(buildApiUrl(`/negocios/${negocioId}/horario`), this.authOptions)
+      .get<unknown>(buildApiUrl(`/negocios/${negocioId}/horario`))
       .pipe(map((response) => this.normalizeHorario(response)));
   }
 
   obtenerResenas(negocioId: number): Observable<Array<{ puntuacion: number }>> {
     return this.http
-      .get<unknown>(buildApiUrl(`/negocios/${negocioId}/resenas`), this.authOptions)
+      .get<unknown>(buildApiUrl(`/negocios/${negocioId}/resenas`))
       .pipe(
         map((response) => normalizeCollection<any>(response)),
         map((items) =>
@@ -135,7 +134,6 @@ export class DashboardService {
 
     return this.http
       .get<unknown>(buildApiUrl(`/negocios/${negocioId}/reservas`), {
-        ...this.authOptions,
         params
       })
       .pipe(
@@ -149,7 +147,6 @@ export class DashboardService {
 
     return this.http
       .get<unknown>(buildApiUrl(`/negocios/${negocioId}/availability`), {
-        ...this.authOptions,
         params
       })
       .pipe(map((response) => this.normalizeDisponibilidad(response, fecha)));
@@ -161,8 +158,7 @@ export class DashboardService {
     return this.http
       .patch<unknown>(
         buildApiUrl(`/reservas/${reservaId}`),
-        { estado },
-        this.authOptions
+        { estado }
       )
       .pipe(map((response) => this.normalizeReserva(response)));
   }
@@ -172,7 +168,7 @@ export class DashboardService {
     payload: Partial<{ estado: EstadoReserva; nota: string; fecha: string }>
   ): Observable<DashboardReserva> {
     return this.http
-      .patch<unknown>(buildApiUrl(`/reservas/${reservaId}`), payload, this.authOptions)
+      .patch<unknown>(buildApiUrl(`/reservas/${reservaId}`), payload)
       .pipe(map((response) => this.normalizeReserva(response)));
   }
 

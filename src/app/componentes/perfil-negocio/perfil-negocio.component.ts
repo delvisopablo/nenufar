@@ -48,7 +48,6 @@ export class PerfilNegocioComponent implements OnInit {
   horasGeneradas: string[] = [];
   reservasOcupadas: { [dia: string]: string[] } = {};
   private fechasSemana: Record<string, string> = {};
-  private readonly authOptions = { withCredentials: true };
 
   constructor(
     private route: ActivatedRoute,
@@ -63,7 +62,7 @@ export class PerfilNegocioComponent implements OnInit {
     this.inicializarSemanaActual();
     this.negocioId = +id;
 
-    this.http.get(buildApiUrl(`/negocios/${id}`), this.authOptions).subscribe({
+    this.http.get(buildApiUrl(`/negocios/${id}`)).subscribe({
       next: (data: any) => {
         this.errorMensaje = '';
         this.negocio = data;
@@ -80,7 +79,7 @@ export class PerfilNegocioComponent implements OnInit {
       },
     });
 
-    this.http.get<any[]>(buildApiUrl(`/negocios/${id}/resenas`), this.authOptions).subscribe({
+    this.http.get<any[]>(buildApiUrl(`/negocios/${id}/resenas`)).subscribe({
       next: (data) => {
         this.resenas = data;
         if (data.length > 0) {
@@ -183,10 +182,7 @@ export class PerfilNegocioComponent implements OnInit {
 
     const requests = this.diasSemana.map((dia) =>
       this.http
-        .get<AvailabilityResponse>(
-          buildApiUrl(`/negocios/${this.negocioId}/availability?date=${this.fechasSemana[dia]}`),
-          this.authOptions,
-        )
+        .get<AvailabilityResponse>(buildApiUrl(`/negocios/${this.negocioId}/availability?date=${this.fechasSemana[dia]}`))
         .pipe(
           catchError((error: unknown) => {
             this.reservaError = getUserErrorMessage(error, 'No hemos podido cargar toda la disponibilidad.');
@@ -228,7 +224,7 @@ export class PerfilNegocioComponent implements OnInit {
 
   refrescarResenas(): void {
     if (!this.negocioId) return;
-    this.http.get<any[]>(buildApiUrl(`/negocios/${this.negocioId}/resenas`), this.authOptions).subscribe({
+    this.http.get<any[]>(buildApiUrl(`/negocios/${this.negocioId}/resenas`)).subscribe({
       next: (res) => {
         this.resenas = res;
         if (res.length > 0) {
@@ -253,7 +249,7 @@ export class PerfilNegocioComponent implements OnInit {
 
     const fecha = new Date(`${fechaBase}T${hora}:00`);
     this.reservaError = '';
-    this.http.post(buildApiUrl(`/negocios/${this.negocio.id}/reservas`), { fecha: fecha.toISOString() }, this.authOptions).subscribe({
+    this.http.post(buildApiUrl(`/negocios/${this.negocio.id}/reservas`), { fecha: fecha.toISOString() }).subscribe({
       next: () => {
         alert(`✅ ¡Reserva confirmada en ${this.negocio.nombre} a las ${hora}!`);
         this.recargarReservas();

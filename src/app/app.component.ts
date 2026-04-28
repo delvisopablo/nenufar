@@ -29,7 +29,7 @@ export class AppComponent implements OnInit, OnDestroy {
   readonly bloquearScroll = signal(false);
 
   ngOnInit(): void {
-    this.authService.hydrateSession()
+    this.authService.me()
       .pipe(takeUntil(this.destroy$))
       .subscribe();
     this.sincronizarAccesoPersistido();

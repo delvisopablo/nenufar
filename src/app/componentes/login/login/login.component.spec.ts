@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { ErrorObservabilityService } from '../../../core/errors/error-observability.service';
 import { httpErrorInterceptor } from '../../../core/errors/http-error.interceptor';
+import { CredentialsInterceptor } from '../../../servicios/authService/credentials.interceptor';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
 import { LoginComponent } from './login.component';
 
@@ -28,7 +29,7 @@ describe('LoginComponent', () => {
       imports: [LoginComponent],
       providers: [
         provideRouter([]),
-        provideHttpClient(withInterceptors([httpErrorInterceptor])),
+        provideHttpClient(withInterceptors([CredentialsInterceptor, httpErrorInterceptor])),
         provideHttpClientTesting(),
         { provide: ErrorObservabilityService, useValue: observability },
       ],
