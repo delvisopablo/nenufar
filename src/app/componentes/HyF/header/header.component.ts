@@ -1,13 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { NavigationEnd, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import {
   Subscription,
   catchError,
   debounceTime,
   distinctUntilChanged,
-  filter,
   firstValueFrom,
   map,
   of,
@@ -16,29 +15,37 @@ import {
   tap
 } from 'rxjs';
 import { normalizeSearchText } from '../../../core/search/trie';
+import { resolveBusinessImage } from '../../../core/negocio/negocio-visuals';
+import { AccessRequiredModalComponent } from '../../../components/shared/access-required-modal/access-required-modal.component';
+import { NenunInfoComponent } from '../../nenun-info/nenun-info.component';
+import { AuthService } from '../../../servicios/authService/auth.service';
+import { NegocioService } from '../../../servicios/negocioService/negocio.service';
 import { NegocioLite, NegocioSearchService } from '../../../servicios/buscador/negocio-search.service';
-import { HomeHeaderService, HomeHeaderPopupKind } from '../../../servicios/homeHeaderServicio/home-header.service';
 
 type SearchStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, NenunInfoComponent, AccessRequiredModalComponent],
   templateUrl: './header.component.html',
   styleUrl: './header.component.css'
 })
 export class HeaderComponent implements OnDestroy {
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
   private readonly negocioSearchService = inject(NegocioSearchService);
-  private readonly homeHeaderService = inject(HomeHeaderService);
+  private readonly negocioService = inject(NegocioService);
 
   readonly logoSrc = 'assets/imagenes/logo_nenufar.png';
+  readonly flowerSrc = 'assets/imagenes/flor_logo.png';
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly busquedaEstado = signal<SearchStatus>('idle');
   readonly resultadosBusqueda = signal<NegocioLite[]>([]);
-  readonly currentUrl = signal(this.router.url);
   readonly currentQuery = signal('');
+  readonly nenunInfoAbierto = signal(false);
+  readonly accessModalAbierto = signal(false);
+  readonly accessModalMessage = signal('Necesitas iniciar sesion para seguir negocios y guardar tus favoritos.');
   readonly sinResultadosBusqueda = computed(
     () =>
       normalizeSearchText(this.currentQuery()).length >= 2 &&
@@ -46,11 +53,6 @@ export class HeaderComponent implements OnDestroy {
   );
 
   private readonly searchSubscription: Subscription;
-  private readonly routerEventsSubscription = this.router.events
-    .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-    .subscribe((event) => {
-      this.currentUrl.set(event.urlAfterRedirects);
-    });
 
   constructor() {
     this.searchSubscription = this.searchControl.valueChanges
@@ -89,7 +91,6 @@ export class HeaderComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.searchSubscription.unsubscribe();
-    this.routerEventsSubscription.unsubscribe();
   }
 
   async buscarPrimerNegocio(): Promise<void> {
@@ -127,7 +128,23 @@ export class HeaderComponent implements OnDestroy {
     this.searchControl.setValue(negocio.nombre, { emitEvent: false });
     this.currentQuery.set(negocio.nombre);
     this.resetearBusqueda(false);
-    void this.router.navigate(['/negocio', negocio.id]);
+
+    const routeKey =
+      negocio.routeKey?.trim() ||
+      negocio.nickname?.trim() ||
+      negocio.slug?.trim();
+    if (routeKey) {
+      void this.router.navigate(['/', routeKey]);
+      return;
+    }
+
+    this.negocioService.getRouteKeyById(negocio.id).subscribe({
+      next: (resolvedRouteKey) => {
+        if (resolvedRouteKey) {
+          void this.router.navigate(['/', resolvedRouteKey]);
+        }
+      },
+    });
   }
 
   irAInicio(): void {
@@ -140,24 +157,87 @@ export class HeaderComponent implements OnDestroy {
     void this.router.navigate(['/estanque']);
   }
 
-  abrirInfo(): void {
-    void this.irAInicioYAbrirPopup('info');
+  irAMisLogros(): void {
+    this.resetearBusqueda();
+    void this.router.navigate(['/mis-logros']);
   }
 
-  abrirAyuda(): void {
-    void this.irAInicioYAbrirPopup('ayuda');
+  abrirNenunInfo(): void {
+    this.resetearBusqueda(false);
+    this.nenunInfoAbierto.set(true);
+  }
+
+  cerrarNenunInfo(): void {
+    this.nenunInfoAbierto.set(false);
   }
 
   getCategoriaNombre(negocio: NegocioLite): string {
     return negocio.categoria?.nombre || 'Negocio local';
   }
 
-  private async irAInicioYAbrirPopup(kind: HomeHeaderPopupKind): Promise<void> {
-    if (this.currentUrl() !== '/inicio') {
-      await this.router.navigate(['/inicio']);
+  getSearchMeta(negocio: NegocioLite): string {
+    const parts = [
+      negocio.routeKey ? `/${negocio.routeKey}` : negocio.nickname ? `@${negocio.nickname}` : '',
+      this.getCategoriaNombre(negocio),
+      negocio.ciudad || negocio.provincia || '',
+    ].filter(Boolean);
+
+    return parts.join(' · ');
+  }
+
+  getBusinessImage(negocio: NegocioLite): string {
+    return resolveBusinessImage(negocio);
+  }
+
+  getReviewSummary(negocio: NegocioLite): string {
+    if (negocio.reviewCount <= 0) {
+      return 'Aún sin reseñas públicas';
     }
 
-    this.homeHeaderService.requestPopup(kind);
+    const latest = negocio.latestReviews[0];
+    if (!latest) {
+      return `${negocio.reviewCount} reseña${negocio.reviewCount !== 1 ? 's' : ''}`;
+    }
+
+    return `${negocio.reviewCount} reseña${negocio.reviewCount !== 1 ? 's' : ''} · ${latest.contenidoCorto}`;
+  }
+
+  toggleSeguir(event: Event, negocio: NegocioLite): void {
+    event.stopPropagation();
+
+    if (!this.authService.isAuthenticated()) {
+      this.accessModalAbierto.set(true);
+      return;
+    }
+
+    const request$ = negocio.isFollowing
+      ? this.negocioService.dejarDeSeguirNegocio(negocio.id)
+      : this.negocioService.seguirNegocio(negocio.id);
+
+    request$.subscribe({
+      next: (response) => {
+        this.resultadosBusqueda.update((items) =>
+          items.map((item) =>
+            item.id === negocio.id
+              ? {
+                  ...item,
+                  isFollowing: !negocio.isFollowing,
+                  followersCount: Number(response.total ?? item.followersCount ?? 0) || 0,
+                }
+              : item,
+          ),
+        );
+      },
+      error: () => {
+        this.accessModalMessage.set('No hemos podido actualizar el seguimiento del negocio.');
+        this.accessModalAbierto.set(true);
+      },
+    });
+  }
+
+  irALogin(): void {
+    this.accessModalAbierto.set(false);
+    void this.router.navigate(['/login']);
   }
 
   private searchWithState(value: string) {

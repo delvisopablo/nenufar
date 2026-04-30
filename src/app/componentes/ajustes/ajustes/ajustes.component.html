@@ -1,10 +1,56 @@
 <section class="ajustes-shell">
   <div class="ajustes-card">
     <p class="ajustes-kicker">Ajustes</p>
-    <h1>Centro de ajustes</h1>
-    <p>
-      Esta pantalla está preparada para recibir cuenta, privacidad, notificaciones y ayuda
-      sin romper la nueva identidad visual de Nenúfar.
-    </p>
+    <h1>Tu perfil</h1>
+
+    <ng-container *ngIf="cargando(); else contenido">
+      <p class="status-text">Cargando tu perfil…</p>
+    </ng-container>
+
+    <ng-template #contenido>
+      <p *ngIf="errorMensaje()" class="alert alert-error">{{ errorMensaje() }}</p>
+      <p *ngIf="mensajeExito()" class="alert alert-ok">{{ mensajeExito() }}</p>
+
+      <form *ngIf="usuario()" [formGroup]="form" (ngSubmit)="guardar()" class="ajustes-form">
+        <label class="campo">
+          <span>Nombre</span>
+          <input type="text" formControlName="nombre" maxlength="80" />
+          <small class="error" *ngIf="form.controls['nombre'].touched && form.controls['nombre'].invalid">
+            El nombre es obligatorio (máximo 80 caracteres).
+          </small>
+        </label>
+
+        <div class="dos-columnas">
+          <label class="campo">
+            <span>Nickname</span>
+            <input type="text" formControlName="nickname" />
+            <small class="hint">No editable desde aquí.</small>
+          </label>
+
+          <label class="campo">
+            <span>Email</span>
+            <input type="email" formControlName="email" />
+            <small class="hint">No editable desde aquí.</small>
+          </label>
+        </div>
+
+        <label class="campo">
+          <span>Biografía</span>
+          <textarea formControlName="biografia" rows="4" maxlength="220"></textarea>
+          <small class="hint">Máximo 220 caracteres.</small>
+        </label>
+
+        <label class="campo">
+          <span>Foto (URL)</span>
+          <input type="url" formControlName="foto" maxlength="255" placeholder="https://…" />
+        </label>
+
+        <div class="acciones">
+          <button type="submit" class="btn-primary" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+          </button>
+        </div>
+      </form>
+    </ng-template>
   </div>
 </section>

@@ -5,32 +5,115 @@
   font-family: var(--font-sans);
 }
 
-:host > div {
+.page-shell {
   max-width: 64rem;
   margin: 0 auto;
   display: grid;
   gap: 1rem;
 }
 
-h2 {
+.page-header,
+form {
+  border: 1px solid var(--border-soft);
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--surface-1), var(--surface-2));
+  box-shadow: var(--shadow-soft);
+}
+
+.page-header {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1.2rem;
+}
+
+.page-kicker,
+.section-kicker {
+  margin: 0;
+  color: var(--nenufar-gold-400);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h2,
+.section-head h3 {
   margin: 0;
   font-size: clamp(1.8rem, 4vw, 2.4rem);
   letter-spacing: -0.03em;
 }
 
+.page-header p:last-child,
+.field span {
+  color: var(--text-secondary);
+}
+
 form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.loading-card,
+.form-feedback {
+  padding: 1rem 1.1rem;
+  border-radius: 22px;
   background: linear-gradient(180deg, var(--surface-1), var(--surface-2));
   border: 1px solid var(--border-soft);
-  border-radius: 24px;
-  padding: 1.25rem;
   box-shadow: var(--shadow-soft);
+}
+
+.loading-card {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.form-feedback {
+  margin: 0;
+  color: var(--accent-primary);
+}
+
+.form-section {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 24px;
+  background: var(--surface-soft);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.section-head {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.section-head h3 {
+  font-size: clamp(1.2rem, 2vw, 1.45rem);
+}
+
+.fields-grid,
+.schedule-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.field span {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.field--full {
+  grid-column: 1 / -1;
 }
 
 input,
 textarea {
+  width: 100%;
   padding: 0.88rem 0.95rem;
   border: 1px solid var(--field-border);
   border-radius: 16px;
@@ -52,6 +135,11 @@ textarea:focus {
   box-shadow: var(--focus-ring), 0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
+textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
 button {
   padding: 0.88rem 1rem;
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-hover));
@@ -61,6 +149,44 @@ button {
   font-weight: 800;
   cursor: pointer;
   transition: background-color 0.2s ease;
+}
+
+.toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: fit-content;
+  padding: 0.8rem 1rem;
+  border-radius: 18px;
+  background: rgba(126, 170, 108, 0.12);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.toggle-row input {
+  width: auto;
+  margin: 0;
+}
+
+.dias-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.dia-chip {
+  padding: 0.72rem 0.92rem;
+  border-radius: 999px;
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.dia-chip--active {
+  background: linear-gradient(135deg, rgba(126, 170, 108, 0.92), rgba(192, 184, 122, 0.94));
+  color: #15210f;
+  border-color: transparent;
 }
 
 .horario-matriz {
@@ -99,9 +225,19 @@ button {
   cursor: not-allowed;
 }
 
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 @media (min-width: 760px) {
   :host {
     padding: 1.4rem;
+  }
+
+  .fields-grid,
+  .schedule-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .fila-dia {

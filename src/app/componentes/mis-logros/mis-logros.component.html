@@ -1,0 +1,63 @@
+<section class="logros-shell">
+  <header class="logros-head">
+    <p class="kicker">Logros</p>
+    <h1>Tu progreso</h1>
+    <p class="lead">Sube de nivel desbloqueando logros con cada acción que apoya al barrio.</p>
+  </header>
+
+  @if (errorMensaje()) {
+    <div class="alert-error" role="alert">{{ errorMensaje() }}</div>
+  }
+
+  @if (cargando()) {
+    <p class="status">Cargando logros...</p>
+  } @else if (!escaleras().length) {
+    <div class="empty-state">
+      <h2>Todavía no hay progreso visible</h2>
+      <p>Cuando empieces a reseñar, comprar, reservar o seguir negocios, lo verás aquí.</p>
+    </div>
+  } @else {
+    <div class="escaleras-grid">
+      @for (esc of escaleras(); track esc.accion) {
+        <article class="escalera">
+          <div class="escalera-head">
+            <h2>{{ tituloAccion(esc.accion) }}</h2>
+            <span class="contador">{{ esc.contador }} {{ esc.accionLabel }}</span>
+          </div>
+
+          <ol class="niveles">
+            @for (n of esc.niveles; track n.id) {
+              <li
+                class="nivel"
+                [class.desbloqueado]="n.desbloqueado"
+                [class.actual]="esNivelActual(esc, n)"
+              >
+                <div class="nivel-medalla">
+                  @if (n.desbloqueado) {
+                    <span>✓</span>
+                  } @else {
+                    <span class="lock">🔒</span>
+                  }
+                </div>
+
+                <div class="nivel-info">
+                  <strong>{{ n.titulo }}</strong>
+                  <small>Llega a {{ n.umbral }} para conseguirlo</small>
+                  <span class="recompensa">+{{ n.recompensaPuntos }} pétalos</span>
+                </div>
+              </li>
+            }
+          </ol>
+
+          <div class="progreso-bar">
+            <div class="progreso-fill" [style.width.%]="porcentajeAlSiguiente(esc)"></div>
+          </div>
+
+          <p class="progreso-text">
+            {{ siguienteUmbralLabel(esc) }}
+          </p>
+        </article>
+      }
+    </div>
+  }
+</section>

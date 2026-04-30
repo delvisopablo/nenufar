@@ -1,27 +1,92 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { buildApiUrl } from '../../config/api.config';
+import { Observable, map } from 'rxjs';
+import {
+  ApiListResponse,
+  buildApiUrl,
+  extractItems,
+} from '../../config/api.config';
+
+export interface Resena {
+  id: number;
+  negocioId: number;
+  usuarioId?: number;
+  puntuacion: number;
+  contenido?: string;
+  selloNenufar?: boolean;
+  creadoEn?: string;
+  [key: string]: unknown;
+}
+
+export interface CreateResenaPayload {
+  negocioId: number;
+  puntuacion: number;
+  contenido?: string;
+  selloNenufar?: boolean;
+}
+
+export interface UpdateResenaPayload {
+  puntuacion?: number;
+  contenido?: string;
+  selloNenufar?: boolean;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class ResenaService {
-private readonly baseUrl = buildApiUrl('/resena');
+  private readonly baseUrl = buildApiUrl('/resena');
 
   constructor(private http: HttpClient) {}
 
+  // ── Lecturas existentes (no las toco) ────────────────────────────────────────
   obtenerUltimas(): Observable<any[]> {
     return this.http.get<any[]>(`${this.baseUrl}/ultimas`);
   }
 
   getMediaPorNegocio(negocioId: number): Observable<number> {
-  return this.http.get<number>(`${this.baseUrl}/media/${negocioId}`);
-}
+    return this.http.get<number>(`${this.baseUrl}/media/${negocioId}`);
+  }
 
-getResenasPorUsuario(usuarioId: number) {
-  return this.http.get<any[]>(`${this.baseUrl}/usuario/${usuarioId}`);
-}
+  getResenasPorUsuario(usuarioId: number) {
+    return this.http.get<any[]>(`${this.baseUrl}/usuario/${usuarioId}`);
+  }
 
+  // ── Nuevos métodos para CRUD completo ────────────────────────────────────────
 
+  /** GET /api/resena — todas las reseñas (global) */
+  todas(): Observable<Resena[]> {
+    return this.http
+      .get<Resena[] | ApiListResponse<Resena>>(this.baseUrl)
+      .pipe(map((response) => extractItems(response)));
+  }
+
+  /** GET /api/resena/negocio/:id */
+  porNegocio(negocioId: number): Observable<Resena[]> {
+    return this.http
+      .get<Resena[] | ApiListResponse<Resena>>(
+        `${this.baseUrl}/negocio/${negocioId}`,
+      )
+      .pipe(map((response) => extractItems(response)));
+  }
+
+  /** POST /api/resena — crear reseña (requiere auth, userId del backend) */
+  crear(payload: CreateResenaPayload): Observable<Resena> {
+    return this.http.post<Resena>(this.baseUrl, payload);
+  }
+
+  /** Alias POST /api/resenas (controller alias) */
+  crearAlias(payload: CreateResenaPayload): Observable<Resena> {
+    return this.http.post<Resena>(buildApiUrl('/resenas'), payload);
+  }
+
+  /** PATCH /api/resena/:id — actualizar reseña (solo autor) */
+  actualizar(id: number, payload: UpdateResenaPayload): Observable<Resena> {
+    return this.http.patch<Resena>(`${this.baseUrl}/${id}`, payload);
+  }
+
+  /** DELETE /api/resena/:id — eliminar reseña (solo autor) */
+  eliminar(id: number): Observable<unknown> {
+    return this.http.delete<unknown>(`${this.baseUrl}/${id}`);
+  }
 }

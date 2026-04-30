@@ -65,7 +65,7 @@
   --secondary-button-bg-hover: rgba(192, 184, 122, 0.26);
   --secondary-button-border: rgba(192, 184, 122, 0.32);
   --secondary-button-text: var(--nenufar-cream-200);
-  --app-header-height: 64px;
+  --app-header-height: 136px;
 
   /* Compatibilidad con estilos antiguos */
   --color-primario: var(--nenufar-green-900);
@@ -192,6 +192,6 @@ a {
   :root,
   :root[data-theme='garden'],
   :root[data-theme='dark'] {
-    --app-header-height: 72px;
+    --app-header-height: 118px;
   }
 }

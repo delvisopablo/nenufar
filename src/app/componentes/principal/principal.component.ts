@@ -20,9 +20,15 @@ import { Subscription } from 'rxjs';
 import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
 import { PromoMock, PROMOS_MOCK } from '../promocion/promocion/promocionesMock';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
-import { RESENAS_MOCK, ResenaMock } from './resenasMock';
 import { AuthService, AuthUser } from '../../servicios/authService/auth.service';
 import { HomeHeaderService } from '../../servicios/homeHeaderServicio/home-header.service';
+import { NegocioService } from '../../servicios/negocioService/negocio.service';
+import {
+  NegocioLite,
+  NegocioReviewSnippet,
+  NegocioSearchService,
+} from '../../servicios/buscador/negocio-search.service';
+import { resolveBusinessImage } from '../../core/negocio/negocio-visuals';
 
 type ZoneKey = 'promos' | 'resenas' | 'perfil' | 'crear';
 type LilyKind = 'promo' | 'review' | 'profile' | 'create';
@@ -47,7 +53,7 @@ type HomePopup =
   | { kind: 'info' }
   | { kind: 'ayuda' }
   | { kind: 'signin'; message: string; title: string }
-  | { kind: 'review'; lilyId: string; review: ResenaMock }
+  | { kind: 'review'; lilyId: string; business: NegocioLite }
   | { kind: 'promo'; lilyId: string; promo: PromoMock }
   | { kind: 'profile'; lilyId: string }
   | { kind: 'create'; lilyId: string };
@@ -64,7 +70,7 @@ type LilyView = {
   kind: LilyKind;
   label: string;
   promo?: PromoMock;
-  review?: ResenaMock;
+  business?: NegocioLite;
   subtitle: string;
   tone: 'fresh' | 'mustio';
   zone: ZoneKey;
@@ -158,8 +164,10 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly authService = inject(AuthService);
   private readonly homeHeaderService = inject(HomeHeaderService);
+  private readonly negocioService = inject(NegocioService);
+  private readonly negocioSearchService = inject(NegocioSearchService);
 
-  readonly freshLilyImageSrc = 'assets/imagenes/nenufar.jpeg';
+  readonly freshLilyImageSrc = 'assets/imagenes/nenufar.png';
   readonly mustioLilyImageSrc = 'assets/imagenes/nenufar_mustio.png';
 
   readonly crearResenaAbierto = signal(false);
@@ -168,7 +176,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly promociones = signal<PromoMock[]>(PROMOS_MOCK);
   readonly promoLilies = signal<LilyView[]>([]);
   readonly reviewLilies = signal<LilyView[]>([]);
-  readonly resenas = signal<ResenaMock[]>(RESENAS_MOCK);
+  readonly negociosDestacados = signal<NegocioLite[]>([]);
   readonly usuarioLogueado = signal<AuthUser | null>(null);
   readonly profileLilies = signal<LilyView[]>([]);
   readonly createLilies = signal<LilyView[]>([]);
@@ -190,13 +198,16 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    for (const resena of this.resenas()) {
-      if (!catalog.has(resena.negocioId)) {
-        catalog.set(resena.negocioId, {
-          id: resena.negocioId,
-          nombre: resena.negocioNombre,
-          categoria: 'Resenas recientes',
-          descripcion: resena.contenidoCorto
+    for (const negocio of this.negociosDestacados()) {
+      if (!catalog.has(negocio.id)) {
+        catalog.set(negocio.id, {
+          id: negocio.id,
+          nombre: negocio.nombre,
+          categoria: negocio.categoria?.nombre || 'Negocio local',
+          descripcion:
+            negocio.latestReviews[0]?.contenidoCorto ||
+            negocio.descripcion ||
+            'Perfil disponible en el estanque.'
         });
       }
     }
@@ -249,6 +260,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     this.title.setTitle('Inicio');
     this.hidratarSesionPersistida();
     this.seedZoneLilies();
+    this.cargarNegociosDestacados();
   }
 
   ngAfterViewInit(): void {
@@ -327,10 +339,9 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   abrirPerfil(): void {
     this.ocultarTooltip();
 
-    const idUsuario = this.usuarioLogueado()?.id;
-    if (idUsuario) {
+    if (this.usuarioLogueado()?.id) {
       this.schedulePopup(null);
-      void this.router.navigate(['/perfil', idUsuario]);
+      void this.router.navigate(['/perfil']);
       return;
     }
 
@@ -338,6 +349,39 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       kind: 'signin',
       title: 'Inicia sesion',
       message: 'Necesitas iniciar sesion para entrar en tu perfil y recuperar tu actividad.'
+    });
+  }
+
+  getPrimaryReview(negocio: NegocioLite): NegocioReviewSnippet | null {
+    return negocio.latestReviews[0] ?? null;
+  }
+
+  getBusinessImage(negocio: NegocioLite): string {
+    return resolveBusinessImage(negocio);
+  }
+
+  toggleSeguirNegocio(negocio: NegocioLite): void {
+    if (!this.usuarioLogueado()?.id) {
+      this.schedulePopup({
+        kind: 'signin',
+        title: 'Inicia sesion para seguir negocios',
+        message: 'Necesitas iniciar sesion para guardar este negocio en tu lista de seguidos.'
+      });
+      return;
+    }
+
+    const request$ = negocio.isFollowing
+      ? this.negocioService.dejarDeSeguirNegocio(negocio.id)
+      : this.negocioService.seguirNegocio(negocio.id);
+
+    request$.subscribe({
+      next: (response) => {
+        this.patchNegocioDestacado(negocio.id, (item) => ({
+          ...item,
+          isFollowing: !item.isFollowing,
+          followersCount: Number(response.total ?? item.followersCount ?? 0) || 0,
+        }));
+      },
     });
   }
 
@@ -393,35 +437,65 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   irANegocio(negocioId: number): void {
     this.schedulePopup(null);
-    void this.router.navigate(['/negocio', negocioId]);
+    this.navegarANegocioPorId(negocioId);
+  }
+
+  private cargarNegociosDestacados(): void {
+    this.negocioSearchService.showcase(8).subscribe({
+      next: (items) => {
+        this.negociosDestacados.set(items);
+        this.reviewLilies.set(this.takeInitialLilies('resenas'));
+        this.queueZoneSync();
+        this.changeDetector.markForCheck();
+      },
+      error: () => {
+        this.negociosDestacados.set([]);
+        this.reviewLilies.set([]);
+        this.queueZoneSync();
+        this.changeDetector.markForCheck();
+      },
+    });
   }
 
   manejarResenaCreada(respuesta: any): void {
-    const nuevaResena: ResenaMock = {
+    const negocioId = Number(respuesta?.negocioId ?? 0);
+    const review: NegocioReviewSnippet = {
       id: Number(respuesta?.id ?? Date.now()),
-      negocioId: Number(respuesta?.negocioId ?? this.businessCatalog()[0]?.id ?? 1),
-      negocioNombre: String(
-        respuesta?.negocio?.nombre ??
-          this.businessCatalog().find((item) => item.id === Number(respuesta?.negocioId))?.nombre ??
-          'Negocio local'
-      ),
       autorNombre: this.usuarioLogueado()?.nombre || 'Tu',
       puntuacion: Number(respuesta?.puntuacion ?? 5),
-      contenidoCorto: String(
-        respuesta?.contenido ?? 'Tu nueva resena ya esta flotando por el estanque.'
-      ).slice(0, 132),
       contenido: String(
         respuesta?.contenido ??
-          'Tu nueva resena ya esta flotando por el estanque y aparecera cuando vuelva a entrar en la zona.'
+          'Tu nueva reseña ya está flotando por el estanque y volverá a aparecer en el negocio.'
       ),
-      selloNenufar: Boolean(respuesta?.selloNenufar),
+      contenidoCorto: String(
+        respuesta?.contenido ?? 'Tu nueva reseña ya está flotando por el estanque.'
+      ).slice(0, 132),
       fechaISO: new Date().toISOString(),
-      lanzable: true
+      selloNenufar: Boolean(respuesta?.selloNenufar),
+      ...(this.usuarioLogueado()?.nickname ? { usuarioNickname: this.usuarioLogueado()?.nickname } : {}),
+      ...(typeof this.usuarioLogueado()?.foto === 'string' ? { usuarioFoto: this.usuarioLogueado()?.foto || undefined } : {}),
     };
 
-    this.resenas.update((items) => [nuevaResena, ...items]);
+    this.negociosDestacados.update((items) =>
+      items.map((item) =>
+        item.id === negocioId
+          ? {
+              ...item,
+              reviewCount: item.reviewCount + 1,
+              latestReviews: [review, ...item.latestReviews].slice(0, 2),
+              averageRating: Number(
+                (
+                  ((item.averageRating || 0) * item.reviewCount + review.puntuacion) /
+                  Math.max(1, item.reviewCount + 1)
+                ).toFixed(1)
+              ),
+            }
+          : item,
+      ),
+    );
     this.crearResenaAbierto.set(false);
-    this.scheduleRespawn('resenas', 220);
+    this.reviewLilies.set(this.takeInitialLilies('resenas'));
+    this.queueZoneSync();
     this.changeDetector.markForCheck();
   }
 
@@ -531,7 +605,17 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   verPromo(promo: PromoMock): void {
     this.schedulePopup(null);
-    void this.router.navigate(['/negocio', promo.negocioId]);
+    this.navegarANegocioPorId(promo.negocioId);
+  }
+
+  private navegarANegocioPorId(negocioId: number): void {
+    this.negocioService.getRouteKeyById(negocioId).subscribe({
+      next: (routeKey) => {
+        if (routeKey) {
+          void this.router.navigate(['/', routeKey]);
+        }
+      },
+    });
   }
 
   private abrirPopupDesdeNenufar(item: LilyView): void {
@@ -542,8 +626,8 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         break;
       case 'review':
-        if (item.review) {
-          this.schedulePopup({ kind: 'review', lilyId: item.id, review: item.review });
+        if (item.business) {
+          this.schedulePopup({ kind: 'review', lilyId: item.id, business: item.business });
         }
         break;
       case 'profile':
@@ -553,6 +637,39 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         this.schedulePopup({ kind: 'create', lilyId: item.id });
         break;
     }
+  }
+
+  private patchNegocioDestacado(
+    negocioId: number,
+    updater: (item: NegocioLite) => NegocioLite,
+  ): void {
+    this.negociosDestacados.update((items) =>
+      items.map((item) => (item.id === negocioId ? updater(item) : item)),
+    );
+
+    const activePopup = this.popup();
+    if (activePopup?.kind === 'review' && activePopup.business.id === negocioId) {
+      const nextBusiness = this.negociosDestacados().find((item) => item.id === negocioId);
+      if (nextBusiness) {
+        this.schedulePopup({
+          kind: 'review',
+          lilyId: activePopup.lilyId,
+          business: nextBusiness,
+        });
+      }
+    }
+
+    this.reviewLilies.update((items) =>
+      items.map((item) =>
+        item.business?.id === negocioId
+          ? {
+              ...item,
+              business: this.negociosDestacados().find((candidate) => candidate.id === negocioId) ?? item.business,
+            }
+          : item,
+      ),
+    );
+    this.changeDetector.markForCheck();
   }
 
   private animate = (timestamp: number): void => {
@@ -624,11 +741,14 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       };
     }
 
-    if (item.kind === 'review' && item.review) {
+    if (item.kind === 'review' && item.business) {
+      const latest = item.business.latestReviews[0];
       return {
         tone: 'review',
-        title: item.review.negocioNombre,
-        text: `${item.review.autorNombre} · ${this.getEstrellas(item.review.puntuacion)} · ${item.review.contenidoCorto}`
+        title: item.business.nombre,
+        text: latest
+          ? `${latest.autorNombre} · ${this.getEstrellas(latest.puntuacion)} · ${latest.contenidoCorto}`
+          : `${item.business.categoria?.nombre || 'Negocio local'} · Disponible en el estanque`
       };
     }
 
@@ -770,7 +890,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         return this.createPromoLily(promo);
       }
       case 'resenas': {
-        const pool = this.resenas();
+        const pool = this.negociosDestacados();
         if (!pool.length) {
           return null;
         }
@@ -811,19 +931,23 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
-  private createReviewLily(review: ResenaMock): LilyView {
+  private createReviewLily(business: NegocioLite): LilyView {
     return {
-      id: `review-${review.id}-${++this.lilyInstanceCounter}`,
+      id: `review-${business.id}-${++this.lilyInstanceCounter}`,
       zone: 'resenas',
       kind: 'review',
-      label: review.negocioNombre,
-      subtitle: `${review.autorNombre} · ${this.getEstrellas(review.puntuacion)}`,
-      review,
-      tone: review.puntuacion >= 3 ? 'fresh' : 'mustio'
+      label: business.nombre,
+      subtitle: `${business.categoria?.nombre || 'Negocio local'} · ${business.reviewCount} reseña${business.reviewCount !== 1 ? 's' : ''}`,
+      business,
+      tone: business.averageRating >= 3 || business.reviewCount === 0 ? 'fresh' : 'mustio'
     };
   }
 
   getLilyImage(item: LilyView): string {
+    if (item.kind === 'review' && item.business) {
+      return resolveBusinessImage(item.business);
+    }
+
     return item.tone === 'mustio' ? this.mustioLilyImageSrc : this.freshLilyImageSrc;
   }
 
@@ -836,7 +960,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.sessionHydrationSubscription?.unsubscribe();
-    this.sessionHydrationSubscription = this.authService.hydrateSession({ forceRemote: true }).subscribe({
+    this.sessionHydrationSubscription = this.authService.hydrateSession({ forceRemote: false }).subscribe({
       next: (usuario) => this.aplicarUsuarioHydratado(usuario),
       error: () => this.aplicarUsuarioHydratado(null)
     });
@@ -870,12 +994,12 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private fallbackRadiusForZone(zone: ZoneKey): number {
     switch (zone) {
       case 'promos':
-        return 64;
+        return 68;
       case 'resenas':
         return 58;
       case 'perfil':
       case 'crear':
-        return 72;
+        return 76;
     }
   }
 

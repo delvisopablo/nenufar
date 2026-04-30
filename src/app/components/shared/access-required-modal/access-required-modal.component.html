@@ -1,0 +1,28 @@
+@if (open) {
+  <div class="access-modal-backdrop" (click)="onBackdropClick($event)">
+    <section
+      class="access-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="access-required-title"
+      (click)="$event.stopPropagation()"
+    >
+      <button type="button" class="access-close" (click)="closed.emit()" aria-label="Cerrar">
+        ×
+      </button>
+
+      <p class="access-kicker">Nenufar</p>
+      <h2 id="access-required-title">{{ title }}</h2>
+      <p class="access-copy">{{ message }}</p>
+
+      <div class="access-actions">
+        <button type="button" class="access-primary" (click)="loginRequested.emit()">
+          Ir a login
+        </button>
+        <button type="button" class="access-secondary" (click)="closed.emit()">
+          Cerrar
+        </button>
+      </div>
+    </section>
+  </div>
+}

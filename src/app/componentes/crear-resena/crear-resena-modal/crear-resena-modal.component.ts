@@ -1,17 +1,25 @@
 import { Component, Input, Output, EventEmitter, signal, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
+import { finalize } from 'rxjs';
 import {
   ApiListResponse,
   buildApiUrl,
   extractItems,
 } from '../../../config/api.config';
 import { getUserErrorMessage } from '../../../core/errors/error-parser';
+import { SKIP_HTTP_ERROR_HANDLING } from '../../../core/errors/http-error.interceptor';
+import { resolveBusinessImage } from '../../../core/negocio/negocio-visuals';
 
 interface NegocioOption {
   id: number;
   nombre: string;
+  foto?: string;
+  fotoPerfil?: string;
+  fotoPortada?: string;
+  nenufarAsset?: string;
+  nenufarKey?: string;
 }
 
 interface UsuarioActual {
@@ -34,6 +42,11 @@ interface CrearResenaPayload {
   styleUrl: './crear-resena-modal.component.css'
 })
 export class CrearResenaModalComponent implements OnInit {
+  private readonly silentRequestContext = new HttpContext().set(
+    SKIP_HTTP_ERROR_HANDLING,
+    true,
+  );
+
   // @Output() cerrarModal = new EventEmitter<void>();
   @Output() resenaCreada = new EventEmitter<unknown>();
   @Input() visible = false;
@@ -54,6 +67,7 @@ export class CrearResenaModalComponent implements OnInit {
   mostrarLista = signal(false);
   cargandoNegocios = signal(false);
   errorMensaje = signal('');
+  enviando = signal(false);
   
 
   constructor(private fb: FormBuilder, private http: HttpClient) {
@@ -66,7 +80,6 @@ export class CrearResenaModalComponent implements OnInit {
   }
 
   ngOnInit() {
-    // this.autenticarToken();
     this.cargandoNegocios.set(true);
     this.http.get<ApiListResponse<NegocioOption>>(buildApiUrl('/negocios')).subscribe({
       next: (data) => {
@@ -81,6 +94,10 @@ export class CrearResenaModalComponent implements OnInit {
     });
 
    
+  }
+
+  getNegocioImage(negocio: NegocioOption): string {
+    return resolveBusinessImage(negocio);
   }
 
 
@@ -110,14 +127,6 @@ cerrar() {
   setTimeout(() => this.mostrarLista.set(false), 200);
 }
 
-
-//  const resena = {
-//   negocioId: this.negocioId,
-//   usuarioId: this.usuarioActual.id,
-//   texto: this.textoResena,
-//   puntuacion: this.puntuacion
-// };
-
  toggleSello() {
     const actual = this.form.controls['selloNenufar'].value;
     this.form.controls['selloNenufar'].setValue(!actual);
@@ -127,6 +136,10 @@ cerrar() {
 
  enviar() {
     this.errorMensaje.set('');
+
+    if (this.enviando()) {
+      return;
+    }
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -152,7 +165,13 @@ cerrar() {
         usuarioId: this.usuarioActual.id
       };
 
-      this.http.post(buildApiUrl('/resena'), reseña).subscribe({
+      this.enviando.set(true);
+
+      this.http.post(buildApiUrl('/resena'), reseña, {
+        context: this.silentRequestContext,
+      }).pipe(
+        finalize(() => this.enviando.set(false)),
+      ).subscribe({
         next: (res) => {
           alert('Genial!! Tu reseña se ha guardado.')
           this.resenaCreada.emit(res);
@@ -160,6 +179,16 @@ cerrar() {
           this.negocioIdSeleccionado = null;
         },
         error: (error: unknown) => {
+          if (error instanceof HttpErrorResponse && error.status === 409) {
+            this.errorMensaje.set(
+              getUserErrorMessage(
+                error,
+                'Ya has dejado una reseña para este negocio.',
+              ) || 'Ya has dejado una reseña para este negocio.',
+            );
+            return;
+          }
+
           this.errorMensaje.set(
             getUserErrorMessage(error, 'No hemos podido guardar la reseña.')
           );

@@ -834,7 +834,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     );
     this.originalTexture = await this.loadPadTexture(
-      'assets/imagenes/nenufar.jpeg',
+      'assets/imagenes/nenufar.png',
       {
         backgroundMode: 'remove-white-background',
         fallbackColors: {

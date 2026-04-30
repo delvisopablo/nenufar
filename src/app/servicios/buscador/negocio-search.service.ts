@@ -1,30 +1,77 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+import { Injectable, inject } from '@angular/core';
 import {
-  ApiListResponse,
-  buildApiUrl,
-  extractItems
-} from '../../config/api.config';
-import { TrieIndex, normalizeSearchText } from '../../core/search/trie';
+  Observable,
+  catchError,
+  forkJoin,
+  map,
+  of,
+  shareReplay,
+  switchMap,
+} from 'rxjs';
+import { normalizeSearchText } from '../../core/search/trie';
+import {
+  NegocioFollowersResponse,
+  NegocioService,
+  NegocioSummary,
+  resolveNegocioRouteKey,
+} from '../negocioService/negocio.service';
+import { Resena, ResenaService } from '../reviewServicio/resena.service';
+
+export type NegocioReviewSnippet = {
+  id: number;
+  autorNombre: string;
+  contenido: string;
+  contenidoCorto: string;
+  fechaISO: string;
+  puntuacion: number;
+  selloNenufar: boolean;
+  usuarioNickname?: string;
+  usuarioFoto?: string;
+};
 
 export type NegocioLite = {
   id: number;
   nombre: string;
+  slug?: string;
   nickname?: string;
   categoria?: { nombre: string };
+  ciudad?: string;
+  provincia?: string;
+  foto?: string;
+  fotoPerfil?: string;
+  fotoPortada?: string;
+  nenufarAsset?: string;
+  nenufarKey?: string;
+  descripcion?: string;
+  verificado?: boolean;
+  routeKey?: string;
+  reviewCount: number;
+  averageRating: number;
+  latestReviews: NegocioReviewSnippet[];
+  isFollowing: boolean;
+  followersCount: number;
 };
+
+type ReviewsByBusiness = Map<number, NegocioReviewSnippet[]>;
 
 @Injectable({ providedIn: 'root' })
 export class NegocioSearchService {
-  private readonly cache = new Map<string, NegocioLite[]>();
-  private readonly itemsById = new Map<number, NegocioLite>();
-  private readonly trie = new TrieIndex();
-  private readonly indexedKeysById = new Map<number, Set<string>>();
-  private readonly backendLimit = 20;
+  private readonly negocioService = inject(NegocioService);
+  private readonly resenaService = inject(ResenaService);
+  private readonly resultLimit = 6;
+  private readonly showcaseLimit = 8;
+  private readonly detailCache = new Map<number, Observable<NegocioSummary | null>>();
 
-  constructor(private readonly http: HttpClient) {}
+  private readonly catalogo$ = this.negocioService.getNegocios().pipe(
+    catchError(() => of([])),
+    shareReplay(1),
+  );
+
+  private readonly reviewsByBusiness$ = this.resenaService.todas().pipe(
+    map((reviews) => this.groupReviewsByBusiness(reviews)),
+    catchError(() => of(new Map<number, NegocioReviewSnippet[]>())),
+    shareReplay(1),
+  );
 
   search(prefix: string): Observable<NegocioLite[]> {
     const normalized = normalizeSearchText(prefix);
@@ -33,166 +80,206 @@ export class NegocioSearchService {
       return of([]);
     }
 
-    const exactCache = this.cache.get(normalized);
-    if (exactCache) {
-      return of(exactCache.slice(0, this.backendLimit));
-    }
-
-    const localResults = this.queryLocal(normalized, this.backendLimit);
-    if (normalized.length < 2) {
-      return of(localResults);
-    }
-
-    const cachedParent = this.findClosestCachedPrefix(normalized);
-    if (cachedParent && cachedParent.results.length < this.backendLimit) {
-      this.cache.set(normalized, localResults);
-      return of(localResults);
-    }
-
-    if (localResults.length >= this.backendLimit) {
-      this.cache.set(normalized, localResults);
-      return of(localResults);
-    }
-
-    return this.fetchRemote(normalized).pipe(
-      map((results) => {
-        const merged = this.mergeResults(localResults, results).slice(0, this.backendLimit);
-        this.cache.set(normalized, merged);
-        return merged;
-      }),
-      catchError(() => of(localResults))
+    return this.catalogo$.pipe(
+      map((items) => items.filter((item) => this.matches(item, normalized)).slice(0, this.resultLimit)),
+      switchMap((items) => this.enrichSummaries(items)),
     );
   }
 
-  private fetchRemote(prefix: string): Observable<NegocioLite[]> {
-    return this.http
-      .get<ApiListResponse<unknown>>(buildApiUrl('/negocios'), {
-        params: {
-          q: prefix,
-          limit: String(this.backendLimit)
-        }
-      })
-      .pipe(
-        map((response) => extractItems(response)),
-        map((items) =>
-          items
-            .map((item) => this.normalizeNegocio(item))
-            .filter((item): item is NegocioLite => item !== null)
-        ),
-        tap((results) => this.indexResults(results))
-      );
+  showcase(limit = this.showcaseLimit): Observable<NegocioLite[]> {
+    return this.catalogo$.pipe(
+      map((items) => items.slice(0, limit)),
+      switchMap((items) => this.enrichSummaries(items)),
+    );
   }
 
-  private indexResults(results: NegocioLite[]): void {
-    for (const item of results) {
-      this.itemsById.set(item.id, item);
+  private enrichSummaries(items: NegocioSummary[]): Observable<NegocioLite[]> {
+    if (!items.length) {
+      return of([]);
+    }
 
-      let indexedKeys = this.indexedKeysById.get(item.id);
-      if (!indexedKeys) {
-        indexedKeys = new Set<string>();
-        this.indexedKeysById.set(item.id, indexedKeys);
+    return forkJoin({
+      details: forkJoin(items.map((item) => this.getDetail(item))),
+      followers: forkJoin(items.map((item) => this.getFollowers(item))),
+      reviewsByBusiness: this.reviewsByBusiness$,
+    }).pipe(
+      map(({ details, followers, reviewsByBusiness }) =>
+        items.map((item, index) => {
+          const merged = {
+            ...item,
+            ...(details[index] ?? {}),
+          };
+          const reviews = reviewsByBusiness.get(item.id) ?? [];
+          return this.toLite(merged, reviews, followers[index]);
+        }),
+      ),
+    );
+  }
+
+  private getDetail(item: NegocioSummary): Observable<NegocioSummary | null> {
+    const existing = this.detailCache.get(item.id);
+    if (existing) {
+      return existing;
+    }
+
+    // TODO(backend): ampliar GET /negocios para exponer ciudad, imagen, slug/nickname publico
+    // y contadores de reseñas/seguidores. Mientras tanto enriquecemos solo los negocios visibles
+    // con GET /negocios/:id para no romper buscador ni estanque.
+    const request$ = this.negocioService.getNegocioById(item.id).pipe(
+      catchError(() => of(item)),
+      shareReplay(1),
+    );
+    this.detailCache.set(item.id, request$);
+    return request$;
+  }
+
+  private getFollowers(item: NegocioSummary): Observable<NegocioFollowersResponse> {
+    return this.negocioService.getSeguidoresNegocio(item.id).pipe(
+      catchError(() => of(this.emptyFollowers(item))),
+    );
+  }
+
+  private groupReviewsByBusiness(reviews: Resena[]): ReviewsByBusiness {
+    const grouped = new Map<number, NegocioReviewSnippet[]>();
+
+    const normalized = [...reviews]
+      .map((item) => this.toReviewSnippet(item))
+      .filter((item): item is (NegocioReviewSnippet & { negocioId: number }) => item !== null)
+      .sort((left, right) => right.fechaISO.localeCompare(left.fechaISO));
+
+    for (const review of normalized) {
+      if (!grouped.has(review.negocioId)) {
+        grouped.set(review.negocioId, []);
       }
 
-      for (const key of this.getIndexKeys(item)) {
-        if (indexedKeys.has(key)) {
-          continue;
-        }
-
-        this.trie.insert(key, item.id);
-        indexedKeys.add(key);
-      }
-    }
-  }
-
-  private getIndexKeys(item: NegocioLite): string[] {
-    return [item.nombre, item.nickname ?? '']
-      .map((value) => normalizeSearchText(value))
-      .filter(Boolean);
-  }
-
-  private queryLocal(prefix: string, limit: number): NegocioLite[] {
-    const ids = this.trie.query(prefix, Math.max(limit * 2, limit));
-    const results: NegocioLite[] = [];
-
-    for (const id of ids) {
-      const item = this.itemsById.get(id);
-      if (!item || !this.matchesPrefix(item, prefix)) {
-        continue;
-      }
-
-      results.push(item);
-      if (results.length >= limit) {
-        break;
-      }
+      grouped.get(review.negocioId)?.push({
+        id: review.id,
+        autorNombre: review.autorNombre,
+        contenido: review.contenido,
+        contenidoCorto: review.contenidoCorto,
+        fechaISO: review.fechaISO,
+        puntuacion: review.puntuacion,
+        selloNenufar: review.selloNenufar,
+        ...(review.usuarioNickname ? { usuarioNickname: review.usuarioNickname } : {}),
+        ...(review.usuarioFoto ? { usuarioFoto: review.usuarioFoto } : {}),
+      });
     }
 
-    return results;
+    return grouped;
   }
 
-  private matchesPrefix(item: NegocioLite, prefix: string): boolean {
-    const normalizedPrefix = normalizeSearchText(prefix);
-    if (!normalizedPrefix) {
-      return false;
-    }
-
-    return this.getIndexKeys(item).some((key) => key.startsWith(normalizedPrefix));
-  }
-
-  private mergeResults(localResults: NegocioLite[], remoteResults: NegocioLite[]): NegocioLite[] {
-    const merged = new Map<number, NegocioLite>();
-
-    for (const item of localResults) {
-      merged.set(item.id, item);
-    }
-
-    for (const item of remoteResults) {
-      merged.set(item.id, item);
-    }
-
-    return Array.from(merged.values());
-  }
-
-  private findClosestCachedPrefix(prefix: string): { prefix: string; results: NegocioLite[] } | null {
-    for (let length = prefix.length - 1; length >= 2; length -= 1) {
-      const candidate = prefix.slice(0, length);
-      const results = this.cache.get(candidate);
-
-      if (results) {
-        return { prefix: candidate, results };
-      }
-    }
-
-    return null;
-  }
-
-  private normalizeNegocio(item: unknown): NegocioLite | null {
-    if (!item || typeof item !== 'object') {
+  private toReviewSnippet(review: Resena): (NegocioReviewSnippet & { negocioId: number }) | null {
+    const negocioId = Number(review.negocioId);
+    if (!Number.isFinite(negocioId) || negocioId <= 0) {
       return null;
     }
 
-    const negocio = item as {
-      id?: number | string;
-      nombre?: string;
-      nickname?: string;
-      categoria?: { nombre?: string } | string;
-      categoriaNombre?: string;
-    };
+    const usuario = (review['usuario'] ?? null) as
+      | {
+          nombre?: string;
+          autorNombre?: string;
+          nickname?: string;
+          foto?: string;
+        }
+      | null;
 
-    const id = Number(negocio.id);
-    if (!Number.isFinite(id) || id <= 0) {
-      return null;
-    }
-
-    const categoriaNombre =
-      typeof negocio.categoria === 'string'
-        ? negocio.categoria
-        : negocio.categoria?.nombre || negocio.categoriaNombre;
+    const contenido = String(review.contenido ?? review['comentario'] ?? '').trim();
+    const autorNombre =
+      usuario?.autorNombre?.trim() ||
+      usuario?.nombre?.trim() ||
+      String(review['autorNombre'] ?? '').trim() ||
+      'Cliente de Nenúfar';
+    const fechaISO =
+      String(review.creadoEn ?? review['fecha'] ?? new Date(0).toISOString()) || new Date(0).toISOString();
 
     return {
-      id,
-      nombre: negocio.nombre?.trim() || `Negocio ${id}`,
-      ...(negocio.nickname?.trim() ? { nickname: negocio.nickname.trim() } : {}),
-      ...(categoriaNombre?.trim() ? { categoria: { nombre: categoriaNombre.trim() } } : {})
+      negocioId,
+      id: Number(review.id ?? 0) || Date.now(),
+      autorNombre,
+      contenido,
+      contenidoCorto: contenido.length > 132 ? `${contenido.slice(0, 129)}...` : contenido,
+      fechaISO,
+      puntuacion: Number(review.puntuacion ?? 0) || 0,
+      selloNenufar: Boolean(review.selloNenufar),
+      ...(usuario?.nickname?.trim() ? { usuarioNickname: usuario.nickname.trim() } : {}),
+      ...(usuario?.foto?.trim() ? { usuarioFoto: usuario.foto.trim() } : {}),
+    };
+  }
+
+  private matches(item: NegocioSummary, normalized: string): boolean {
+    const categoriaNombre =
+      typeof item.categoria === 'string' ? item.categoria : item.categoria?.nombre;
+
+    return [
+      item.nombre,
+      item.nickname,
+      item.slug,
+      resolveNegocioRouteKey(item),
+      item.ciudad,
+      item.provincia,
+      categoriaNombre,
+      item.direccion,
+    ]
+      .map((value) => normalizeSearchText(value ?? ''))
+      .some((value) => value.includes(normalized));
+  }
+
+  private emptyFollowers(item: NegocioSummary): NegocioFollowersResponse {
+    return {
+      negocio: {
+        id: item.id,
+        nombre: item.nombre,
+        ...(item.slug ? { slug: item.slug } : {}),
+      },
+      total: item.followersCount ?? 0,
+      actorSiguiendo: Boolean(item.isFollowing ?? item.isFollowedByMe),
+      items: [],
+    };
+  }
+
+  private toLite(
+    item: NegocioSummary,
+    reviews: NegocioReviewSnippet[],
+    followers: NegocioFollowersResponse,
+  ): NegocioLite {
+    const categoriaNombre =
+      typeof item.categoria === 'string' ? item.categoria : item.categoria?.nombre;
+    const averageRating =
+      typeof item.mediaResenas === 'number'
+        ? item.mediaResenas
+        : reviews.length
+          ? Number(
+              (reviews.reduce((acc, review) => acc + review.puntuacion, 0) / reviews.length).toFixed(1),
+            )
+          : 0;
+
+    return {
+      id: item.id,
+      nombre: item.nombre,
+      ...(item.slug?.trim() ? { slug: item.slug.trim() } : {}),
+      ...(item.nickname?.trim() ? { nickname: item.nickname.trim() } : {}),
+      ...(item.ciudad?.trim() ? { ciudad: item.ciudad.trim() } : {}),
+      ...(item.provincia?.trim() ? { provincia: item.provincia.trim() } : {}),
+      ...(categoriaNombre?.trim() ? { categoria: { nombre: categoriaNombre.trim() } } : {}),
+      ...(item.descripcionCorta?.trim()
+        ? { descripcion: item.descripcionCorta.trim() }
+        : item.descripcion?.trim()
+          ? { descripcion: item.descripcion.trim() }
+          : item.historia?.trim()
+            ? { descripcion: item.historia.trim() }
+            : {}),
+      ...(item.foto?.trim() ? { foto: item.foto.trim() } : {}),
+      ...(item.fotoPerfil?.trim() ? { fotoPerfil: item.fotoPerfil.trim() } : {}),
+      ...(item.fotoPortada?.trim() ? { fotoPortada: item.fotoPortada.trim() } : {}),
+      ...(item.nenufarAsset?.trim() ? { nenufarAsset: item.nenufarAsset.trim() } : {}),
+      ...(item.nenufarKey?.trim() ? { nenufarKey: item.nenufarKey.trim() } : {}),
+      ...(resolveNegocioRouteKey(item) ? { routeKey: resolveNegocioRouteKey(item) ?? undefined } : {}),
+      ...(typeof item.verificado === 'boolean' ? { verificado: item.verificado } : {}),
+      reviewCount: item.resenasCount ?? reviews.length,
+      averageRating,
+      latestReviews: reviews.slice(0, 2),
+      isFollowing: Boolean(item.isFollowing ?? item.isFollowedByMe ?? followers.actorSiguiendo),
+      followersCount: Number(followers.total ?? item.followersCount ?? 0) || 0,
     };
   }
 }

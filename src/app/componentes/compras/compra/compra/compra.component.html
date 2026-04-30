@@ -1,1 +1,35 @@
-<p>compra works!</p>
+<section class="compras-shell">
+  <div class="compras-card">
+    <p class="compras-kicker">Mis compras</p>
+    <h1>Tu historial</h1>
+
+    <ng-container *ngIf="cargando(); else listaTpl">
+      <p class="status">Cargando tus compras…</p>
+    </ng-container>
+
+    <ng-template #listaTpl>
+      <p *ngIf="errorMensaje()" class="alert alert-error">{{ errorMensaje() }}</p>
+
+      <ng-container *ngIf="!errorMensaje()">
+        <div *ngIf="items().length === 0" class="empty">
+          <p>Aún no tienes compras registradas.</p>
+        </div>
+
+        <ul *ngIf="items().length > 0" class="lista-compras">
+          <li *ngFor="let c of items()" class="compra-item">
+            <a [routerLink]="['/compras', c.id]" class="compra-link">
+              <div class="compra-line">
+                <span class="compra-id">Compra #{{ c.id }}</span>
+                <span class="compra-total">{{ formatTotal(c) }}</span>
+              </div>
+              <div class="compra-meta">
+                <span *ngIf="c['creadoEn']" class="meta-fecha">{{ formatFecha(c['creadoEn']) }}</span>
+                <span *ngIf="c.estado" class="meta-estado">{{ c.estado }}</span>
+              </div>
+            </a>
+          </li>
+        </ul>
+      </ng-container>
+    </ng-template>
+  </div>
+</section>

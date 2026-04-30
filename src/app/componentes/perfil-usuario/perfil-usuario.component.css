@@ -1,0 +1,373 @@
+:host {
+  display: block;
+  min-height: 100%;
+  padding: 1.25rem clamp(1rem, 4vw, 2.5rem) 3rem;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  background: var(--bg-base, #0b2d3f);
+}
+
+.perfil-root {
+  max-width: 52rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.perfil-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--secondary-button-border);
+  background: var(--secondary-button-bg);
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.edit-btn,
+.save-btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  border: 0;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-hover));
+  color: var(--text-on-accent);
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.hero-card,
+.stats-band,
+.profile-section {
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--surface-1), var(--surface-2));
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+.hero-card {
+  overflow: hidden;
+}
+
+.hero-cover {
+  position: relative;
+  width: 100%;
+  height: clamp(120px, 22vw, 210px);
+  background:
+    radial-gradient(circle at top right, rgba(240, 145, 183, 0.18), transparent 32%),
+    linear-gradient(135deg, rgba(18, 133, 106, 0.92), rgba(11, 69, 95, 0.96));
+}
+
+.hero-cover__img,
+.hero-cover__overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.hero-cover__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-cover__overlay {
+  background: linear-gradient(to bottom, transparent 30%, rgba(9, 32, 42, 0.82) 100%);
+}
+
+.hero-content {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 0 1.5rem 1.5rem;
+  margin-top: -2.6rem;
+  position: relative;
+}
+
+.avatar-ring {
+  flex: 0 0 auto;
+  width: clamp(5rem, 10vw, 7rem);
+  height: clamp(5rem, 10vw, 7rem);
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--accent-primary), rgba(157, 191, 255, 0.6));
+}
+
+.hero-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-3);
+}
+
+.hero-body {
+  flex: 1;
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.hero-name-stack {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.hero-name,
+.section-title {
+  margin: 0;
+}
+
+.hero-name {
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.hero-nick,
+.empty-state,
+.review-date,
+.review-text,
+.review-negocio,
+.achievement-card span,
+.metric-card span,
+.reserva-fecha,
+.reserva-nota {
+  color: var(--text-secondary);
+}
+
+.follow-btn {
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  border: 0;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-hover));
+  color: var(--text-on-accent);
+  font-weight: 800;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.hero-bio {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  border-left: 3px solid var(--nenufar-gold-400);
+  background: var(--surface-soft);
+  line-height: 1.65;
+}
+
+.bio-editor {
+  width: 100%;
+  min-height: 6rem;
+  padding: 0.8rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-soft);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.meta-chip--gold {
+  color: var(--nenufar-gold-400);
+}
+
+.meta-chip--role {
+  color: #9dbfff;
+  text-transform: uppercase;
+}
+
+.stats-band {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+}
+
+.stat-item {
+  flex: 1;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+}
+
+.stat-num {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 2.5rem;
+  background: var(--border-soft);
+}
+
+.profile-section {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.4rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.review-card,
+.achievement-card,
+.metric-card,
+.reserva-card {
+  border-radius: 20px;
+  background: var(--surface-soft);
+  border: 1px solid var(--secondary-button-border);
+}
+
+.review-card,
+.reserva-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem 1.1rem;
+}
+
+.review-card-header,
+.review-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.review-text {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.review-negocio {
+  text-decoration: none;
+}
+
+.nenufar-seal {
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(192, 184, 122, 0.14);
+  color: var(--nenufar-gold-400);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.achievement-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.achievement-card,
+.metric-card {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem;
+}
+
+.achievement-card strong,
+.metric-card strong {
+  font-size: 1rem;
+}
+
+.reserva-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.reserva-info {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.estado-tag {
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+@media (max-width: 720px) {
+  .hero-content {
+    flex-direction: column;
+    padding: 0 1rem 1.2rem;
+    margin-top: -2rem;
+  }
+
+  .stats-band {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .name-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stat-divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  .reserva-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

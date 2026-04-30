@@ -1,0 +1,109 @@
+:host {
+  display: contents;
+}
+
+.access-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(4, 17, 14, 0.56);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.access-modal {
+  position: relative;
+  width: min(100%, 28rem);
+  padding: 1.45rem 1.35rem 1.25rem;
+  border-radius: 24px;
+  background: linear-gradient(165deg, #f3fbf5, #dcf2e0 48%, #d4ece4);
+  border: 1px solid rgba(53, 117, 64, 0.14);
+  box-shadow: 0 28px 56px rgba(8, 30, 19, 0.24);
+  display: grid;
+  gap: 0.8rem;
+}
+
+.access-close,
+.access-primary,
+.access-secondary {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.access-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(34, 78, 41, 0.08);
+  color: #214d2f;
+  font-size: 1.1rem;
+}
+
+.access-kicker {
+  margin: 0;
+  color: #5d8d4d;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.access-modal h2 {
+  margin: 0;
+  color: #173723;
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.access-copy {
+  margin: 0;
+  color: #35513e;
+  line-height: 1.55;
+}
+
+.access-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.access-primary,
+.access-secondary {
+  min-height: 2.9rem;
+  padding: 0.75rem 1.1rem;
+  border-radius: 999px;
+  font-weight: 800;
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.access-primary {
+  background: linear-gradient(135deg, #ee7b65, #d94d7d);
+  color: #fffaf5;
+}
+
+.access-secondary {
+  background: rgba(34, 78, 41, 0.08);
+  color: #214d2f;
+}
+
+.access-close:hover,
+.access-primary:hover,
+.access-secondary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+}
+
+.access-close:focus-visible,
+.access-primary:focus-visible,
+.access-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.32), 0 0 0 6px rgba(220, 104, 133, 0.26);
+}

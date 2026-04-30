@@ -1,0 +1,157 @@
+@if (open()) {
+  <div class="overlay" [class.open]="open()" (click)="onOverlayClick($event)">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Cómo funciona Nenúfar">
+      <button class="close-btn" type="button" (click)="closeModal()" aria-label="Cerrar">✕</button>
+
+      <div class="modal-header">
+        <h2>¿Cómo funciona el estanque?</h2>
+        <p>Cada nenúfar es interactivo. Prueba tú mismo los tres gestos.</p>
+      </div>
+
+      <div class="cards">
+        <div class="card" id="card-hover">
+          <div class="arena">
+            <div class="lily-wrap" id="lily-hover">
+              <div class="hover-tooltip">
+                <div class="tt-name">El Café Olvidado</div>
+                <div class="tt-stars">★★★★☆</div>
+                <div class="tt-text">
+                  Buen café, ambiente tranquilo y barra perfecta para ir con portátil.
+                </div>
+              </div>
+
+              <svg class="cursor-hint" viewBox="0 0 28 28" fill="none">
+                <path
+                  d="M6 22 L5 8 L18 16 L13 17 L16 23 L14 24 L11 18 L8 21Z"
+                  fill="#0e3848"
+                  stroke="white"
+                  stroke-width="1.2"
+                />
+              </svg>
+
+              <svg viewBox="0 0 110 110">
+                <ellipse class="lily-shadow" cx="58" cy="105" rx="42" ry="5" />
+                <circle class="pad-base" cx="53" cy="55" r="48" />
+                <path class="pad-dark" d="M53 55 L53 7 A48 48 0 0 0 5 55 Z" opacity=".4" />
+                <path class="pad-white" d="M53 55 L101 55 A48 48 0 0 1 53 103 Z" />
+                <line class="pad-vein" x1="53" y1="7" x2="53" y2="103" />
+                <line class="pad-vein" x1="5" y1="55" x2="101" y2="55" />
+                <line class="pad-vein" x1="19" y1="21" x2="87" y2="89" />
+                <line class="pad-vein" x1="87" y1="21" x2="19" y2="89" />
+                <ellipse class="fl-petal" cx="46" cy="30" rx="11" ry="7" transform="rotate(-40 46 30)" />
+                <ellipse class="fl-petal2" cx="60" cy="26" rx="11" ry="7" transform="rotate(10 60 26)" />
+                <ellipse class="fl-petal" cx="70" cy="36" rx="10" ry="6" transform="rotate(55 70 36)" />
+                <ellipse class="fl-petal2" cx="68" cy="50" rx="10" ry="6" transform="rotate(95 68 50)" />
+                <ellipse class="fl-petal" cx="40" cy="50" rx="10" ry="6" transform="rotate(-80 40 50)" />
+                <ellipse class="fl-petal2" cx="36" cy="37" rx="10" ry="6" transform="rotate(-40 36 37)" />
+                <circle class="fl-center" cx="53" cy="39" r="12" />
+                <circle class="fl-hi" cx="48" cy="34" r="5" opacity=".75" />
+                <ellipse cx="70" cy="70" rx="10" ry="6" fill="rgba(255,255,255,.2)" transform="rotate(-20 70 70)" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-label">Hover</div>
+          <div class="card-hint">Pasa el cursor encima</div>
+          <span class="card-cue">👆 Apúntame</span>
+        </div>
+
+        <div class="card" id="card-push">
+          <div class="arena">
+            <div class="push-ripple" [class.expand]="pushRippleActive()"></div>
+            <div class="impact-flash" [class.active]="impactFlashActive()"></div>
+
+            <div
+              class="lily-wrap"
+              id="lily-push"
+              #lilyPush
+              [style.transform]="pushTransform()"
+              (mousedown)="onPushMouseDown($event, lilyPush)"
+            >
+              <svg viewBox="0 0 110 110">
+                <ellipse class="lily-shadow" cx="58" cy="105" rx="42" ry="5" />
+                <circle class="pad-base" cx="53" cy="55" r="48" />
+                <path class="pad-dark" d="M53 55 L53 7 A48 48 0 0 0 5 55 Z" opacity=".4" />
+                <path class="pad-white" d="M53 55 L101 55 A48 48 0 0 1 53 103 Z" />
+                <line class="pad-vein" x1="53" y1="7" x2="53" y2="103" />
+                <line class="pad-vein" x1="5" y1="55" x2="101" y2="55" />
+                <line class="pad-vein" x1="19" y1="21" x2="87" y2="89" />
+                <line class="pad-vein" x1="87" y1="21" x2="19" y2="89" />
+                <ellipse class="fl-petal" cx="46" cy="30" rx="11" ry="7" transform="rotate(-40 46 30)" />
+                <ellipse class="fl-petal2" cx="60" cy="26" rx="11" ry="7" transform="rotate(10 60 26)" />
+                <ellipse class="fl-petal" cx="70" cy="36" rx="10" ry="6" transform="rotate(55 70 36)" />
+                <ellipse class="fl-petal2" cx="68" cy="50" rx="10" ry="6" transform="rotate(95 68 50)" />
+                <ellipse class="fl-petal" cx="40" cy="50" rx="10" ry="6" transform="rotate(-80 40 50)" />
+                <ellipse class="fl-petal2" cx="36" cy="37" rx="10" ry="6" transform="rotate(-40 36 37)" />
+                <circle class="fl-center" cx="53" cy="39" r="12" />
+                <circle class="fl-hi" cx="48" cy="34" r="5" opacity=".75" />
+                <ellipse cx="70" cy="70" rx="10" ry="6" fill="rgba(255,255,255,.2)" transform="rotate(-20 70 70)" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-label">Click izquierdo</div>
+          <div class="card-hint">Empuja según donde hagas clic</div>
+          <span class="card-cue">🖱 Empújame</span>
+        </div>
+
+        <div class="card" id="card-detail">
+          <div class="arena">
+            <div class="lily-wrap" id="lily-detail" #lilyDetail (contextmenu)="onDetailContextMenu($event)">
+              <div class="detail-popup" #detailPopup [class.visible]="detailPopupVisible()">
+                <button class="dp-close" type="button" (click)="closeDetail($event)">✕</button>
+
+                <div class="dp-img">
+                  <svg class="dp-img-lily" viewBox="0 0 110 110">
+                    <circle class="pad-base" cx="53" cy="55" r="48" />
+                    <path class="pad-dark" d="M53 55 L53 7 A48 48 0 0 0 5 55 Z" opacity=".4" />
+                    <path class="pad-white" d="M53 55 L101 55 A48 48 0 0 1 53 103 Z" />
+                    <ellipse class="fl-petal" cx="46" cy="30" rx="11" ry="7" transform="rotate(-40 46 30)" />
+                    <ellipse class="fl-petal2" cx="60" cy="26" rx="11" ry="7" transform="rotate(10 60 26)" />
+                    <ellipse class="fl-petal" cx="70" cy="36" rx="10" ry="6" transform="rotate(55 70 36)" />
+                    <ellipse class="fl-petal2" cx="68" cy="50" rx="10" ry="6" transform="rotate(95 68 50)" />
+                    <ellipse class="fl-petal" cx="40" cy="50" rx="10" ry="6" transform="rotate(-80 40 50)" />
+                    <ellipse class="fl-petal2" cx="36" cy="37" rx="10" ry="6" transform="rotate(-40 36 37)" />
+                    <circle class="fl-center" cx="53" cy="39" r="12" />
+                    <circle class="fl-hi" cx="48" cy="34" r="5" opacity=".75" />
+                  </svg>
+                </div>
+
+                <div class="dp-name">El Café Olvidado</div>
+                <div class="dp-stars">★★★★☆ <span>Diego Navarro</span></div>
+                <div class="dp-meta">☕ Café · Zona norte</div>
+                <div class="dp-text">
+                  Buen café, ambiente tranquilo y una barra perfecta para ir con portátil una hora.
+                </div>
+              </div>
+
+              <svg viewBox="0 0 110 110">
+                <ellipse class="lily-shadow" cx="58" cy="105" rx="42" ry="5" />
+                <circle class="pad-base" cx="53" cy="55" r="48" />
+                <path class="pad-dark" d="M53 55 L53 7 A48 48 0 0 0 5 55 Z" opacity=".4" />
+                <path class="pad-white" d="M53 55 L101 55 A48 48 0 0 1 53 103 Z" />
+                <line class="pad-vein" x1="53" y1="7" x2="53" y2="103" />
+                <line class="pad-vein" x1="5" y1="55" x2="101" y2="55" />
+                <line class="pad-vein" x1="19" y1="21" x2="87" y2="89" />
+                <line class="pad-vein" x1="87" y1="21" x2="19" y2="89" />
+                <ellipse class="fl-petal" cx="46" cy="30" rx="11" ry="7" transform="rotate(-40 46 30)" />
+                <ellipse class="fl-petal2" cx="60" cy="26" rx="11" ry="7" transform="rotate(10 60 26)" />
+                <ellipse class="fl-petal" cx="70" cy="36" rx="10" ry="6" transform="rotate(55 70 36)" />
+                <ellipse class="fl-petal2" cx="68" cy="50" rx="10" ry="6" transform="rotate(95 68 50)" />
+                <ellipse class="fl-petal" cx="40" cy="50" rx="10" ry="6" transform="rotate(-80 40 50)" />
+                <ellipse class="fl-petal2" cx="36" cy="37" rx="10" ry="6" transform="rotate(-40 36 37)" />
+                <circle class="fl-center" cx="53" cy="39" r="12" />
+                <circle class="fl-hi" cx="48" cy="34" r="5" opacity=".75" />
+                <ellipse cx="70" cy="70" rx="10" ry="6" fill="rgba(255,255,255,.2)" transform="rotate(-20 70 70)" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-label">Click derecho</div>
+          <div class="card-hint">Abre la ficha completa del lugar</div>
+          <span class="card-cue">🖱 Clic derecho</span>
+        </div>
+      </div>
+    </div>
+  </div>
+}

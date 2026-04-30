@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { NegocioService } from '../../servicios/negocioService/negocio.service';
 import {
   DashboardDisponibilidad,
   DashboardNegocio,
@@ -33,8 +34,10 @@ type HourPeak = {
 export class ReservasComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly dashboardService = inject(DashboardService);
+  private readonly negocioService = inject(NegocioService);
 
   readonly negocioId = signal<number>(0);
+  readonly negocioRouteKey = signal('');
   readonly cargando = signal(true);
   readonly error = signal('');
   readonly negocio = signal<DashboardNegocio | null>(null);
@@ -137,16 +140,34 @@ export class ReservasComponent implements OnInit {
   );
 
   ngOnInit(): void {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
+    const routeParam = this.negocioService.normalizeRouteParam(
+      this.route.snapshot.paramMap.get('nickname') ??
+      this.route.snapshot.paramMap.get('slug'),
+    );
 
-    if (!Number.isFinite(id) || id <= 0) {
+    if (!routeParam) {
       this.error.set('No hemos podido identificar el negocio de esta vista de reservas.');
       this.cargando.set(false);
       return;
     }
 
-    this.negocioId.set(id);
-    this.cargarBase();
+    this.negocioService.resolveNegocioFromRouteParam(routeParam).subscribe({
+      next: (negocio) => {
+        if (!negocio) {
+          this.error.set('No hemos podido resolver el negocio de esta vista de reservas.');
+          this.cargando.set(false);
+          return;
+        }
+
+        this.negocioId.set(negocio.id);
+        this.negocioRouteKey.set(this.negocioService.getRouteKey(negocio) ?? routeParam);
+        this.cargarBase();
+      },
+      error: () => {
+        this.error.set('No hemos podido resolver el negocio de esta vista de reservas.');
+        this.cargando.set(false);
+      }
+    });
   }
 
   seleccionarFecha(value: string): void {
@@ -367,5 +388,12 @@ export class ReservasComponent implements OnInit {
     }
 
     return Object.values(horario.weekly ?? {}).flat().length > 0;
+  }
+
+  getBusinessRouteKey(): string {
+    return this.negocioRouteKey() || this.negocioService.normalizeRouteParam(
+      this.route.snapshot.paramMap.get('nickname') ??
+      this.route.snapshot.paramMap.get('slug'),
+    ) || '';
   }
 }

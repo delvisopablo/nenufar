@@ -9,8 +9,8 @@
     </div>
 
     <div class="reservas-actions">
-      <a class="ghost-btn" [routerLink]="['/negocio', negocioId()]">Volver al perfil</a>
-      <a class="primary-btn" [routerLink]="['/negocios', negocioId(), 'dashboard']">Dashboard</a>
+      <a class="ghost-btn" [routerLink]="['/', getBusinessRouteKey()]">Volver al perfil</a>
+      <a class="primary-btn" [routerLink]="['/', getBusinessRouteKey(), 'dashboard']">Dashboard</a>
     </div>
   </header>
 

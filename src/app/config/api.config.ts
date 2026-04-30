@@ -1,17 +1,19 @@
-const LOCAL_API_BASE_URL = 'http://localhost:3000/api';
+import { environment } from '../../environments/environment';
 
-// TODO: Sustituye esta URL por la URL PUBLICA real de Railway.
-// No uses dominios internos tipo `railway.internal` en el frontend.
-const PROD_API_BASE_URL =
-'https://nenufar-backend-v2-copy-production.up.railway.app/api';
+function normalizeBaseUrl(baseUrl: string | null | undefined): string {
+  const normalized = String(baseUrl ?? 'http://localhost:3000/api').replace(
+    /\/+$/,
+    '',
+  );
 
-const hostname =
-  typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  if (normalized.endsWith('/api')) {
+    return normalized;
+  }
 
-export const API_BASE_URL =
-  hostname === 'localhost' || hostname === '127.0.0.1'
-    ? LOCAL_API_BASE_URL
-    : PROD_API_BASE_URL;
+  return `${normalized}/api`;
+}
+
+export const API_BASE_URL = normalizeBaseUrl(environment.api);
 
 export type ApiListResponse<T> = {
   items: T[];

@@ -1,58 +1,141 @@
-<div>
+<div class="page-shell">
+  <header class="page-header">
+    <p class="page-kicker">Perfil de negocio</p>
+    <h2>Editar y personalizar</h2>
+    <p>Ajusta los datos del negocio y elige el nenufar que se mostrara en su identidad visual.</p>
+  </header>
 
-<h2>Editar Negocio</h2>
+  @if (cargando) {
+    <section class="loading-card">
+      <strong>Cargando negocio</strong>
+      <span>Estamos preparando la configuracion actual para que puedas editarla.</span>
+    </section>
+  } @else {
+    @if (errorMensaje) {
+      <p class="form-feedback" role="alert">
+        {{ errorMensaje }}
+      </p>
+    }
 
-<p *ngIf="cargando">Cargando negocio...</p>
-
-<p class="form-feedback" role="alert" *ngIf="errorMensaje">
-  {{ errorMensaje }}
-</p>
-
-<form [formGroup]="negocioForm" (ngSubmit)="guardarCambios()">
-  <input formControlName="nombre" placeholder="Nombre del negocio" />
-  <input formControlName="nickname" placeholder="Nickname del dueño" />
-  <input formControlName="direccion" placeholder="Dirección" />
-  <textarea formControlName="historia" placeholder="Historia del negocio"></textarea>
-  <input formControlName="categoria" placeholder="Categoría" />
-
-  <label>
-    <input type="checkbox" formControlName="aceptaReservas" />
-    ¿Acepta reservas?
-  </label>
-
-  <div *ngIf="negocioForm.get('aceptaReservas')?.value">
-    <div formGroupName="horario">
-      <label>Días abiertos:</label>
-      <div class="dias-checkboxes">
-        <label *ngFor="let dia of diasSemana">
-          <input type="checkbox" [checked]="diasAbre.value.includes(dia)" (change)="toggleDia(dia)" />
-          {{ dia }}
-        </label>
-      </div>
-
-      <input formControlName="apertura" placeholder="Hora de apertura (ej: 09:00)" />
-      <input formControlName="cierre" placeholder="Hora de cierre (ej: 18:00)" />
-
-      <label>Duración de reserva (minutos)</label>
-      <input type="number" formControlName="intervalo" min="10" step="5" />
-    </div>
-
-    <div class="horario-matriz">
-      <div class="fila-dia" *ngFor="let dia of diasSemana; let i = index">
-        <div class="nombre-dia">{{ dia }}</div>
-        <div class="slots-dia">
-          <button *ngFor="let slot of matrizHoraria[i]"
-                  [disabled]="slot.ocupado"
-                  [ngClass]="{ 'ocupado': slot.ocupado }"
-                  (click)="reservar(slot.hora)">
-            {{ slot.hora }}
-          </button>
+    <form [formGroup]="negocioForm" (ngSubmit)="guardarCambios()">
+      <section class="form-section">
+        <div class="section-head">
+          <p class="section-kicker">Datos base</p>
+          <h3>Informacion principal</h3>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <button type="submit" [disabled]="guardando">{{ guardando ? 'Guardando...' : 'Guardar' }}</button>
-</form>
-  
+        <div class="fields-grid">
+          <label class="field">
+            <span>Nombre del negocio</span>
+            <input formControlName="nombre" placeholder="Nombre del negocio" />
+          </label>
+
+          <label class="field">
+            <span>Nickname del dueno</span>
+            <input formControlName="nickname" placeholder="Nickname del dueno" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Direccion</span>
+          <input formControlName="direccion" placeholder="Direccion" />
+        </label>
+
+        <label class="field">
+          <span>Historia</span>
+          <textarea formControlName="historia" placeholder="Historia del negocio"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Categoria</span>
+          <input formControlName="categoria" placeholder="Categoria" />
+        </label>
+      </section>
+
+      <section class="form-section">
+        <div class="section-head">
+          <p class="section-kicker">Imagen activa</p>
+          <h3>Selector de nenufar</h3>
+        </div>
+
+        <app-nenufar-selector
+          [value]="negocioForm.get('nenufarAsset')?.value"
+          (valueChange)="negocioForm.get('nenufarAsset')?.setValue($event)"
+        />
+      </section>
+
+      <section class="form-section">
+        <div class="section-head">
+          <p class="section-kicker">Reservas</p>
+          <h3>Configuracion horaria</h3>
+        </div>
+
+        <label class="toggle-row">
+          <input type="checkbox" formControlName="aceptaReservas" />
+          <span>Acepta reservas</span>
+        </label>
+
+        @if (negocioForm.get('aceptaReservas')?.value) {
+          <div formGroupName="horario" class="schedule-grid">
+            <div class="field field--full">
+              <span>Dias abiertos</span>
+              <div class="dias-checkboxes">
+                @for (dia of diasSemana; track dia) {
+                  <button
+                    type="button"
+                    class="dia-chip"
+                    [class.dia-chip--active]="diasAbre.value.includes(dia)"
+                    (click)="toggleDia(dia)"
+                  >
+                    {{ dia }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <label class="field">
+              <span>Apertura</span>
+              <input formControlName="apertura" placeholder="09:00" />
+            </label>
+
+            <label class="field">
+              <span>Cierre</span>
+              <input formControlName="cierre" placeholder="18:00" />
+            </label>
+
+            <label class="field">
+              <span>Intervalo de reserva</span>
+              <input type="number" formControlName="intervalo" min="10" step="5" />
+            </label>
+          </div>
+
+          <div class="horario-matriz">
+            @for (dia of diasSemana; track dia; let i = $index) {
+              <div class="fila-dia">
+                <div class="nombre-dia">{{ dia }}</div>
+                <div class="slots-dia">
+                  @for (slot of matrizHoraria[i]; track slot.hora) {
+                    <button
+                      type="button"
+                      [disabled]="slot.ocupado"
+                      [class.ocupado]="slot.ocupado"
+                      (click)="reservar(slot.hora)"
+                    >
+                      {{ slot.hora }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <div class="form-actions">
+        <button type="submit" [disabled]="guardando">
+          {{ guardando ? 'Guardando...' : 'Guardar cambios' }}
+        </button>
+      </div>
+    </form>
+  }
 </div>

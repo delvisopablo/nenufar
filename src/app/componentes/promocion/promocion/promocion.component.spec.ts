@@ -14,6 +14,7 @@ describe('PromocionComponent', () => {
     
     fixture = TestBed.createComponent(PromocionComponent);
     component = fixture.componentInstance;
+    component.negocioId = 1;
     fixture.detectChanges();
   });
 

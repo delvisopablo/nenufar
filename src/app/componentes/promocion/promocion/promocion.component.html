@@ -1,10 +1,218 @@
-<div class="promo-container">
-    <h3>🔥 Promociones destacadas</h3>
-  
-    <div class="promo-card" *ngFor="let promo of promociones; let i = index">
-      <h4>{{ promo.negocio }}</h4>
-      <p class="titulo">{{ promo.titulo }}</p>
-      <p class="desc">{{ promo.descripcion }}</p>
+<section class="promo-shell">
+  <div class="promo-header">
+    <div>
+      <p class="promo-kicker">Promociones</p>
+      <h2>Gestiona las ofertas de tu negocio</h2>
+      <p class="promo-lead">
+        Crea promociones, prográmalas y decide si deben quedar activas, ocultas o en borrador.
+      </p>
     </div>
+
+    <button type="button" class="promo-primary-btn" (click)="abrirCrear()">
+      Nueva promoción
+    </button>
   </div>
-  
+
+  @if (errorMensaje()) {
+    <p class="promo-feedback promo-feedback--error" role="alert">
+      {{ errorMensaje() }}
+    </p>
+  }
+
+  @if (exitoMensaje()) {
+    <p class="promo-feedback promo-feedback--success" role="status">
+      {{ exitoMensaje() }}
+    </p>
+  }
+
+  @if (editorAbierto()) {
+    <form class="promo-form" [formGroup]="form" (ngSubmit)="guardarPromocion()">
+      <div class="promo-form__head">
+        <h3>
+          {{ promocionEditandoId() ? 'Editar promoción' : 'Crear promoción' }}
+        </h3>
+        <p>Los datos se guardarán asociados al negocio actual.</p>
+      </div>
+
+      <div class="promo-grid">
+        <label class="field field--full">
+          <span>Título</span>
+          <input type="text" formControlName="titulo" placeholder="Desayuno de barrio" />
+          @if (hasControlError('titulo', 'required')) {
+            <small class="field-error">El título es obligatorio.</small>
+          }
+        </label>
+
+        <label class="field field--full">
+          <span>Descripción</span>
+          <textarea
+            formControlName="descripcion"
+            rows="3"
+            placeholder="Describe qué incluye la promoción y sus condiciones principales."
+          ></textarea>
+        </label>
+
+        <label class="field">
+          <span>Tipo de descuento</span>
+          <select formControlName="tipoDescuento">
+            @for (option of tipoDescuentoOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Descuento</span>
+          <input type="number" formControlName="descuento" min="0" step="0.01" />
+          @if (form.hasError('porcentajeFueraDeRango') && (form.dirty || form.touched)) {
+            <small class="field-error">Si es porcentaje, debe estar entre 0 y 100.</small>
+          } @else if (hasControlError('descuento', 'min')) {
+            <small class="field-error">El descuento no puede ser negativo.</small>
+          }
+        </label>
+
+        <label class="field">
+          <span>Fecha de inicio</span>
+          <input type="datetime-local" formControlName="fechaInicio" />
+        </label>
+
+        <label class="field">
+          <span>Fecha de caducidad</span>
+          <input type="datetime-local" formControlName="fechaCaducidad" />
+          @if (hasControlError('fechaCaducidad', 'required')) {
+            <small class="field-error">La fecha de caducidad es obligatoria.</small>
+          }
+        </label>
+
+        <label class="field">
+          <span>Estado</span>
+          <select formControlName="estado">
+            @for (option of estadoOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field field--toggle">
+          <span>Activa</span>
+          <input type="checkbox" formControlName="activa" />
+        </label>
+
+        <label class="field">
+          <span>Stock máximo</span>
+          <input type="number" formControlName="stockMaximo" min="1" step="1" />
+          @if (hasControlError('stockMaximo', 'min')) {
+            <small class="field-error">Si se informa, debe ser mayor que 0.</small>
+          }
+        </label>
+
+        <label class="field">
+          <span>Usos máximos</span>
+          <input type="number" formControlName="usosMaximos" min="1" step="1" />
+          @if (hasControlError('usosMaximos', 'min')) {
+            <small class="field-error">Si se informa, debe ser mayor que 0.</small>
+          }
+        </label>
+
+        <label class="field">
+          <span>Código</span>
+          <input type="text" formControlName="codigo" placeholder="NENUFAR10" />
+        </label>
+
+        <label class="field">
+          <span>Producto ID</span>
+          <input type="number" formControlName="productoId" min="1" step="1" />
+        </label>
+      </div>
+
+      @if (form.hasError('fechaRangoInvalido') && (form.dirty || form.touched)) {
+        <p class="promo-feedback promo-feedback--warning">
+          La fecha de caducidad debe ser posterior a la fecha de inicio.
+        </p>
+      }
+
+      <div class="promo-form__actions">
+        <button
+          type="submit"
+          class="promo-primary-btn"
+          [disabled]="guardando()"
+        >
+          {{ guardando() ? 'Guardando...' : (promocionEditandoId() ? 'Guardar cambios' : 'Crear promoción') }}
+        </button>
+        <button type="button" class="promo-secondary-btn" (click)="cancelarEdicion()">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  }
+
+  @if (cargando()) {
+    <div class="promo-empty">
+      <strong>Cargando promociones...</strong>
+      <span>Estamos recuperando las promociones del negocio.</span>
+    </div>
+  } @else if (!promocionesOrdenadas().length) {
+    <div class="promo-empty">
+      <strong>Aún no hay promociones</strong>
+      <span>Crea la primera oferta para este negocio desde aquí.</span>
+    </div>
+  } @else {
+    <div class="promo-list">
+      @for (promocion of promocionesOrdenadas(); track promocion.id) {
+        <article class="promo-card">
+          <div class="promo-card__head">
+            <div>
+              <p class="promo-card__title">{{ promocion.titulo }}</p>
+              <p class="promo-card__subtitle">
+                {{ promocion.tipoDescuento }} · {{ getDescuentoLabel(promocion) }}
+              </p>
+            </div>
+
+            <div class="promo-badges">
+              <span class="promo-badge" [class]="getVisualStateClass(promocion)">
+                {{ getVisualState(promocion) }}
+              </span>
+              <span class="promo-badge promo-badge--soft">
+                {{ promocion.estado || 'Sin estado' }}
+              </span>
+            </div>
+          </div>
+
+          @if (promocion.descripcion) {
+            <p class="promo-card__desc">{{ promocion.descripcion }}</p>
+          }
+
+          <div class="promo-meta">
+            <span><strong>Inicio:</strong> {{ formatDate(promocion.fechaInicio) }}</span>
+            <span><strong>Caduca:</strong> {{ formatDate(promocion.fechaCaducidad) }}</span>
+            <span><strong>Activa:</strong> {{ promocion.activa ? 'Sí' : 'No' }}</span>
+            <span><strong>Código:</strong> {{ promocion.codigo || 'Sin código' }}</span>
+            <span><strong>Usos:</strong> {{ promocion.usosActuales }}/{{ promocion.usosMaximos ?? '∞' }}</span>
+            <span><strong>Stock:</strong> {{ promocion.stockMaximo ?? 'Sin límite' }}</span>
+            <span><strong>Producto:</strong> {{ promocion.productoId ?? 'General' }}</span>
+          </div>
+
+          <div class="promo-actions">
+            <button type="button" class="promo-secondary-btn" (click)="editarPromocion(promocion)">
+              Editar
+            </button>
+
+            @if (getVisualState(promocion) === 'Oculta' || getVisualState(promocion) === 'Borrador') {
+              <button type="button" class="promo-primary-btn" (click)="publicarPromocion(promocion)">
+                Publicar
+              </button>
+            } @else {
+              <button type="button" class="promo-secondary-btn" (click)="ocultarPromocion(promocion)">
+                Ocultar
+              </button>
+            }
+
+            <button type="button" class="promo-danger-btn" (click)="eliminarPromocion(promocion)">
+              Eliminar
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

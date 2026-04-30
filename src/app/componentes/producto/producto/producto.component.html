@@ -1,1 +1,31 @@
-<p>producto works!</p>
+<section class="prod-shell">
+  <div class="prod-card">
+    <p class="kicker">Productos</p>
+    <h2>Catálogo del negocio</h2>
+
+    <ng-container *ngIf="cargando(); else listaTpl">
+      <p class="status">Cargando productos…</p>
+    </ng-container>
+
+    <ng-template #listaTpl>
+      <p *ngIf="errorMensaje()" class="alert alert-error">{{ errorMensaje() }}</p>
+
+      <ng-container *ngIf="!errorMensaje()">
+        <p *ngIf="items().length === 0" class="empty">Este negocio aún no tiene productos publicados.</p>
+
+        <ul *ngIf="items().length > 0" class="prod-list">
+          <li *ngFor="let p of items()" class="prod-item">
+            <div class="prod-line">
+              <span class="prod-nombre">{{ p.nombre }}</span>
+              <span class="prod-precio">{{ formatPrecio(p) }}</span>
+            </div>
+            <p *ngIf="p.descripcion" class="prod-desc">{{ p.descripcion }}</p>
+            <div class="prod-stock" *ngIf="p.stockDisponible !== undefined && p.stockDisponible !== null">
+              Stock disponible: <strong>{{ p.stockDisponible }}</strong>
+            </div>
+          </li>
+        </ul>
+      </ng-container>
+    </ng-template>
+  </div>
+</section>

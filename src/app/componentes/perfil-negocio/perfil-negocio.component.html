@@ -31,47 +31,87 @@
     <div class="cover-wrap">
       <img
         class="cover-img"
-        [src]="negocio?.fotoPortada || negocio?.fotoPerfil || 'assets/imagenes/rana2_negocio_foto.png'"
+        [src]="getBusinessCoverImage()"
         alt="Portada del negocio"
       >
       <div class="cover-overlay"></div>
     </div>
 
     <div class="identity-strip">
-      <div class="identity-avatar-wrap">
-        <img
-          class="identity-avatar"
-          [src]="negocio?.fotoPerfil || 'assets/imagenes/rana2_negocio_foto.png'"
-          alt="Foto del negocio"
-        >
-      </div>
-
-      <div class="identity-body">
-        <div class="identity-name-row">
-          <h1 class="business-name">{{ negocio?.nombre || 'Cargando…' }}</h1>
-          @if (negocio?.verificado) {
-            <span class="verified-badge">✓ Verificado</span>
-          }
+      <div class="identity-main">
+        <div class="identity-avatar-wrap">
+          <img
+            class="identity-avatar"
+            [src]="getBusinessAvatarImage()"
+            alt="Imagen del negocio"
+          >
         </div>
 
-        <p class="business-cat">
-          {{ negocio?.categoria?.nombre || negocio?.categoria || 'Sin categoría' }}
-          @if (negocio?.subcategoria?.nombre) {
-            · {{ negocio.subcategoria.nombre }}
-          }
-        </p>
+        <div class="identity-body">
+          <div class="identity-heading">
+            <div class="identity-name-stack">
+              <div class="identity-name-row">
+                <h1 class="business-name">{{ negocio?.nombre || 'Cargando…' }}</h1>
+                @if (negocio?.verificado) {
+                  <span class="verified-badge">✓ Verificado</span>
+                }
+              </div>
 
-        @if (mediaPuntuacion > 0) {
-          <div class="rating-row">
-            <span class="rating-stars">{{ getStars(mediaPuntuacion) }}</span>
-            <span class="rating-num">{{ mediaPuntuacion }}/5</span>
-            <span class="rating-count">({{ resenas.length }} reseñas)</span>
+              <p class="business-nickname">{{ getBusinessNickname() }}</p>
+              <p class="business-cat">
+                {{ negocio?.categoria?.nombre || negocio?.categoria || 'Sin categoría' }}
+                @if (negocio?.subcategoria?.nombre) {
+                  · {{ negocio.subcategoria.nombre }}
+                }
+              </p>
+            </div>
+
+            <div class="identity-side-top">
+              <p class="business-address-label">Dirección</p>
+              <p class="business-address">
+                {{ getBusinessAddressSummary() || 'Dirección pendiente de completar' }}
+              </p>
+            </div>
           </div>
-        }
 
-        @if (negocio?.ciudad) {
-          <p class="business-location">📍 {{ negocio?.ciudad }}{{ negocio?.provincia ? ', ' + negocio.provincia : '' }}</p>
-        }
+          @if (mediaPuntuacion > 0) {
+            <div class="rating-row">
+              <span class="rating-stars">{{ getStars(mediaPuntuacion) }}</span>
+              <span class="rating-num">{{ mediaPuntuacion }}/5</span>
+              <span class="rating-count">({{ resenas.length }} reseñas)</span>
+            </div>
+          }
+
+          <div class="hero-metrics">
+            <div class="hero-metric">
+              <span class="hero-metric__num">{{ seguidoresTotal }}</span>
+              <span class="hero-metric__label">Seguidores</span>
+            </div>
+
+            @if (esDueno) {
+              <div class="hero-metric">
+                <span class="hero-metric__num">{{ seguidosTotal }}</span>
+                <span class="hero-metric__label">Seguidos</span>
+              </div>
+            } @else {
+              <button class="follow-btn" type="button" (click)="alternarSeguimiento()">
+                {{ siguiendoNegocio ? 'Siguiendo' : 'Seguir' }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="identity-side">
+        <button class="nenufar-panel" type="button" (click)="irALogosNenufar()">
+          <span class="nenufar-panel__label">Nenúfar activo</span>
+          <img
+            class="nenufar-panel__img"
+            [src]="getNenufarAsset()"
+            alt="Nenúfar activo del negocio"
+          >
+          <span class="nenufar-panel__hint">Abrir menú de logos</span>
+        </button>
       </div>
     </div>
   </div>
@@ -103,10 +143,71 @@
         </section>
       }
 
+      @if (negocio?.id) {
+        <section class="n-section ticket-section">
+          <div class="ticket-section__head">
+            <div>
+              <h2 class="n-section-title">Escanea tu ticket</h2>
+              <p class="ticket-section__lead">
+                Sube una foto del ticket para revisar productos, ajustar cantidades y guardar la compra vinculada a tu cuenta.
+              </p>
+            </div>
+            <button class="ticket-section__toggle" type="button" (click)="alternarTicketScanner()">
+              {{ ticketScannerAbierto ? 'Cerrar escáner' : 'Abrir escáner' }}
+            </button>
+          </div>
+
+          @if (!usuarioActual?.id) {
+            <p class="helper-note">
+              Puedes revisar el ticket ahora mismo, pero para crear la compra necesitas iniciar sesión.
+            </p>
+          }
+
+          @if (!esDueno) {
+            <p class="ticket-section__hint">
+              Si el ticket trae productos que todavía no existen en el catálogo del negocio, tendrás que ajustarlos o pedir a la cuenta propietaria que los cree primero.
+            </p>
+          }
+
+          @if (ticketScannerMensaje) {
+            <div class="ticket-section__success" role="status">{{ ticketScannerMensaje }}</div>
+          }
+
+          @if (ticketScannerAbierto) {
+            <app-ticket-scanner
+              [negocioId]="negocio?.id ?? null"
+              [negocioNombre]="negocio?.nombre ?? null"
+              [puedeCrearProductos]="esDueno"
+              (saved)="onTicketScannerSaved($event)"
+            />
+          }
+        </section>
+      }
+
       <!-- Disponibilidad / Reservas -->
-      @if (horasGeneradas.length > 0) {
+      <section class="n-section">
+        <div class="section-headline">
+          <h2 class="n-section-title">Horario</h2>
+          @if (esDueno) {
+            <button class="inline-owner-btn" type="button" (click)="irAEditarNegocio()">Editar horario</button>
+          }
+        </div>
+
+        @if (tieneHorarioConfigurado()) {
+          <div class="horario-display horario-display--main">
+            @for (linea of getHorarioLineas(); track $index) {
+              <p class="horario-linea">{{ linea }}</p>
+            }
+          </div>
+        } @else {
+          <p class="empty-state">Este negocio todavía no ha configurado su horario.</p>
+        }
+      </section>
+
+      @if (tieneHorarioConfigurado()) {
         <section class="n-section">
-          <h2 class="n-section-title">Disponibilidad esta semana</h2>
+          <h2 class="n-section-title">Disponibilidad y reservas</h2>
+          <p class="helper-note">Consulta las franjas abiertas de esta semana y reserva desde aquí.</p>
 
           @if (reservaError) {
             <p class="alert-inline" role="alert">{{ reservaError }}</p>
@@ -142,6 +243,17 @@
             }
           </div>
         </section>
+      } @else {
+        <section class="n-section">
+          <h2 class="n-section-title">Disponibilidad y reservas</h2>
+          <p class="empty-state">Este negocio todavía no ha configurado su horario.</p>
+        </section>
+      }
+
+      @if (negocio?.id && esDueno) {
+        <section class="n-section promo-section">
+          <app-promocion [negocioId]="negocioId" />
+        </section>
       }
 
       <!-- Reseñas -->
@@ -163,10 +275,14 @@
             <div class="review-body">
               <div class="review-head">
                 @if (resena.usuario) {
-                  <a
-                    class="review-author"
-                    [routerLink]="['/perfil', resena.usuario.id]"
-                  >{{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}</a>
+                  @if (getUsuarioRoute(resena.usuario); as usuarioRoute) {
+                    <a
+                      class="review-author"
+                      [routerLink]="usuarioRoute"
+                    >{{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}</a>
+                  } @else {
+                    <p class="review-author">{{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}</p>
+                  }
                 } @else {
                   <p class="review-author">Cliente de Nenúfar</p>
                 }
@@ -235,18 +351,6 @@
         </section>
       }
 
-      <!-- Horario -->
-      @if (negocio?.horario) {
-        <section class="n-section">
-          <h3 class="n-side-title">Horario</h3>
-          <div class="horario-display">
-            @for (linea of getHorarioLineas(); track $index) {
-              <p class="horario-linea">{{ linea }}</p>
-            }
-          </div>
-        </section>
-      }
-
       <!-- Ubicación -->
       @if (negocio?.direccion || negocio?.ciudad) {
         <section class="n-section">
@@ -282,5 +386,12 @@
     (cerrarModal)="modalAbierto = false"
     (resenaCreada)="refrescarResenas()"
   ></app-crear-resena-modal>
+
+  <app-access-required-modal
+    [open]="accessModalAbierto"
+    [message]="accessModalMensaje"
+    (closed)="accessModalAbierto = false"
+    (loginRequested)="irALogin()"
+  />
 
 </div>

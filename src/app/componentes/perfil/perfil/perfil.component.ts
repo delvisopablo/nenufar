@@ -1,118 +1,88 @@
-import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { ReservaService } from '../../../servicios/reservaService/reserva.service';
-import { ResenaService } from '../../../servicios/reviewServicio/resena.service';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { EMPTY, catchError, of, switchMap, tap } from 'rxjs';
+import { getUserErrorMessage } from '../../../core/errors/error-parser';
 import { AuthService } from '../../../servicios/authService/auth.service';
-import { UsuarioServiceService } from '../../../servicios/usuarioServicio/usuarioService.service';
+import { NegocioService } from '../../../servicios/negocioService/negocio.service';
 
 @Component({
   selector: 'app-perfil',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, RouterLink],
   templateUrl: './perfil.component.html',
   styleUrl: './perfil.component.css'
 })
 export class PerfilComponent implements OnInit {
-  usuarioLogueado = signal<any | null>(null);
-  modoEdicion = signal(false);
-  reservas = signal<any[]>([]);
-  resenas = signal<any[]>([]);
+  private readonly authService = inject(AuthService);
+  private readonly negocioService = inject(NegocioService);
+  private readonly router = inject(Router);
 
-  nuevaBio = '';
-  nuevoHorario = { apertura: '', cierre: '' };
-  abrirFormularioReserva = false;
-  nuevaReserva = { fecha: '', nota: '' };
-
-  constructor(
-    private authService: AuthService,
-    private usuarioService: UsuarioServiceService,
-    private reservaService: ReservaService,
-    private resenaService: ResenaService,
-  ) {}
+  readonly cargando = signal(true);
+  readonly error = signal('');
 
   ngOnInit(): void {
-    const datos = localStorage.getItem('usuarioLogueado');
-    if (datos) {
-      const user = JSON.parse(datos);
-      this.usuarioLogueado.set(user);
-      this.nuevaBio = user.biografia || '';
-
-      if (user.rol === 'negocio') {
-        this.nuevoHorario.apertura = user.negocio?.horario?.apertura || '';
-        this.nuevoHorario.cierre = user.negocio?.horario?.cierre || '';
-      }
-
-      this.resenaService.getResenasPorUsuario(user.id).subscribe({
-        next: (res: any[]) => this.resenas.set(res),
-        error: (err: any) => console.error('Error al cargar reseñas de usuario:', err),
-      });
-
-      this.reservaService.reservasPorUsuario(user.id).subscribe({
-        next: (res: any) => this.reservas.set(res),
-        error: (err: any) => console.error('Error al cargar reservas', err),
-      });
-    }
-  }
-
-  getStars(n: number): string {
-    return '⭐'.repeat(Math.max(0, Math.min(5, Math.round(n))));
-  }
-
-  guardarCambios(): void {
-    const user = this.usuarioLogueado();
-    if (!user?.id) return;
-
-    const negocioActualizado =
-      user.rol === 'negocio'
-        ? {
-            ...(user.negocio || {}),
-            horario: {
-              apertura: this.nuevoHorario.apertura,
-              cierre: this.nuevoHorario.cierre,
-            },
+    this.authService.me()
+      .pipe(
+        switchMap((usuario) => {
+          if (!usuario) {
+            this.cargando.set(false);
+            void this.router.navigate(['/login'], {
+              queryParams: { returnUrl: '/perfil' },
+            });
+            return EMPTY;
           }
-        : user.negocio;
 
-    this.usuarioService.updatePerfil(user.id, {
-      biografia: this.nuevaBio,
-    }).subscribe({
-      next: (response) => {
-        const usuarioActualizado = {
-          ...user,
-          ...response,
-          foto_perfil:
-            response.foto_perfil ??
-            response.foto ??
-            user.foto_perfil,
-          negocio: negocioActualizado ?? response.negocios?.[0] ?? user.negocio,
-        };
+          const negocioEnSesion = usuario.negocio as { id?: number } | null | undefined;
+          const negocioIdEnSesion = Number(negocioEnSesion?.id);
+          if (Number.isFinite(negocioIdEnSesion) && negocioIdEnSesion > 0) {
+            return this.negocioService.getNegocioById(negocioIdEnSesion).pipe(
+              tap((negocio) => {
+                const routeKey = this.negocioService.getRouteKey(negocio);
+                if (routeKey) {
+                  void this.router.navigate(['/', routeKey], { replaceUrl: true });
+                  return;
+                }
 
-        this.authService.guardarUsuario(usuarioActualizado);
-        this.usuarioLogueado.set(usuarioActualizado);
-        this.nuevaBio = usuarioActualizado.biografia || '';
-        this.modoEdicion.set(false);
-      },
-      error: (err: unknown) => console.error('Error al guardar perfil:', err),
-    });
-  }
+                this.error.set('La sesión está activa, pero no hemos podido resolver una URL pública para tu negocio.');
+              }),
+              catchError(() => this.negocioService.getMine()),
+            );
+          }
 
-  hacerReserva(): void {
-    const user = JSON.parse(localStorage.getItem('usuarioLogueado') || '{}');
-    const negocioId = this.usuarioLogueado()?.negocio?.id || this.usuarioLogueado()?.id;
+          return this.negocioService.getMine().pipe(
+            tap((negocio) => {
+              const routeKeyNegocio = this.negocioService.getRouteKey(negocio);
+              if (routeKeyNegocio) {
+                void this.router.navigate(['/', routeKeyNegocio], { replaceUrl: true });
+                return;
+              }
 
-    this.reservaService.crear({
-      fecha: this.nuevaReserva.fecha,
-      nota: this.nuevaReserva.nota,
-      negocioId,
-      usuarioId: user.id,
-    }).subscribe({
-      next: () => {
-        this.abrirFormularioReserva = false;
-        this.nuevaReserva = { fecha: '', nota: '' };
-      },
-      error: (err: any) => console.error('Error reserva:', err),
-    });
+              if (usuario.nickname?.trim()) {
+                void this.router.navigate(['/usuario', usuario.nickname.trim()], { replaceUrl: true });
+                return;
+              }
+
+              this.error.set('La sesion esta activa, pero no hemos podido resolver una URL publica para tu perfil.');
+            }),
+            catchError(() => {
+              if (usuario.nickname?.trim()) {
+                void this.router.navigate(['/usuario', usuario.nickname.trim()], { replaceUrl: true });
+                return EMPTY;
+              }
+
+              this.error.set('La sesion esta activa, pero no hemos podido resolver tu perfil.');
+              return of(null);
+            }),
+          );
+        }),
+      )
+      .subscribe({
+        complete: () => this.cargando.set(false),
+        error: (error: unknown) => {
+          this.cargando.set(false);
+          this.error.set(getUserErrorMessage(error, 'No hemos podido cargar tu perfil.'));
+        },
+      });
   }
 }

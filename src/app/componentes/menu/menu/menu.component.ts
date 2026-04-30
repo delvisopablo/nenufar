@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { NegocioService } from '../../../servicios/negocioService/negocio.service';
 
@@ -34,8 +34,17 @@ constructor(private http: HttpClient, private router: Router) {}
 
 
   irANegocio(id: number) {
-    this.router.navigate([`/negocio/${id}`]);
-    this.resultados = [];
+    this.negocioService.getRouteKeyById(id).subscribe({
+      next: (routeKey) => {
+        if (routeKey) {
+          void this.router.navigate(['/', routeKey]);
+        }
+        this.resultados = [];
+      },
+      error: () => {
+        this.resultados = [];
+      },
+    });
   }
 
 }

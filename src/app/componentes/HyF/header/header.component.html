@@ -1,15 +1,30 @@
 <header class="header">
-  <button type="button" class="brand-button" (click)="irAEstanque()" aria-label="Ir a estanque">
-    <img class="brand-logo" [src]="logoSrc" alt="Logo Nenufar">
-  </button>
+  <div class="brand-cluster">
+    <button type="button" class="flower-button" (click)="irAEstanque()" aria-label="Ir al estanque de Nenufar">
+      <img
+        class="brand-flower"
+        [src]="flowerSrc"
+        alt="Flor Nenufar"
+        width="56"
+        height="56"
+      >
+    </button>
+
+    <button type="button" class="brand-button" (click)="irAInicio()" aria-label="Ir al inicio de Nenufar">
+      <img
+        class="brand-logo"
+        [src]="logoSrc"
+        alt="Logo Nenufar"
+        width="150"
+        height="150"
+      >
+    </button>
+  </div>
 
   <div class="header-actions">
     <div class="topbar-actions">
-      <button type="button" class="top-action" (click)="irAInicio()">Inicio</button>
-      <button type="button" class="top-action" (click)="abrirInfo()">Cómo funciona</button>
-      <button type="button" class="top-action top-action--ghost" (click)="abrirAyuda()">
-        Gestos
-      </button>
+      <button type="button" class="top-action top-action--achievements" (click)="irAMisLogros()">🏅 Mis logros</button>
+      <button type="button" class="top-action top-action--info" (click)="abrirNenunInfo()">Nenuninfo</button>
 
       <div class="search-shell">
         <form class="searchbar" (ngSubmit)="buscarPrimerNegocio()">
@@ -19,7 +34,7 @@
               type="search"
               name="headerBusinessSearch"
               [formControl]="searchControl"
-              placeholder="Buscar negocio"
+              placeholder="Buscar por nombre, nickname, categoria o ciudad"
               autocomplete="off"
             >
           </label>
@@ -30,10 +45,32 @@
         @if (resultadosBusqueda().length) {
           <div class="search-results" role="list">
             @for (negocio of resultadosBusqueda(); track negocio.id) {
-              <button type="button" class="search-result" (click)="seleccionarNegocio(negocio)">
-                <strong>{{ negocio.nombre }}</strong>
-                <span>{{ getCategoriaNombre(negocio) }}</span>
-              </button>
+              <article class="search-result">
+                <button type="button" class="search-result__main" (click)="seleccionarNegocio(negocio)">
+                  <span class="search-result__media">
+                    <img [src]="getBusinessImage(negocio)" [alt]="negocio.nombre">
+                  </span>
+                  <span class="search-result__copy">
+                    <strong>
+                      {{ negocio.nombre }}
+                      @if (negocio.verificado) {
+                        <span class="search-result__verified">✓</span>
+                      }
+                    </strong>
+                    <span>{{ getSearchMeta(negocio) }}</span>
+                    <span class="search-result__reviews">{{ getReviewSummary(negocio) }}</span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  class="follow-chip"
+                  [class.follow-chip--active]="negocio.isFollowing"
+                  (click)="toggleSeguir($event, negocio)"
+                >
+                  {{ negocio.isFollowing ? 'Siguiendo' : 'Seguir' }}
+                </button>
+              </article>
             }
           </div>
         } @else if (busquedaEstado() === 'loading') {
@@ -45,3 +82,15 @@
     </div>
   </div>
 </header>
+
+<app-nenun-info
+  [open]="nenunInfoAbierto()"
+  (closed)="cerrarNenunInfo()"
+/>
+
+<app-access-required-modal
+  [open]="accessModalAbierto()"
+  [message]="accessModalMessage()"
+  (closed)="accessModalAbierto.set(false)"
+  (loginRequested)="irALogin()"
+/>

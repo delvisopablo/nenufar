@@ -1,1 +1,69 @@
-<p>detalle-compra works!</p>
+<section class="dc-shell">
+  <div class="dc-card">
+    <a [routerLink]="['/compras']" class="back">← Volver a mis compras</a>
+
+    <ng-container *ngIf="cargando(); else contenido">
+      <p class="status">Cargando detalle…</p>
+    </ng-container>
+
+    <ng-template #contenido>
+      <p *ngIf="errorMensaje()" class="alert alert-error">{{ errorMensaje() }}</p>
+
+      <ng-container *ngIf="!errorMensaje() && compra() as c">
+        <header class="dc-head">
+          <p class="kicker">Compra</p>
+          <h1>#{{ c.id }}</h1>
+          <p class="meta">
+            <span *ngIf="c['creadoEn']">{{ formatFecha(c['creadoEn']) }}</span>
+            <span *ngIf="c.estado" class="badge">{{ c.estado }}</span>
+          </p>
+        </header>
+
+        <section class="dc-section" *ngIf="asArray(c['items']).length || asArray(c['pedidoProductos']).length || asArray(c['lineas']).length">
+          <h2>Líneas</h2>
+          <table class="dc-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio unit.</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let it of asArray(c['items']).length ? asArray(c['items']) : asArray(c['pedidoProductos']).length ? asArray(c['pedidoProductos']) : asArray(c['lineas'])">
+                <td>{{ ($any(it).producto?.nombre) || $any(it).nombre || ('#' + ($any(it).productoId || $any(it).id)) }}</td>
+                <td>{{ $any(it).cantidad ?? 1 }}</td>
+                <td>{{ formatTotal($any(it).precioUnit ?? $any(it).precio, c.moneda) }}</td>
+                <td>{{ formatTotal(getLineSubtotal(it), c.moneda) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="dc-section">
+          <h2>Total</h2>
+          <p class="total">{{ formatTotal(c.total, c.moneda) }}</p>
+        </section>
+
+        <section class="dc-section" *ngIf="pagosCompra().length">
+          <h2>Pagos</h2>
+          <ul class="pagos">
+            <li *ngFor="let p of pagosCompra()" class="pago">
+              <div>
+                <strong>{{ p.metodoPago }}</strong>
+                <span class="badge">{{ p.estado }}</span>
+              </div>
+              <div>{{ formatTotal(p.cantidad, p.moneda) }}</div>
+            </li>
+          </ul>
+        </section>
+
+        <div class="dc-actions">
+          <button type="button" (click)="imprimir()" class="btn-secundario">Imprimir</button>
+          <button type="button" (click)="descargarPDF()" class="btn-primario">Descargar PDF</button>
+        </div>
+      </ng-container>
+    </ng-template>
+  </div>
+</section>

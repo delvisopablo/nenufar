@@ -200,24 +200,52 @@
         }
 
         @if (activePopup.kind === 'review') {
-          <p class="popup-kicker">Detalle de reseña</p>
-          <h2>{{ activePopup.review.negocioNombre }}</h2>
+          <p class="popup-kicker">Negocio destacado</p>
+          <h2>{{ activePopup.business.nombre }}</h2>
 
           <div class="popup-meta">
-            <span>{{ activePopup.review.autorNombre }}</span>
-            <span>{{ getEstrellas(activePopup.review.puntuacion) }}</span>
-            <span>{{ formatearFechaCompleta(activePopup.review.fechaISO) }}</span>
+            <span>{{ activePopup.business.categoria?.nombre || 'Negocio local' }}</span>
+            <span>{{ activePopup.business.reviewCount }} reseña{{ activePopup.business.reviewCount !== 1 ? 's' : '' }}</span>
+            @if (activePopup.business.averageRating > 0) {
+              <span>{{ activePopup.business.averageRating }}/5</span>
+            }
+            @if (activePopup.business.ciudad || activePopup.business.provincia) {
+              <span>{{ activePopup.business.ciudad || activePopup.business.provincia }}</span>
+            }
           </div>
 
-          <p>{{ activePopup.review.contenido }}</p>
+          <img
+            class="popup-business-image"
+            [src]="getBusinessImage(activePopup.business)"
+            [alt]="activePopup.business.nombre"
+          >
 
-          @if (activePopup.review.selloNenufar) {
-            <span class="review-seal">Sello Nenufar</span>
+          @if (activePopup.business.latestReviews.length) {
+            <div class="popup-review-list">
+              @for (review of activePopup.business.latestReviews; track review.id) {
+                <article class="popup-review-item">
+                  <div class="popup-review-head">
+                    <strong>{{ review.autorNombre }}</strong>
+                    <span>{{ getEstrellas(review.puntuacion) }}</span>
+                    <span>{{ formatearFechaCompleta(review.fechaISO) }}</span>
+                  </div>
+                  <p>{{ review.contenidoCorto }}</p>
+                  @if (review.selloNenufar) {
+                    <span class="review-seal">Sello Nenufar</span>
+                  }
+                </article>
+              }
+            </div>
+          } @else {
+            <p>Este negocio todavía no tiene reseñas públicas, pero ya flota en el estanque.</p>
           }
 
           <div class="popup-actions">
-            <button type="button" class="primary-btn" (click)="irANegocio(activePopup.review.negocioId)">
+            <button type="button" class="primary-btn" (click)="irANegocio(activePopup.business.id)">
               Ir al negocio
+            </button>
+            <button type="button" class="secondary-btn" (click)="toggleSeguirNegocio(activePopup.business)">
+              {{ activePopup.business.isFollowing ? 'Siguiendo' : 'Seguir' }}
             </button>
             <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
           </div>

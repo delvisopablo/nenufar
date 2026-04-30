@@ -1,13 +1,25 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import {
   Observable,
   catchError,
+  finalize,
   map,
   of,
+  shareReplay,
   tap,
 } from 'rxjs';
 import { buildApiUrl } from '../../config/api.config';
+import { SKIP_HTTP_ERROR_HANDLING } from '../../core/errors/http-error.interceptor';
+
+export interface AuthBusiness {
+  id?: number;
+  nombre?: string;
+  slug?: string | null;
+  nickname?: string | null;
+  fotoPerfil?: string | null;
+  nenufarAsset?: string | null;
+}
 
 export interface AuthUser {
   id?: number;
@@ -16,11 +28,10 @@ export interface AuthUser {
   email?: string;
   rol?: string;
   biografia?: string;
+  foto?: string | null;
   foto_perfil?: string;
-  negocio?: {
-    id?: number;
-    nombre?: string;
-  };
+  negocio?: AuthBusiness;
+  negocios?: AuthBusiness[];
   [key: string]: unknown;
 }
 
@@ -123,6 +134,9 @@ function removeStorageKey(key: string): void {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private sessionHydrated = false;
+  private hydrationRequest$: Observable<AuthUser | null> | null = null;
+
   constructor(private http: HttpClient) {}
 
   usuarioExiste(usuario: string, email: string): boolean {
@@ -188,7 +202,7 @@ export class AuthService {
   hydrateSession(options: HydrateSessionOptions = {}): Observable<AuthUser | null> {
     const usuario = this.obtenerUsuario();
 
-    if (usuario) {
+    if (usuario && (!options.forceRemote || this.sessionHydrated)) {
       return of(usuario);
     }
 
@@ -196,9 +210,25 @@ export class AuthService {
       return of(null);
     }
 
-    return this.me().pipe(
-      catchError(() => of(null))
+    if (this.sessionHydrated) {
+      return of(usuario);
+    }
+
+    if (this.hydrationRequest$) {
+      return this.hydrationRequest$;
+    }
+
+    this.hydrationRequest$ = this.me().pipe(
+      tap(() => {
+        this.sessionHydrated = true;
+      }),
+      finalize(() => {
+        this.hydrationRequest$ = null;
+      }),
+      shareReplay(1),
     );
+
+    return this.hydrationRequest$;
   }
 
   isAuthenticated(): boolean {
@@ -206,9 +236,13 @@ export class AuthService {
   }
 
   me(): Observable<AuthUser | null> {
-    return this.http.get<unknown>(buildApiUrl('/auth/me')).pipe(
+    return this.http.get<unknown>(buildApiUrl('/auth/me'), {
+      context: new HttpContext().set(SKIP_HTTP_ERROR_HANDLING, true),
+    }).pipe(
       map((response) => this.normalizarUsuario(response)),
       tap((usuario) => {
+        this.sessionHydrated = true;
+
         if (usuario) {
           this.guardarUsuario(usuario);
           return;
@@ -217,6 +251,7 @@ export class AuthService {
         removeStorageKey('usuarioLogueado');
       }),
       catchError(() => {
+        this.sessionHydrated = true;
         removeStorageKey('usuarioLogueado');
         return of(null);
       })
@@ -241,6 +276,8 @@ export class AuthService {
     removeStorageKey('usuarioLogueado');
     removeStorageKey('accesoPermitido');
     removeStorageKey('guestMode');
+    this.hydrationRequest$ = null;
+    this.sessionHydrated = false;
   }
 
   logout(): Observable<unknown> {
@@ -252,10 +289,34 @@ export class AuthService {
 
   guardarUsuario(usuario: AuthUser): void {
     writeStorageJson('usuarioLogueado', usuario);
+    this.sessionHydrated = true;
   }
 
   obtenerUsuario(): AuthUser | null {
     return readStorageJson<AuthUser>('usuarioLogueado');
+  }
+
+  /** POST /api/auth/refresh — renueva access token (cookie) */
+  refresh(): Observable<unknown> {
+    return this.http.post<unknown>(buildApiUrl('/auth/refresh'), {});
+  }
+
+  /** POST /api/auth/verify-email — body: { token } */
+  verifyEmail(token: string): Observable<unknown> {
+    return this.http.post<unknown>(buildApiUrl('/auth/verify-email'), { token });
+  }
+
+  /** POST /api/auth/forgot-password — body: { email } */
+  forgotPassword(email: string): Observable<unknown> {
+    return this.http.post<unknown>(buildApiUrl('/auth/forgot-password'), { email });
+  }
+
+  /** POST /api/auth/reset-password — body: { token, newPassword } */
+  resetPassword(token: string, newPassword: string): Observable<unknown> {
+    return this.http.post<unknown>(buildApiUrl('/auth/reset-password'), {
+      token,
+      newPassword,
+    });
   }
 
   private normalizarUsuario(response: unknown): AuthUser | null {
@@ -269,6 +330,44 @@ export class AuthService {
       data?: AuthUser;
     };
 
-    return wrapper.usuario ?? wrapper.user ?? wrapper.data ?? (response as AuthUser);
+    const usuario = wrapper.usuario ?? wrapper.user ?? wrapper.data ?? (response as AuthUser);
+
+    if (!usuario || typeof usuario !== 'object') {
+      return null;
+    }
+
+    const usuarioRaw = usuario as AuthUser & {
+      negocios?: Array<AuthBusiness | null | undefined>;
+    };
+    const negocios = Array.isArray(usuarioRaw.negocios)
+      ? usuarioRaw.negocios
+          .filter((item): item is AuthBusiness => Boolean(item && typeof item === 'object'))
+          .map((item) => ({
+            ...item,
+            slug: typeof item.slug === 'string' ? item.slug : null,
+            nickname: typeof item.nickname === 'string' ? item.nickname : null,
+          }))
+      : undefined;
+    const negocio =
+      (usuarioRaw.negocio && typeof usuarioRaw.negocio === 'object'
+        ? {
+            ...usuarioRaw.negocio,
+            slug: typeof usuarioRaw.negocio.slug === 'string' ? usuarioRaw.negocio.slug : null,
+            nickname:
+              typeof usuarioRaw.negocio.nickname === 'string'
+                ? usuarioRaw.negocio.nickname
+                : null,
+          }
+        : undefined) ??
+      negocios?.[0];
+
+    return {
+      ...usuario,
+      foto_perfil:
+        usuario.foto_perfil ??
+        (typeof usuario.foto === 'string' ? usuario.foto : undefined),
+      ...(negocios ? { negocios } : {}),
+      ...(negocio ? { negocio } : {}),
+    };
   }
 }

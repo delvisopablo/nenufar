@@ -1,7 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { resolveBusinessImage } from '../../core/negocio/negocio-visuals';
+import { NegocioService } from '../../servicios/negocioService/negocio.service';
 import {
+  DashboardNegocio,
   DashboardMetrica,
   DashboardReserva,
   DashboardResumen,
@@ -18,10 +21,13 @@ import {
 export class DashboardComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly dashboardService = inject(DashboardService);
+  private readonly negocioService = inject(NegocioService);
 
   readonly negocioId = signal<number>(0);
+  readonly negocioRouteKey = signal('');
   readonly cargando = signal(true);
   readonly error = signal('');
+  readonly negocio = signal<DashboardNegocio | null>(null);
   readonly resumen = signal<DashboardResumen | null>(null);
   readonly metricas = signal<DashboardMetrica[]>([]);
   readonly reservas = signal<DashboardReserva[]>([]);
@@ -54,16 +60,48 @@ export class DashboardComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
+    const routeParam = this.negocioService.normalizeRouteParam(
+      this.route.snapshot.paramMap.get('nickname') ??
+      this.route.snapshot.paramMap.get('slug'),
+    );
 
-    if (!Number.isFinite(id) || id <= 0) {
+    if (!routeParam) {
       this.error.set('No hemos podido identificar el negocio de este dashboard.');
       this.cargando.set(false);
       return;
     }
 
-    this.negocioId.set(id);
-    this.cargarDashboard();
+    this.negocioService.resolveNegocioFromRouteParam(routeParam).subscribe({
+      next: (negocio) => {
+        if (!negocio) {
+          this.error.set('No hemos podido resolver el negocio de este dashboard.');
+          this.cargando.set(false);
+          return;
+        }
+
+        this.negocioId.set(negocio.id);
+        this.negocioRouteKey.set(this.negocioService.getRouteKey(negocio) ?? routeParam);
+        this.negocio.set({
+          id: negocio.id,
+          nombre: negocio.nombre,
+          foto: negocio.foto ?? undefined,
+          fotoPerfil: negocio.fotoPerfil ?? undefined,
+          fotoPortada: negocio.fotoPortada ?? undefined,
+          nenufarAsset: negocio.nenufarAsset ?? undefined,
+          nenufarKey: negocio.nenufarKey ?? undefined,
+          aceptaReservas: Boolean(negocio.aceptaReservas),
+          categoria:
+            typeof negocio.categoria === 'string'
+              ? { nombre: negocio.categoria }
+              : negocio.categoria,
+        });
+        this.cargarDashboard();
+      },
+      error: () => {
+        this.error.set('No hemos podido resolver el negocio de este dashboard.');
+        this.cargando.set(false);
+      }
+    });
   }
 
   cargarDashboard(): void {
@@ -140,5 +178,20 @@ export class DashboardComponent implements OnInit {
           hour: '2-digit',
           minute: '2-digit'
         });
+  }
+
+  getBusinessImage(): string {
+    return resolveBusinessImage(this.negocio());
+  }
+
+  getBusinessCategory(): string {
+    return this.negocio()?.categoria?.nombre || 'Negocio local';
+  }
+
+  getBusinessRouteKey(): string {
+    return this.negocioRouteKey() || this.negocioService.normalizeRouteParam(
+      this.route.snapshot.paramMap.get('nickname') ??
+      this.route.snapshot.paramMap.get('slug'),
+    ) || '';
   }
 }

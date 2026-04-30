@@ -1,19 +1,33 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import {
   FormBuilder, FormGroup, Validators, ReactiveFormsModule,
   FormArray, FormControl
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { buildApiUrl } from '../../config/api.config';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
+import {
+  DEFAULT_NENUFAR_ASSET,
+  resolveNenufarAsset,
+  resolveNenufarKey,
+} from '../../core/negocio/negocio-visuals';
+import { NegocioService } from '../../servicios/negocioService/negocio.service';
+import {
+  NenufarSelectorComponent,
+} from '../../components/shared/nenufar-selector/nenufar-selector.component';
 
 interface NegocioDetalle {
+  id?: number;
   nombre?: string;
+  nickname?: string | null;
+  slug?: string | null;
   direccion?: string;
   historia?: string;
+  nenufarAsset?: string | null;
+  nenufarKey?: string | null;
   aceptaReservas?: boolean;
+  intervaloReserva?: number;
   dueno?: {
     nickname?: string;
   };
@@ -25,24 +39,28 @@ interface NegocioDetalle {
     cierre?: string;
     intervalo?: number;
     diasAbre?: string[];
+    weekly?: Record<string, [string, string][]>;
   };
 }
 
 @Component({
   selector: 'app-editar-negocio',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, NenufarSelectorComponent],
   templateUrl: './editar-negocio.component.html',
   styleUrl: './editar-negocio.component.css'
 })
 export class EditarNegocioComponent implements OnInit {
   private fb = inject(FormBuilder);
   private route = inject(ActivatedRoute);
-  private http = inject(HttpClient);
   private router = inject(Router);
+  private negocioService = inject(NegocioService);
+  @ViewChild(NenufarSelectorComponent)
+  private readonly nenufarSelector?: NenufarSelectorComponent;
 
   negocioForm!: FormGroup;
   negocioId!: number;
+  negocioRouteKey = '';
   diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   matrizHoraria: { hora: string, ocupado: boolean }[][] = [];
   cargando = true;
@@ -50,13 +68,17 @@ export class EditarNegocioComponent implements OnInit {
   errorMensaje = '';
 
   ngOnInit(): void {
-    this.negocioId = Number(this.route.snapshot.paramMap.get('id'));
+    const routeParam = this.negocioService.normalizeRouteParam(
+      this.route.snapshot.paramMap.get('nickname') ??
+      this.route.snapshot.paramMap.get('slug'),
+    );
 
     this.negocioForm = this.fb.group({
       nombre: ['', Validators.required],
       nickname: ['', Validators.required],
       direccion: [''],
       historia: [''],
+      nenufarAsset: [DEFAULT_NENUFAR_ASSET, Validators.required],
       categoria: [''],
       aceptaReservas: [false],
       horario: this.fb.group({
@@ -72,7 +94,29 @@ export class EditarNegocioComponent implements OnInit {
     this.negocioForm.get('horario.cierre')?.valueChanges.subscribe(() => this.generarMatrizHoraria());
     this.negocioForm.get('horario.intervalo')?.valueChanges.subscribe(() => this.generarMatrizHoraria());
 
-    this.cargarDatos();
+    if (!routeParam) {
+      this.cargando = false;
+      this.errorMensaje = 'No hemos podido identificar el negocio que quieres editar.';
+      return;
+    }
+
+    this.negocioService.resolveNegocioFromRouteParam(routeParam).subscribe({
+      next: (negocio) => {
+        if (!negocio) {
+          this.cargando = false;
+          this.errorMensaje = 'No hemos podido resolver el negocio que quieres editar.';
+          return;
+        }
+
+        this.negocioId = negocio.id;
+        this.negocioRouteKey = this.negocioService.getRouteKey(negocio) ?? routeParam;
+        this.cargarDatos();
+      },
+      error: (error: unknown) => {
+        this.cargando = false;
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido resolver el negocio que quieres editar.');
+      },
+    });
   }
 
   get diasAbre(): FormArray {
@@ -93,24 +137,46 @@ export class EditarNegocioComponent implements OnInit {
     this.errorMensaje = '';
     this.cargando = true;
 
-    this.http.get<NegocioDetalle>(buildApiUrl(`/negocios/${this.negocioId}`)).subscribe({
-      next: (negocio) => {
+    forkJoin({
+      negocio: this.negocioService.getNegocioById(this.negocioId).pipe(
+        map((negocio) => negocio as NegocioDetalle),
+      ),
+      horario: this.negocioService.getHorario(this.negocioId).pipe(
+        catchError(() => of(null)),
+      ),
+    }).subscribe({
+      next: ({ negocio, horario }) => {
+        const horarioActual = horario ?? negocio.horario ?? null;
+        const rangoBase = this.resolveHorarioBase(horarioActual);
+
+        this.diasAbre.clear();
         this.negocioForm.patchValue({
           nombre: negocio.nombre,
-          nickname: negocio.dueno?.nickname || '',
+          nickname: negocio.nickname || negocio.dueno?.nickname || '',
           direccion: negocio.direccion,
           historia: negocio.historia,
+          nenufarAsset:
+            negocio.nenufarAsset ??
+            resolveNenufarAsset(negocio.nenufarKey) ??
+            DEFAULT_NENUFAR_ASSET,
           categoria: negocio.categoria?.nombre || '',
           aceptaReservas: negocio.aceptaReservas || false,
           horario: {
-            apertura: negocio.horario?.apertura || '',
-            cierre: negocio.horario?.cierre || '',
-            intervalo: negocio.horario?.intervalo || 30
+            apertura: rangoBase.apertura,
+            cierre: rangoBase.cierre,
+            intervalo:
+              Number(
+                negocio.intervaloReserva ??
+                horarioActual?.intervalo ??
+                30,
+              ) || 30,
           }
         });
 
-        if (negocio.horario?.diasAbre) {
-          negocio.horario.diasAbre.forEach((dia: string) => this.toggleDia(dia));
+        if (Array.isArray(horarioActual?.diasAbre)) {
+          horarioActual.diasAbre.forEach((dia: string) => {
+            this.diasAbre.push(new FormControl(dia));
+          });
         }
 
         this.generarMatrizHoraria();
@@ -128,7 +194,10 @@ export class EditarNegocioComponent implements OnInit {
     const cierre = this.negocioForm.get('horario.cierre')?.value;
     const intervalo = +this.negocioForm.get('horario.intervalo')?.value || 30;
 
-    if (!apertura || !cierre) return;
+    if (!apertura || !cierre) {
+      this.matrizHoraria = [];
+      return;
+    }
 
     const [hStart, mStart] = apertura.split(':').map(Number);
     const [hEnd, mEnd] = cierre.split(':').map(Number);
@@ -160,18 +229,134 @@ export class EditarNegocioComponent implements OnInit {
       return;
     }
 
-    const datos = this.negocioForm.value;
+    const datos = this.negocioForm.getRawValue();
+    const nenufarAsset =
+      resolveNenufarAsset(datos.nenufarAsset) ?? DEFAULT_NENUFAR_ASSET;
+    const nenufarKey = resolveNenufarKey(nenufarAsset);
+    const negocioPayload = {
+      nombre: datos.nombre,
+      direccion: datos.direccion,
+      historia: datos.historia,
+      aceptaReservas: Boolean(datos.aceptaReservas),
+      nenufarAsset,
+      ...(nenufarKey ? { nenufarKey } : {}),
+    };
+    const horarioPayload = this.buildHorarioPayload(datos);
+
     this.guardando = true;
 
-    this.http.patch(buildApiUrl(`/negocios/${this.negocioId}`), datos).subscribe({
-      next: () => {
-        this.guardando = false;
-        void this.router.navigate(['/negocio', this.negocioId]);
-      },
-      error: (error: unknown) => {
-        this.guardando = false;
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar el negocio.');
+    forkJoin({
+      negocioActualizado: this.negocioService.update(this.negocioId, negocioPayload),
+      horarioActualizado: this.negocioService.configHorario(this.negocioId, horarioPayload).pipe(
+        catchError((error: unknown) => {
+          if ((error as { status?: number })?.status === 404) {
+            return this.negocioService.update(this.negocioId, {
+              horario: horarioPayload.horario,
+              intervaloReserva: horarioPayload.intervaloReserva,
+            });
+          }
+
+          throw error;
+        }),
+      ),
+    })
+      .pipe(
+        switchMap(() =>
+          this.negocioService.getNegocioById(this.negocioId).pipe(
+            map((negocio) => negocio as NegocioDetalle),
+          ),
+        ),
+      )
+      .subscribe({
+        next: (negocioActualizado) => {
+          const routeKey =
+            this.negocioService.getRouteKey(negocioActualizado) ?? this.negocioRouteKey;
+
+          this.guardando = false;
+          this.sincronizarNegocioEnSesion(negocioActualizado);
+          this.nenufarSelector?.markAsSaved(
+            negocioActualizado.nenufarAsset ?? DEFAULT_NENUFAR_ASSET,
+          );
+          void this.router.navigate(['/', routeKey]);
+        },
+        error: (error: unknown) => {
+          this.guardando = false;
+          this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar el negocio.');
+        }
+      });
+  }
+
+  private resolveHorarioBase(
+    horario: NegocioDetalle['horario'] | null | undefined,
+  ): { apertura: string; cierre: string } {
+    if (!horario) {
+      return { apertura: '', cierre: '' };
+    }
+
+    if (horario.apertura && horario.cierre) {
+      return {
+        apertura: horario.apertura,
+        cierre: horario.cierre,
+      };
+    }
+
+    const ranges = horario.weekly && typeof horario.weekly === 'object'
+      ? Object.values(horario.weekly).flat()
+      : [];
+    const firstRange = ranges.find(
+      (range): range is [string, string] =>
+        Array.isArray(range) && range.length >= 2,
+    );
+
+    return {
+      apertura: firstRange?.[0] ?? '',
+      cierre: firstRange?.[1] ?? '',
+    };
+  }
+
+  private buildHorarioPayload(datos: ReturnType<FormGroup['getRawValue']>) {
+    const apertura = String(datos.horario?.apertura ?? '').trim();
+    const cierre = String(datos.horario?.cierre ?? '').trim();
+    const intervalo = Number(datos.horario?.intervalo ?? 30) || 30;
+    const diasAbre = Array.isArray(datos.horario?.diasAbre)
+      ? datos.horario.diasAbre.filter((dia: unknown): dia is string => typeof dia === 'string')
+      : [];
+
+    return {
+      intervaloReserva: intervalo,
+      horario: Boolean(datos.aceptaReservas)
+        ? { apertura, cierre, intervalo, diasAbre }
+        : { apertura: '', cierre: '', intervalo, diasAbre: [] as string[] },
+    };
+  }
+
+  private sincronizarNegocioEnSesion(negocioActualizado: NegocioDetalle): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+
+    const raw = localStorage.getItem('usuarioLogueado');
+    if (!raw || raw === 'undefined' || raw === 'null') {
+      return;
+    }
+
+    try {
+      const usuario = JSON.parse(raw) as {
+        negocio?: Record<string, unknown> & { id?: number };
+      };
+
+      if (usuario?.negocio?.id !== this.negocioId) {
+        return;
       }
-    });
+
+      usuario.negocio = {
+        ...usuario.negocio,
+        ...negocioActualizado,
+      };
+
+      localStorage.setItem('usuarioLogueado', JSON.stringify(usuario));
+    } catch {
+      localStorage.removeItem('usuarioLogueado');
+    }
   }
 }

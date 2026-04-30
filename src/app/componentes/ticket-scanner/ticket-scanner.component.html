@@ -1,0 +1,252 @@
+<div class="ticket-scanner-shell">
+  <div class="tabs">
+    <button
+      class="tab"
+      type="button"
+      [class.active]="activeTab === 'scan'"
+      (click)="switchTab('scan')"
+    >
+      Escanear
+    </button>
+    <button
+      class="tab"
+      type="button"
+      [class.active]="activeTab === 'history'"
+      (click)="switchTab('history')"
+    >
+      Historial
+    </button>
+  </div>
+
+  @if (activeTab === 'scan') {
+    <div class="panel">
+      <div class="card">
+        <div class="camera-area">
+          <video #videoElement autoplay playsinline [class.on]="cameraActive"></video>
+          <canvas #canvasElement></canvas>
+
+          @if (previewUrl && !cameraActive) {
+            <img class="ticket-preview" [src]="previewUrl" alt="Previsualización del ticket">
+          } @else if (!cameraActive) {
+            <div class="cam-placeholder">
+              <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+                <rect x="5" y="13" width="42" height="32" rx="5" stroke="currentColor" stroke-width="2"/>
+                <circle cx="26" cy="29" r="9" stroke="currentColor" stroke-width="2"/>
+                <circle cx="26" cy="29" r="4" fill="currentColor" opacity="0.28"/>
+                <path d="M18 13l3-5h10l3 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="41" cy="19" r="2" fill="currentColor" opacity="0.35"/>
+              </svg>
+              <p>Sube o captura un ticket para revisarlo antes de guardarlo.</p>
+            </div>
+          }
+
+          <div class="corner c-tl"></div>
+          <div class="corner c-tr"></div>
+          <div class="corner c-bl"></div>
+          <div class="corner c-br"></div>
+          <div class="scan-line" [class.on]="cameraActive"></div>
+        </div>
+
+        <div class="cam-controls">
+          @if (!cameraActive) {
+            <button class="btn btn-green" type="button" (click)="startCamera()">
+              Abrir cámara
+            </button>
+          }
+          @if (cameraActive) {
+            <button class="btn btn-green" type="button" (click)="captureImage()">
+              Capturar
+            </button>
+            <button class="btn btn-red" type="button" (click)="stopCamera()">
+              Detener
+            </button>
+          }
+        </div>
+
+        <div class="upload-area">
+          <label class="upload-label" for="ticketFileInput">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor">
+              <path d="M7 1a.6.6 0 01.6.6v4.8h4.8a.6.6 0 010 1.2H7.6v4.8a.6.6 0 01-1.2 0V7.6H1.6a.6.6 0 010-1.2h4.8V1.6A.6.6 0 017 1z"/>
+            </svg>
+            Subir foto de ticket
+          </label>
+          <input
+            id="ticketFileInput"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            (change)="onFileSelected($event)"
+          >
+        </div>
+      </div>
+
+      @if (isAnalyzing) {
+        <div class="card">
+          <div class="processing">
+            <div class="spinner"></div>
+            <p>Preparando ticket...</p>
+            <small>Estamos dejando lista la revisión manual de tus productos.</small>
+          </div>
+        </div>
+      }
+
+      @if (scannerNote) {
+        <div class="status-note">
+          {{ scannerNote }}
+        </div>
+      }
+
+      @if (errorMessage) {
+        <div class="status-error" role="alert">
+          {{ errorMessage }}
+        </div>
+      }
+
+      @if (successMessage) {
+        <div class="status-success" role="status">
+          {{ successMessage }}
+        </div>
+      }
+
+      <div class="card">
+        <form class="results" [formGroup]="ticketForm" (ngSubmit)="submitTicket()">
+          <div class="ticket-header">
+            <div class="ticket-meta">
+              <label>
+                <span>Negocio detectado</span>
+                <input type="text" formControlName="storeName" placeholder="Nombre del negocio">
+              </label>
+              <label>
+                <span>Fecha del ticket</span>
+                <input type="date" formControlName="ticketDate">
+              </label>
+            </div>
+
+            <div class="ticket-total-box">
+              <span>Total detectado</span>
+              <input type="number" step="0.01" min="0" formControlName="detectedTotal">
+            </div>
+          </div>
+
+          <div class="items-list" formArrayName="items">
+            @for (item of itemsArray.controls; track item.get('id')?.value; let i = $index) {
+              <div class="item-editor" [formGroupName]="i">
+                <div class="field field-name">
+                  <label>Producto</label>
+                  <input type="text" formControlName="name" placeholder="Nombre del producto">
+                </div>
+                <div class="field field-small">
+                  <label>Ud.</label>
+                  <input type="number" min="1" step="1" formControlName="quantity">
+                </div>
+                <div class="field field-small">
+                  <label>Precio</label>
+                  <input type="number" min="0" step="0.01" formControlName="unitPrice">
+                </div>
+                <div class="field field-small">
+                  <label>Subtotal</label>
+                  <input type="number" min="0" step="0.01" formControlName="subtotal">
+                </div>
+                <button class="icon-btn" type="button" (click)="removeItem(i)" aria-label="Eliminar línea">
+                  ×
+                </button>
+              </div>
+            }
+          </div>
+
+          <div class="add-row" [formGroup]="quickAddForm">
+            <input class="flex1" type="text" formControlName="name" placeholder="Producto">
+            <input class="w56" type="number" min="1" step="1" formControlName="quantity" placeholder="Ud.">
+            <input class="w72" type="number" min="0" step="0.01" formControlName="unitPrice" placeholder="€">
+            <input class="w72" type="number" min="0" step="0.01" formControlName="subtotal" placeholder="Subt.">
+            <button class="btn" type="button" (click)="addQuickItem()">+</button>
+          </div>
+
+          <div class="helper-actions">
+            <button class="btn" type="button" (click)="addEmptyItem()">Añadir línea vacía</button>
+            <button class="btn" type="button" (click)="resetScanner()">Nuevo ticket</button>
+          </div>
+
+          <div class="totals">
+            <div class="t-row">
+              <span>Suma de líneas</span>
+              <span>{{ computedTotal | number:'1.2-2' }} €</span>
+            </div>
+            <div class="t-row">
+              <span>Total detectado</span>
+              <span>{{ (ticketForm.get('detectedTotal')?.value || 0) | number:'1.2-2' }} €</span>
+            </div>
+            @if (totalDifference !== 0) {
+              <div class="t-row t-row-warn">
+                <span>Diferencia</span>
+                <span>{{ totalDifference | number:'1.2-2' }} €</span>
+              </div>
+            }
+          </div>
+
+          <div class="payment-panel">
+            <label class="check-row">
+              <input type="checkbox" formControlName="paid">
+              <span>El ticket representa una compra ya pagada</span>
+            </label>
+
+            <label class="payment-method">
+              <span>Método de pago</span>
+              <select formControlName="paymentMethod">
+                <option value="EFECTIVO">Efectivo</option>
+                <option value="OTRO">Otro</option>
+                <option value="TARJETA">Tarjeta</option>
+                <option value="BIZUM">Bizum</option>
+              </select>
+            </label>
+          </div>
+
+          @if (!isAuthenticated) {
+            <p class="auth-note">
+              Inicia sesión para convertir este ticket en una compra asociada a tu cuenta.
+            </p>
+          }
+
+          <div class="action-row">
+            <button class="btn btn-green" type="submit" [disabled]="!canSave">
+              @if (isSaving) {
+                Guardando...
+              } @else {
+                Crear compra desde ticket
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (activeTab === 'history') {
+    <div class="panel">
+      @if (history.length === 0) {
+        <div class="empty">
+          <div class="empty-icon">🧾</div>
+          <p>No has guardado tickets todavía en este navegador.</p>
+        </div>
+      } @else {
+        <div class="history-list">
+          @for (entry of history; track entry.id) {
+            <article class="history-card">
+              <div class="history-top">
+                <div>
+                  <h4>{{ entry.negocioNombre }}</h4>
+                  <p>{{ entry.ticketDate }}</p>
+                </div>
+                <strong>{{ entry.total | number:'1.2-2' }} €</strong>
+              </div>
+              <div class="history-meta">
+                <span>{{ entry.itemsCount }} producto{{ entry.itemsCount !== 1 ? 's' : '' }}</span>
+                <span>Guardado {{ entry.createdAt | date:'d MMM, HH:mm' }}</span>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -1,138 +1,15 @@
-<div class="perfil-root">
+<section class="perfil-bridge">
+  <div class="perfil-bridge__card">
+    <p class="perfil-bridge__kicker">Mi perfil</p>
+    <h1>Preparando tu espacio</h1>
 
-  <!-- Navegación superior -->
-  <nav class="perfil-topbar">
-    <a class="back-link" routerLink="/inicio">← Inicio</a>
-    <button class="edit-btn" type="button" (click)="modoEdicion.set(!modoEdicion())">
-      {{ modoEdicion() ? 'Cancelar' : 'Editar perfil' }}
-    </button>
-  </nav>
-
-  <!-- Hero card -->
-  <section class="hero-card">
-    <div class="avatar-ring">
-      <img
-        class="hero-avatar"
-        [src]="usuarioLogueado()?.foto_perfil || 'assets/imagenes/rana1_profile_foto.png'"
-        alt="Foto de perfil"
-      >
-    </div>
-
-    <div class="hero-body">
-      <div class="name-row">
-        <h1 class="hero-name">{{ usuarioLogueado()?.nombre || 'Nombre no disponible' }}</h1>
-        <span class="hero-nick">&#64;{{ usuarioLogueado()?.nickname || 'sin_nickname' }}</span>
-      </div>
-
-      @if (!modoEdicion()) {
-        <p class="hero-bio">
-          {{ usuarioLogueado()?.biografia || 'Este usuario aún no ha escrito una biografía.' }}
-        </p>
-      } @else {
-        <textarea
-          class="bio-editor"
-          [(ngModel)]="nuevaBio"
-          placeholder="Escribe algo sobre ti…"
-          rows="3"
-        ></textarea>
-        <button class="save-btn" type="button" (click)="guardarCambios()">Guardar cambios</button>
-      }
-
-      <div class="hero-meta">
-        @if (usuarioLogueado()?.petalosSaldo != null) {
-          <span class="meta-chip meta-chip--gold">
-            🌸 {{ usuarioLogueado()?.petalosSaldo }} pétalos
-          </span>
-        }
-        @if (usuarioLogueado()?.creadoEn) {
-          <span class="meta-chip">
-            Miembro desde {{ usuarioLogueado()?.creadoEn | date:'yyyy' }}
-          </span>
-        }
-        @if (usuarioLogueado()?.rolGlobal && usuarioLogueado()?.rolGlobal !== 'USUARIO') {
-          <span class="meta-chip meta-chip--role">{{ usuarioLogueado()?.rolGlobal }}</span>
-        }
-      </div>
-    </div>
-  </section>
-
-  <!-- Estadísticas -->
-  <div class="stats-band">
-    <div class="stat-item">
-      <span class="stat-num">{{ resenas().length }}</span>
-      <span class="stat-label">Reseñas</span>
-    </div>
-    <div class="stat-divider" aria-hidden="true"></div>
-    <div class="stat-item">
-      <span class="stat-num">{{ reservas().length }}</span>
-      <span class="stat-label">Reservas</span>
-    </div>
-    <div class="stat-divider" aria-hidden="true"></div>
-    <div class="stat-item">
-      <span class="stat-num">—</span>
-      <span class="stat-label">Logros</span>
-    </div>
+    @if (cargando()) {
+      <p>Estamos comprobando si debemos llevarte a tu perfil de usuario o al perfil de tu negocio.</p>
+    } @else if (error()) {
+      <p>{{ error() }}</p>
+      <a routerLink="/inicio" class="perfil-bridge__link">Volver a inicio</a>
+    } @else {
+      <p>Redirigiendo...</p>
+    }
   </div>
-
-  <!-- Mis reseñas -->
-  <section class="profile-section">
-    <h2 class="section-title">
-      <span class="section-icon">🌿</span>
-      Mis reseñas
-    </h2>
-
-    @if (resenas().length === 0) {
-      <p class="empty-state">Todavía no has dejado ninguna reseña.</p>
-    }
-
-    @for (resena of resenas(); track resena.id) {
-      <article class="review-card">
-        <header class="review-card-header">
-          <div class="review-stars">{{ getStars(resena.puntuacion) }}</div>
-          <time class="review-date">{{ resena.fecha | date:'d MMM yyyy' }}</time>
-        </header>
-
-        <p class="review-text">{{ resena.comentario || resena.contenido || 'Sin comentario' }}</p>
-
-        <footer class="review-card-foot">
-          <span class="review-negocio">
-            En <strong>{{ resena.negocio?.nombre || 'Negocio' }}</strong>
-          </span>
-          @if (resena.selloNenufar) {
-            <span class="nenufar-seal">Sello Nenúfar</span>
-          }
-        </footer>
-      </article>
-    }
-  </section>
-
-  <!-- Mis reservas -->
-  <section class="profile-section">
-    <h2 class="section-title">
-      <span class="section-icon">📅</span>
-      Mis reservas
-    </h2>
-
-    @if (reservas().length === 0) {
-      <p class="empty-state">No tienes reservas aún.</p>
-    }
-
-    @for (r of reservas(); track r.id) {
-      <article class="reserva-card">
-        <div class="reserva-info">
-          <strong class="reserva-negocio">{{ r.negocio?.nombre || 'Negocio' }}</strong>
-          <span class="reserva-fecha">
-            {{ r.fecha | date:'d MMM yyyy' }} · {{ r.fecha?.split('T')[1]?.substring(0,5) }}h
-          </span>
-          @if (r.nota) {
-            <span class="reserva-nota">{{ r.nota }}</span>
-          }
-        </div>
-        <span class="estado-tag estado-tag--{{ r.estado?.toLowerCase() }}">
-          {{ r.estado || 'PENDIENTE' }}
-        </span>
-      </article>
-    }
-  </section>
-
-</div>
+</section>

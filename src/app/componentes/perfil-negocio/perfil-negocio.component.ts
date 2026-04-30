@@ -1,12 +1,22 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { buildApiUrl } from '../../config/api.config';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
+import { TicketScannerComponent } from '../ticket-scanner/ticket-scanner.component';
+import { TicketScannerSubmitResult } from '../../servicios/ticketScannerServicio/ticket-scanner.service';
+import { PromocionComponent } from '../promocion/promocion/promocion.component';
+import {
+  DEFAULT_NENUFAR_ASSET,
+  resolveBusinessImage,
+  resolveBusinessNenufarAsset,
+} from '../../core/negocio/negocio-visuals';
+import { NegocioService } from '../../servicios/negocioService/negocio.service';
+import { ReservaService } from '../../servicios/reservaService/reserva.service';
+import { AuthService } from '../../servicios/authService/auth.service';
+import { AccessRequiredModalComponent } from '../../components/shared/access-required-modal/access-required-modal.component';
 
 type AvailabilityResponse = {
   date: string;
@@ -24,25 +34,42 @@ function readStoredUser(): any | null {
 @Component({
   selector: 'app-perfil-negocio',
   standalone: true,
-  imports: [CommonModule, CrearResenaModalComponent, RouterLink],
+  imports: [
+    CommonModule,
+    CrearResenaModalComponent,
+    RouterLink,
+    TicketScannerComponent,
+    PromocionComponent,
+    AccessRequiredModalComponent,
+  ],
   templateUrl: './perfil-negocio.component.html',
   styleUrl: './perfil-negocio.component.css'
 })
 export class PerfilNegocioComponent implements OnInit {
+  private readonly negocioService = inject(NegocioService);
+  private readonly reservaService = inject(ReservaService);
+  private readonly authService = inject(AuthService);
+
   negocio: any = null;
   esPropietario = false;
-  horasDisponibles: string[] = [];
   esDueno = false;
-  slots: string[] = [];
   modalAbierto = false;
-  usuarioActual: any = readStoredUser();
+  usuarioActual: any = null;
   mediaPuntuacion = 0;
   resenas: any[] = [];
   negocioId!: number;
   errorMensaje = '';
   reservaError = '';
+  ticketScannerAbierto = false;
+  ticketScannerMensaje = '';
   puedeGestionarReservas = false;
   mensajeReservasConfiguracion = 'Configura primero tu horario para gestionar reservas.';
+  negocioRouteKey = '';
+  siguiendoNegocio = false;
+  seguidoresTotal = 0;
+  seguidosTotal = 0;
+  accessModalAbierto = false;
+  accessModalMensaje = 'Necesitas iniciar sesion para seguir este negocio o reservar una franja.';
 
   diasSemana: string[] = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   horasGeneradas: string[] = [];
@@ -51,45 +78,39 @@ export class PerfilNegocioComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
-    private http: HttpClient,
     private router: Router,
-  ) {}
+  ) {
+    this.usuarioActual = this.authService.obtenerUsuario() ?? readStoredUser();
+  }
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (!id) return;
+    const routeParam = this.negocioService.normalizeRouteParam(
+      this.route.snapshot.paramMap.get('nickname') ??
+      this.route.snapshot.paramMap.get('slug'),
+    );
+
+    if (!routeParam) {
+      this.errorMensaje = 'No hemos podido identificar el negocio.';
+      return;
+    }
 
     this.inicializarSemanaActual();
-    this.negocioId = +id;
+    this.negocioRouteKey = routeParam;
 
-    this.http.get(buildApiUrl(`/negocios/${id}`)).subscribe({
-      next: (data: any) => {
-        this.errorMensaje = '';
-        this.negocio = data;
-        this.negocioId = data.id;
-        this.refrescarResenas();
-        this.esDueno = !!this.usuarioActual?.id && this.usuarioActual.id === data.dueno?.id;
-        this.generarHorasDisponibles();
-        this.verificarPropietario();
-        this.actualizarAccesosGestion();
-        this.recargarReservas();
-      },
-      error: (error: unknown) => {
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
-      },
-    });
-
-    this.http.get<any[]>(buildApiUrl(`/negocios/${id}/resenas`)).subscribe({
-      next: (data) => {
-        this.resenas = data;
-        if (data.length > 0) {
-          const suma = data.reduce((acc, r) => acc + r.puntuacion, 0);
-          this.mediaPuntuacion = Math.round((suma / data.length) * 10) / 10;
+    this.negocioService.resolveNegocioFromRouteParam(routeParam).subscribe({
+      next: (negocio) => {
+        if (!negocio) {
+          this.errorMensaje = 'No hemos podido resolver el negocio solicitado.';
+          return;
         }
+
+        this.negocioId = negocio.id;
+        this.negocioRouteKey = this.negocioService.getRouteKey(negocio) ?? routeParam;
+        this.cargarNegocio();
       },
       error: (error: unknown) => {
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar las reseñas.');
-      },
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido resolver el negocio solicitado.');
+      }
     });
   }
 
@@ -101,15 +122,39 @@ export class PerfilNegocioComponent implements OnInit {
     const h = this.negocio?.horario;
     if (!h) return [];
 
-    if (h.apertura && h.cierre) {
-      return [`${h.apertura} – ${h.cierre}`];
+    if (h.weekly && typeof h.weekly === 'object') {
+      const labelByDay: Record<string, string> = {
+        mon: 'Lunes',
+        tue: 'Martes',
+        wed: 'Miércoles',
+        thu: 'Jueves',
+        fri: 'Viernes',
+        sat: 'Sábado',
+        sun: 'Domingo',
+      };
+
+      const orderedDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+      return orderedDays
+        .map((dayKey) => {
+          const ranges = Array.isArray(h.weekly?.[dayKey]) ? h.weekly[dayKey] : [];
+          const formatted = ranges
+            .map((range: unknown) => {
+              if (!Array.isArray(range) || range.length < 2) {
+                return '';
+              }
+
+              return `${range[0]} – ${range[1]}`;
+            })
+            .filter(Boolean)
+            .join(' · ');
+
+          return formatted ? `${labelByDay[dayKey]}: ${formatted}` : `${labelByDay[dayKey]}: Cerrado`;
+        })
+        .filter(Boolean);
     }
 
-    if (h.weekly && typeof h.weekly === 'object') {
-      return Object.entries(h.weekly).map(([dia, rango]: [string, any]) => {
-        const r = Array.isArray(rango) ? rango.join(' – ') : String(rango);
-        return `${dia}: ${r}`;
-      });
+    if (h.apertura && h.cierre) {
+      return [`Horario general: ${h.apertura} – ${h.cierre}`];
     }
 
     return ['Consultar horario directamente'];
@@ -123,6 +168,47 @@ export class PerfilNegocioComponent implements OnInit {
       .filter(Boolean)
       .join(', ');
     return `https://www.google.com/maps/search/${encodeURIComponent(partes)}`;
+  }
+
+  getNenufarAsset(): string {
+    return resolveBusinessNenufarAsset(this.negocio, DEFAULT_NENUFAR_ASSET);
+  }
+
+  getBusinessCoverImage(): string {
+    return resolveBusinessImage(this.negocio, {
+      fallback: DEFAULT_NENUFAR_ASSET,
+      preferCover: true,
+    });
+  }
+
+  getBusinessAvatarImage(): string {
+    return resolveBusinessImage(this.negocio, {
+      fallback: DEFAULT_NENUFAR_ASSET,
+    });
+  }
+
+  getBusinessNickname(): string {
+    const nickname =
+      this.negocio?.nickname ??
+      this.negocio?.slug ??
+      this.negocio?.dueno?.nickname ??
+      this.negocioRouteKey;
+
+    return nickname ? `@${String(nickname).trim()}` : '@negocio';
+  }
+
+  getBusinessAddressSummary(): string {
+    return [
+      this.negocio?.direccion,
+      this.negocio?.ciudad,
+      this.negocio?.provincia,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  }
+
+  shouldShowFollowButton(): boolean {
+    return !this.esDueno;
   }
 
   private inicializarSemanaActual(): void {
@@ -141,7 +227,11 @@ export class PerfilNegocioComponent implements OnInit {
   }
 
   generarHorasDisponibles(): void {
-    if (!this.negocio?.horario) return;
+    if (!this.tieneHorarioConfigurado()) {
+      this.horasGeneradas = [];
+      return;
+    }
+
     const horario = this.negocio.horario;
     const paso = Number(this.negocio.intervaloReserva || horario.intervalo || 30);
 
@@ -181,8 +271,8 @@ export class PerfilNegocioComponent implements OnInit {
     }
 
     const requests = this.diasSemana.map((dia) =>
-      this.http
-        .get<AvailabilityResponse>(buildApiUrl(`/negocios/${this.negocioId}/availability?date=${this.fechasSemana[dia]}`))
+      this.reservaService
+        .availability(this.negocioId, this.fechasSemana[dia])
         .pipe(
           catchError((error: unknown) => {
             this.reservaError = getUserErrorMessage(error, 'No hemos podido cargar toda la disponibilidad.');
@@ -204,7 +294,7 @@ export class PerfilNegocioComponent implements OnInit {
 
   verificarPropietario(): void {
     if (!this.usuarioActual || !this.negocio) return;
-    this.esDueno = this.usuarioActual.id === this.negocio.duenoId;
+    this.esDueno = this.usuarioActual.id === (this.negocio.dueno?.id ?? this.negocio.duenoId);
     this.actualizarAccesosGestion();
   }
 
@@ -213,7 +303,7 @@ export class PerfilNegocioComponent implements OnInit {
       this.esDueno && (Boolean(this.negocio?.aceptaReservas) || this.tieneHorarioConfigurado());
   }
 
-  private tieneHorarioConfigurado(): boolean {
+  tieneHorarioConfigurado(): boolean {
     const horario = this.negocio?.horario;
     if (!horario) return false;
     if (horario.apertura && horario.cierre) return true;
@@ -222,14 +312,48 @@ export class PerfilNegocioComponent implements OnInit {
 
   abrirModalResena(): void { this.modalAbierto = true; }
 
+  getUsuarioRoute(usuario: { nickname?: string | null } | null | undefined): string[] | null {
+    const nickname = usuario?.nickname?.trim();
+    return nickname ? ['/usuario', nickname] : null;
+  }
+
+  private cargarNegocio(): void {
+    if (!this.negocioId) {
+      return;
+    }
+
+    this.negocioService.getNegocioById(this.negocioId).subscribe({
+      next: (data: any) => {
+        this.errorMensaje = '';
+        this.negocio = data;
+        this.negocioId = data.id;
+        this.negocioRouteKey = this.negocioService.getRouteKey(data) ?? this.negocioRouteKey;
+        this.refrescarResenas();
+        this.cargarSeguimiento();
+        this.esDueno =
+          !!this.usuarioActual?.id &&
+          this.usuarioActual.id === (data.dueno?.id ?? data.duenoId);
+        this.generarHorasDisponibles();
+        this.verificarPropietario();
+        this.actualizarAccesosGestion();
+        this.cargarSeguidosPropios();
+        this.recargarReservas();
+      },
+      error: (error: unknown) => {
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
+      },
+    });
+  }
+
   refrescarResenas(): void {
     if (!this.negocioId) return;
-    this.http.get<any[]>(buildApiUrl(`/negocios/${this.negocioId}/resenas`)).subscribe({
+    this.negocioService.getResenasNegocio(this.negocioId).subscribe({
       next: (res) => {
-        this.resenas = res;
-        if (res.length > 0) {
-          const suma = res.reduce((acc, r) => acc + (r.puntuacion || 0), 0);
-          this.mediaPuntuacion = Math.round((suma / res.length) * 10) / 10;
+        const reviews = Array.isArray(res) ? (res as Array<{ puntuacion?: number }>) : [];
+        this.resenas = reviews;
+        if (reviews.length > 0) {
+          const suma = reviews.reduce((acc, review) => acc + (review.puntuacion || 0), 0);
+          this.mediaPuntuacion = Math.round((suma / reviews.length) * 10) / 10;
         } else {
           this.mediaPuntuacion = 0;
         }
@@ -240,7 +364,71 @@ export class PerfilNegocioComponent implements OnInit {
     });
   }
 
+  cargarSeguimiento(): void {
+    if (!this.negocioId) {
+      return;
+    }
+
+    this.negocioService.getSeguidoresNegocio(this.negocioId).subscribe({
+      next: (response) => {
+        this.seguidoresTotal = Number(response.total ?? 0) || 0;
+        this.siguiendoNegocio = Boolean(response.actorSiguiendo);
+      },
+      error: () => {
+        this.seguidoresTotal = Number(this.negocio?.followersCount ?? 0) || 0;
+        this.siguiendoNegocio = Boolean(this.negocio?.isFollowing ?? this.negocio?.isFollowedByMe);
+      },
+    });
+  }
+
+  alternarSeguimiento(): void {
+    if (this.esDueno) {
+      return;
+    }
+
+    if (!this.negocioId) {
+      return;
+    }
+
+    if (!this.authService.isAuthenticated()) {
+      this.accessModalMensaje = 'Necesitas iniciar sesion para seguir este negocio.';
+      this.accessModalAbierto = true;
+      return;
+    }
+
+    const followingNext = !this.siguiendoNegocio;
+    const request$ = this.siguiendoNegocio
+      ? this.negocioService.dejarDeSeguirNegocio(this.negocioId)
+      : this.negocioService.seguirNegocio(this.negocioId);
+
+    request$.subscribe({
+      next: (response) => {
+        this.siguiendoNegocio = !this.siguiendoNegocio;
+        this.seguidoresTotal = Number(response.total ?? this.seguidoresTotal) || 0;
+
+        if (followingNext && this.negocio?.id) {
+          const activar = confirm(`¿Quieres recibir notificaciones de ${this.negocio.nombre}?`);
+          if (!activar) {
+            this.negocioService
+              .toggleNotificacionesSeguimiento(this.negocio.id, false)
+              .pipe(catchError(() => of({ activas: false })))
+              .subscribe();
+          }
+        }
+      },
+      error: (error: unknown) => {
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar el seguimiento.');
+      },
+    });
+  }
+
   confirmarReserva(dia: string, hora: string): void {
+    if (!this.authService.isAuthenticated()) {
+      this.accessModalMensaje = 'Necesitas iniciar sesion para reservar en este negocio.';
+      this.accessModalAbierto = true;
+      return;
+    }
+
     const ok = confirm(`¿Reservar el ${dia} a las ${hora}?`);
     if (!ok) return;
 
@@ -249,7 +437,11 @@ export class PerfilNegocioComponent implements OnInit {
 
     const fecha = new Date(`${fechaBase}T${hora}:00`);
     this.reservaError = '';
-    this.http.post(buildApiUrl(`/negocios/${this.negocio.id}/reservas`), { fecha: fecha.toISOString() }).subscribe({
+    this.reservaService.crearReserva({
+      negocioId: this.negocio.id,
+      fecha: fecha.toISOString(),
+      nota: '',
+    }).subscribe({
       next: () => {
         alert(`✅ ¡Reserva confirmada en ${this.negocio.nombre} a las ${hora}!`);
         this.recargarReservas();
@@ -260,8 +452,61 @@ export class PerfilNegocioComponent implements OnInit {
     });
   }
 
+  alternarTicketScanner(): void {
+    this.ticketScannerAbierto = !this.ticketScannerAbierto;
+    if (this.ticketScannerAbierto) {
+      this.ticketScannerMensaje = '';
+    }
+  }
+
+  onTicketScannerSaved(result: TicketScannerSubmitResult): void {
+    const total = Number(result.total || 0).toFixed(2);
+    this.ticketScannerMensaje =
+      result.pago
+        ? `Compra creada correctamente por ${total} €. Ya aparece asociada a tu cuenta en ${this.negocio?.nombre || 'este negocio'}.`
+        : `Compra creada correctamente por ${total} €.`;
+    this.ticketScannerAbierto = false;
+  }
+
   volver(): void { this.router.navigateByUrl('/inicio'); }
-  irAEditarNegocio(): void { if (this.negocio?.id) this.router.navigate(['/negocio-editar', this.negocio.id]); }
-  irADashboardNegocio(): void { if (this.negocio?.id) void this.router.navigate(['/negocios', this.negocio.id, 'dashboard']); }
-  irAReservasNegocio(): void { if (this.puedeGestionarReservas && this.negocio?.id) void this.router.navigate(['/negocios', this.negocio.id, 'reservas']); }
+  irALogin(): void {
+    this.accessModalAbierto = false;
+    void this.router.navigate(['/login']);
+  }
+  irALogosNenufar(): void {
+    void this.router.navigate(['/logos-nenufar'], {
+      queryParams: this.negocioRouteKey ? { negocio: this.negocioRouteKey } : undefined,
+    });
+  }
+  irAEditarNegocio(): void {
+    if (this.negocioRouteKey) {
+      void this.router.navigate(['/', this.negocioRouteKey, 'editar']);
+    }
+  }
+  irADashboardNegocio(): void {
+    if (this.negocioRouteKey) {
+      void this.router.navigate(['/', this.negocioRouteKey, 'dashboard']);
+    }
+  }
+  irAReservasNegocio(): void {
+    if (this.puedeGestionarReservas && this.negocioRouteKey) {
+      void this.router.navigate(['/', this.negocioRouteKey, 'reservas']);
+    }
+  }
+
+  private cargarSeguidosPropios(): void {
+    if (!this.esDueno) {
+      this.seguidosTotal = 0;
+      return;
+    }
+
+    this.negocioService.listSeguidos().subscribe({
+      next: (negocios) => {
+        this.seguidosTotal = negocios.length;
+      },
+      error: () => {
+        this.seguidosTotal = 0;
+      },
+    });
+  }
 }

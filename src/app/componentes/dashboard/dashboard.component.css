@@ -30,6 +30,27 @@
   padding: 1.2rem;
 }
 
+.dashboard-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.dashboard-identity__media {
+  width: 4.25rem;
+  height: 4.25rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  object-fit: cover;
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
+}
+
+.dashboard-identity__copy {
+  margin: 0.28rem 0 0;
+  color: var(--text-secondary);
+}
+
 .dashboard-kicker,
 .panel-kicker {
   margin: 0 0 0.35rem;

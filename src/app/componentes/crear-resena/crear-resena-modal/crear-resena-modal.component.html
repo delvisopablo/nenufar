@@ -1,65 +1,80 @@
-<div class="modal-backdrop" *ngIf="visible">
-  <div class="modal">
-    <div class="modal-head">
-      <p class="modal-eyebrow">Nueva reseña</p>
-      <h2>Compartir una reseña</h2>
-      <p>Cuéntale a la comunidad cómo ha sido tu experiencia.</p>
-    </div>
+@if (visible) {
+  <div class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <p class="modal-eyebrow">Nueva reseña</p>
+        <h2>Compartir una reseña</h2>
+        <p>Cuéntale a la comunidad cómo ha sido tu experiencia.</p>
+      </div>
 
-    <form [formGroup]="form" (ngSubmit)="enviar()" class="modal-form">
-      <label class="field">
-        <span>Negocio</span>
-        <input
-          type="text"
-          placeholder="Busca o escribe el negocio"
-          formControlName="negocio"
-          (focus)="mostrarLista.set(true)"
-          (blur)="ocultarListaConRetraso()"
-        />
-      </label>
+      <form [formGroup]="form" (ngSubmit)="enviar()" class="modal-form">
+        <label class="field">
+          <span>Negocio</span>
+          <input
+            type="text"
+            placeholder="Busca o escribe el negocio"
+            formControlName="negocio"
+            (focus)="mostrarLista.set(true)"
+            (blur)="ocultarListaConRetraso()"
+          />
+        </label>
 
-      <ul class="sugerencias" *ngIf="mostrarLista()">
-        <li *ngFor="let negocio of negocios" (click)="seleccionarNegocio(negocio)">
-          {{ negocio.nombre }}
-        </li>
-        <li *ngIf="cargandoNegocios()">Cargando negocios...</li>
-      </ul>
+        @if (mostrarLista()) {
+          <ul class="sugerencias">
+            @for (negocio of negocios; track negocio.id) {
+              <li (click)="seleccionarNegocio(negocio)">
+                <img [src]="getNegocioImage(negocio)" [alt]="negocio.nombre">
+                <span>{{ negocio.nombre }}</span>
+              </li>
+            }
 
-      <label class="field">
-        <span>Comentario</span>
-        <textarea placeholder="Tu comentario..." formControlName="comentario"></textarea>
-      </label>
+            @if (cargandoNegocios()) {
+              <li class="sugerencias__feedback">Cargando negocios...</li>
+            }
+          </ul>
+        }
 
-      <div class="field">
-        <span>Valoración</span>
-        <div class="estrellas">
-          <span
-            *ngFor="let estrella of [1, 2, 3, 4, 5]"
-            (click)="form.controls['valoracion'].setValue(estrella)"
-            [class.activa]="estrella <= form.controls['valoracion'].value"
-          >
-            ★
-          </span>
+        <label class="field">
+          <span>Comentario</span>
+          <textarea placeholder="Tu comentario..." formControlName="comentario"></textarea>
+        </label>
+
+        <div class="field">
+          <span>Valoracion</span>
+          <div class="estrellas">
+            @for (estrella of [1, 2, 3, 4, 5]; track estrella) {
+              <span
+                (click)="form.controls['valoracion'].setValue(estrella)"
+                [class.activa]="estrella <= form.controls['valoracion'].value"
+              >
+                ★
+              </span>
+            }
+          </div>
         </div>
-      </div>
 
-      <div
-        class="sello-switch"
-        [class.activo]="form.controls['selloNenufar'].value"
-        (click)="form.controls['selloNenufar'].setValue(!form.controls['selloNenufar'].value)"
-        title="El Sello Nenúfar destaca esta reseña como especialmente útil o relevante."
-      >
-        🌿 Sello Nenúfar
-      </div>
+        <div
+          class="sello-switch"
+          [class.activo]="form.controls['selloNenufar'].value"
+          (click)="form.controls['selloNenufar'].setValue(!form.controls['selloNenufar'].value)"
+          title="El Sello Nenúfar destaca esta reseña como especialmente útil o relevante."
+        >
+          🌿 Sello Nenúfar
+        </div>
 
-      <p class="form-feedback" role="alert" *ngIf="errorMensaje()">
-        {{ errorMensaje() }}
-      </p>
+        @if (errorMensaje()) {
+          <p class="form-feedback" role="alert">
+            {{ errorMensaje() }}
+          </p>
+        }
 
-      <div class="acciones">
-        <button type="button" class="secondary-btn" (click)="cerrar()">Cancelar</button>
-        <button type="submit" class="primary-btn" [disabled]="form.invalid">Publicar</button>
-      </div>
-    </form>
+        <div class="acciones">
+          <button type="button" class="secondary-btn" (click)="cerrar()">Cancelar</button>
+          <button type="submit" class="primary-btn" [disabled]="form.invalid || enviando()">
+            {{ enviando() ? 'Publicando...' : 'Publicar' }}
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
+}

@@ -4,7 +4,6 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { Subject, filter, takeUntil } from 'rxjs';
 import { HeaderComponent } from './componentes/HyF/header/header.component';
 import { EstanqueComponent } from './componentes/estanque/estanque.component';
-import { AuthService } from './servicios/authService/auth.service';
 import { CuentaAtrasService } from './servicios/cuentaAtrasServicio/cuenta-atras.service';
 import { LayoutService } from './servicios/layoutServicio/layout.service';
 
@@ -19,7 +18,6 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);
   private readonly cuentaAtrasService = inject(CuentaAtrasService);
-  private readonly authService = inject(AuthService);
   private readonly destroy$ = new Subject<void>();
 
   readonly layoutService = inject(LayoutService);
@@ -29,9 +27,6 @@ export class AppComponent implements OnInit, OnDestroy {
   readonly bloquearScroll = signal(false);
 
   ngOnInit(): void {
-    this.authService.me()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe();
     this.sincronizarAccesoPersistido();
     this.actualizarEstadoRuta(this.router.url);
 

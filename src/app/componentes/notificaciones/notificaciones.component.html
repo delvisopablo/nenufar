@@ -1,0 +1,86 @@
+<section class="noti-shell">
+  <div class="noti-card">
+    <nav class="noti-topbar">
+      <a class="back-link" routerLink="/inicio">← Volver al inicio</a>
+
+      <button
+        class="mark-all-btn"
+        type="button"
+        [disabled]="countNoLeidas() === 0"
+        (click)="marcarTodas()"
+      >
+        Marcar todas como leídas
+      </button>
+    </nav>
+
+    <header class="noti-header">
+      <div>
+        <p class="noti-kicker">Centro de actividad</p>
+        <h1>Notificaciones</h1>
+        <p class="noti-subtitle">
+          Sigue de cerca promociones, reseñas y novedades de tus negocios favoritos.
+        </p>
+      </div>
+
+      <div class="noti-counter">
+        <span class="noti-counter__num">{{ countNoLeidas() }}</span>
+        <span class="noti-counter__label">Sin leer</span>
+      </div>
+    </header>
+
+    @if (errorMensaje()) {
+      <div class="alert-error" role="alert">{{ errorMensaje() }}</div>
+    }
+
+    @if (cargando()) {
+      <div class="state-card">
+        <h2>Cargando notificaciones</h2>
+        <p>Estamos preparando tu timeline de actividad.</p>
+      </div>
+    } @else if (!tieneItems()) {
+      <div class="state-card">
+        <h2>No tienes notificaciones todavía</h2>
+        <p>Cuando haya novedades de negocios, promociones o reseñas, aparecerán aquí.</p>
+      </div>
+    } @else {
+      <div class="timeline">
+        @for (n of items(); track n.id) {
+          <article class="timeline-item" [class.timeline-item--unread]="!n.leida">
+            <div class="timeline-accent" aria-hidden="true"></div>
+
+            <div class="timeline-badge" [ngClass]="getTipoVisual(n.tipo).className">
+              {{ getTipoVisual(n.tipo).label }}
+            </div>
+
+            <button class="timeline-body" type="button" (click)="abrir(n)">
+              <div class="timeline-head">
+                <strong class="timeline-title">{{ n.titulo }}</strong>
+                <time class="timeline-date">{{ getRelativeDate(n.creadoEn) }}</time>
+              </div>
+
+              @if (n.contenido) {
+                <p class="timeline-copy">{{ n.contenido }}</p>
+              }
+
+              @if (n.link) {
+                <span class="timeline-link">Abrir detalle</span>
+              }
+            </button>
+
+            <div class="timeline-actions">
+              @if (!n.leida) {
+                <button class="mini-btn" type="button" (click)="marcarLeida(n)">
+                  Marcar leída
+                </button>
+              }
+
+              <button class="delete-btn" type="button" (click)="borrar(n)" aria-label="Borrar notificación">
+                ×
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </div>
+</section>

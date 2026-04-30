@@ -22,6 +22,14 @@ export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return request$.pipe(
     catchError((error: unknown) => {
+      if (
+        error instanceof HttpErrorResponse &&
+        error.status === 401 &&
+        /\/auth\/me(?:\?|$)/.test(req.urlWithParams)
+      ) {
+        return throwError(() => error);
+      }
+
       const appError =
         error instanceof HttpErrorResponse
           ? parseHttpError(error, { url: req.urlWithParams, method: req.method })
@@ -42,4 +50,3 @@ export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
     }),
   );
 };
-

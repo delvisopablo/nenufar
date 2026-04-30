@@ -1,1 +1,37 @@
-<p>categoria works!</p>
+<section class="cat-shell">
+  <div class="cat-card">
+    <p class="kicker">Categorías</p>
+    <h1>Explora por categoría</h1>
+
+    <ng-container *ngIf="cargando(); else listaTpl">
+      <p class="status">Cargando categorías…</p>
+    </ng-container>
+
+    <ng-template #listaTpl>
+      <p *ngIf="errorMensaje()" class="alert alert-error">{{ errorMensaje() }}</p>
+
+      <ng-container *ngIf="!errorMensaje()">
+        <p *ngIf="items().length === 0" class="empty">No hay categorías disponibles.</p>
+
+        <ul *ngIf="items().length > 0" class="cat-list">
+          <li *ngFor="let item of items()" class="cat-item" [class.abierta]="item.expandida">
+            <button type="button" class="cat-header" (click)="toggle(item)">
+              <span class="cat-nombre">{{ item.cat.nombre }}</span>
+              <span class="chevron">{{ item.expandida ? '▾' : '▸' }}</span>
+            </button>
+
+            <div class="cat-body" *ngIf="item.expandida">
+              <p *ngIf="item.cargandoSubs" class="status">Cargando subcategorías…</p>
+              <ul *ngIf="!item.cargandoSubs && item.subs.length > 0" class="sub-list">
+                <li *ngFor="let s of item.subs" class="sub-item">{{ s.nombre }}</li>
+              </ul>
+              <p *ngIf="!item.cargandoSubs && item.subs.length === 0" class="empty">
+                No hay subcategorías para esta categoría.
+              </p>
+            </div>
+          </li>
+        </ul>
+      </ng-container>
+    </ng-template>
+  </div>
+</section>

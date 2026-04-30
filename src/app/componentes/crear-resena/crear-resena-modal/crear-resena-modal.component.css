@@ -102,14 +102,29 @@
 }
 
 .sugerencias li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
   padding: 0.65rem 0.72rem;
   border-radius: 12px;
   cursor: pointer;
   color: var(--field-text);
 }
 
+.sugerencias li img {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.7);
+}
+
 .sugerencias li:hover {
   background-color: rgba(192, 184, 122, 0.18);
+}
+
+.sugerencias__feedback {
+  cursor: default !important;
 }
 
 .estrellas {

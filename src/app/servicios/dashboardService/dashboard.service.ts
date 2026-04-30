@@ -36,6 +36,10 @@ export interface DashboardNegocio {
   id: number;
   nombre: string;
   foto?: string;
+  fotoPerfil?: string;
+  fotoPortada?: string;
+  nenufarAsset?: string;
+  nenufarKey?: string;
   aceptaReservas: boolean;
   categoria?: {
     nombre?: string;
@@ -271,6 +275,10 @@ export class DashboardService {
       id: Number(raw['id'] ?? 0) || 0,
       nombre: String(raw['nombre'] ?? 'Negocio'),
       foto: raw['foto'] ?? undefined,
+      fotoPerfil: raw['fotoPerfil'] ?? undefined,
+      fotoPortada: raw['fotoPortada'] ?? undefined,
+      nenufarAsset: raw['nenufarAsset'] ?? undefined,
+      nenufarKey: raw['nenufarKey'] ?? undefined,
       aceptaReservas: Boolean(raw['aceptaReservas']),
       categoria: raw['categoria'] ?? undefined,
       horario: horario ?? undefined
@@ -321,4 +329,89 @@ export class DashboardService {
     const weeklyRanges = Object.values(horario.weekly ?? {}).flat();
     return weeklyRanges.length > 0;
   }
+
+  // ── Endpoints REALES /api/negocios/:id/dashboard/* (añadidos sin tocar la
+  // lógica anterior; los métodos getResumen/getMetricas/getReservasDashboard
+  // siguen siendo los que el componente actualmente consume) ──────────────────
+
+  private buildRangeParams(range?: { from?: string; to?: string; days?: number }): HttpParams {
+    let params = new HttpParams();
+    if (range?.from) params = params.set('from', range.from);
+    if (range?.to) params = params.set('to', range.to);
+    if (range?.days) params = params.set('days', String(range.days));
+    return params;
+  }
+
+  /** GET /api/negocios/:id/dashboard/resumen */
+  getDashboardResumen(negocioId: number, range?: { from?: string; to?: string; days?: number }): Observable<unknown> {
+    return this.http.get<unknown>(
+      buildApiUrl(`/negocios/${negocioId}/dashboard/resumen`),
+      { params: this.buildRangeParams(range) },
+    );
+  }
+
+  /** GET /api/negocios/:id/dashboard/ventas */
+  getDashboardVentas(negocioId: number, range?: { from?: string; to?: string; days?: number }): Observable<unknown> {
+    return this.http.get<unknown>(
+      buildApiUrl(`/negocios/${negocioId}/dashboard/ventas`),
+      { params: this.buildRangeParams(range) },
+    );
+  }
+
+  /** GET /api/negocios/:id/dashboard/ingresos */
+  getDashboardIngresos(negocioId: number, range?: { from?: string; to?: string; days?: number }): Observable<unknown> {
+    return this.http.get<unknown>(
+      buildApiUrl(`/negocios/${negocioId}/dashboard/ingresos`),
+      { params: this.buildRangeParams(range) },
+    );
+  }
+
+  /** GET /api/negocios/:id/dashboard/pedidos */
+  getDashboardPedidos(negocioId: number, range?: { from?: string; to?: string; days?: number }): Observable<unknown> {
+    return this.http.get<unknown>(
+      buildApiUrl(`/negocios/${negocioId}/dashboard/pedidos`),
+      { params: this.buildRangeParams(range) },
+    );
+  }
+
+  /** GET /api/negocios/:id/dashboard/reservas */
+  getDashboardReservas(negocioId: number, range?: { from?: string; to?: string; days?: number }): Observable<unknown> {
+    return this.http.get<unknown>(
+      buildApiUrl(`/negocios/${negocioId}/dashboard/reservas`),
+      { params: this.buildRangeParams(range) },
+    );
+  }
+
+  /** GET /api/negocios/:id/dashboard/productos */
+  getDashboardProductos(negocioId: number, range?: { from?: string; to?: string; days?: number }): Observable<unknown> {
+    return this.http.get<unknown>(
+      buildApiUrl(`/negocios/${negocioId}/dashboard/productos`),
+      { params: this.buildRangeParams(range) },
+    );
+  }
+
+  /** GET /api/negocios/:id/dashboard/clientes */
+  getDashboardClientes(negocioId: number, range?: { from?: string; to?: string; days?: number }): Observable<unknown> {
+    return this.http.get<unknown>(
+      buildApiUrl(`/negocios/${negocioId}/dashboard/clientes`),
+      { params: this.buildRangeParams(range) },
+    );
+  }
+
+  /** GET /api/negocios/:id/dashboard/conversion */
+  getDashboardConversion(negocioId: number, range?: { from?: string; to?: string; days?: number }): Observable<unknown> {
+    return this.http.get<unknown>(
+      buildApiUrl(`/negocios/${negocioId}/dashboard/conversion`),
+      { params: this.buildRangeParams(range) },
+    );
+  }
+
+  /** GET /api/negocios/:id/dashboard/categorias */
+  getDashboardCategorias(negocioId: number, range?: { from?: string; to?: string; days?: number }): Observable<unknown> {
+    return this.http.get<unknown>(
+      buildApiUrl(`/negocios/${negocioId}/dashboard/categorias`),
+      { params: this.buildRangeParams(range) },
+    );
+  }
+
 }
