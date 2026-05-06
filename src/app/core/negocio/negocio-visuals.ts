@@ -12,6 +12,7 @@ export interface NegocioVisualData {
   avatar?: string | null;
   imagenNenufar?: string | null;
   nenufarActivo?: string | null;
+  nenufarColor?: string | null;
   nenufarAsset?: string | null;
   nenufarKey?: string | null;
   assetNenufar?: string | null;
@@ -40,6 +41,8 @@ export const NENUFAR_OPTIONS: NenufarOption[] = [
 ];
 
 export const DEFAULT_NENUFAR_ASSET = NENUFAR_OPTIONS[0].asset;
+export const DEFAULT_NENUFAR_SMALL_ASSET = 'assets/imagenes/nenufar_small.png';
+export const DEFAULT_NENUFAR_FALLBACK_ASSET = 'assets/imagenes/nenufar.png';
 
 function normalizeVisualValue(value: unknown): string | null {
   if (typeof value !== 'string') {
@@ -106,21 +109,37 @@ export function resolveNenufarKey(
   return option?.id ?? null;
 }
 
-export function resolveBusinessNenufarAsset(
+function resolveNegocioNenufarAsset(
   negocio: NegocioVisualData | null | undefined,
-  fallback: string = DEFAULT_NENUFAR_ASSET,
+  fallback: string,
 ): string {
-  const directAsset =
-    normalizeVisualValue(negocio?.nenufarAsset) ??
-    normalizeVisualValue(negocio?.imagenNenufar) ??
-    normalizeVisualValue(negocio?.assetNenufar) ??
-    normalizeVisualValue(negocio?.nenufarActivo);
-
   return (
-    resolveNenufarAsset(directAsset) ??
-    resolveNenufarAsset(negocio?.nenufarKey) ??
+    resolveNenufarAsset(
+      normalizeVisualValue(negocio?.nenufarActivo) ??
+        normalizeVisualValue(negocio?.assetNenufar) ??
+        normalizeVisualValue(negocio?.nenufarAsset) ??
+        normalizeVisualValue(negocio?.imagenNenufar),
+    ) ??
+    resolveNenufarAsset(
+      normalizeVisualValue(negocio?.nenufarKey) ??
+        normalizeVisualValue(negocio?.nenufarColor),
+    ) ??
+    resolveNenufarAsset(normalizeVisualValue(negocio?.fotoPerfil)) ??
     fallback
   );
+}
+
+export function resolveBusinessNenufarAsset(
+  negocio: NegocioVisualData | null | undefined,
+  fallback: string = DEFAULT_NENUFAR_FALLBACK_ASSET,
+): string {
+  return resolveNegocioNenufarAsset(negocio, fallback);
+}
+
+export function getNenufarNegocio(
+  negocio: NegocioVisualData | null | undefined,
+): string {
+  return resolveNegocioNenufarAsset(negocio, DEFAULT_NENUFAR_SMALL_ASSET);
 }
 
 export function resolveBusinessImage(
@@ -130,7 +149,7 @@ export function resolveBusinessImage(
     preferCover?: boolean;
   },
 ): string {
-  const fallback = options?.fallback ?? DEFAULT_NENUFAR_ASSET;
+  const fallback = options?.fallback ?? DEFAULT_NENUFAR_FALLBACK_ASSET;
   const cover = normalizeVisualValue(negocio?.fotoPortada);
   const profile =
     resolveBusinessNenufarAsset(negocio, '') ||

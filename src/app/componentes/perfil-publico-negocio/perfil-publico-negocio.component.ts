@@ -1,13 +1,10 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
+import { Component, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
-import { TicketScannerComponent } from '../ticket-scanner/ticket-scanner.component';
-import { TicketScannerSubmitResult } from '../../servicios/ticketScannerServicio/ticket-scanner.service';
-import { PromocionComponent } from '../promocion/promocion/promocion.component';
+import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
 import { ReservasComponent } from '../reservas/reservas.component';
 import {
   DEFAULT_NENUFAR_FALLBACK_ASSET,
@@ -28,51 +25,37 @@ type AvailabilityResponse = {
   slots: string[];
 };
 
-function readStoredUser(): any | null {
-  if (typeof localStorage === 'undefined') return null;
-  const raw = localStorage.getItem('usuarioLogueado') || localStorage.getItem('usuario');
-  if (!raw || raw === 'undefined' || raw === 'null') return null;
-  try { return JSON.parse(raw); } catch { return null; }
-}
-
 @Component({
-  selector: 'app-perfil-negocio',
+  selector: 'app-perfil-publico-negocio',
   standalone: true,
   imports: [
     CommonModule,
     CrearResenaModalComponent,
     RouterLink,
-    TicketScannerComponent,
-    PromocionComponent,
     ReservasComponent,
     AccessRequiredModalComponent,
   ],
-  templateUrl: './perfil-negocio.component.html',
-  styleUrl: './perfil-negocio.component.css'
+  templateUrl: './perfil-publico-negocio.component.html',
+  styleUrl: '../perfil-negocio/perfil-negocio.component.css'
 })
-export class PerfilNegocioComponent implements OnInit {
+export class PerfilPublicoNegocioComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
   private readonly negocioService = inject(NegocioService);
   private readonly reservaService = inject(ReservaService);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   negocio: any = null;
-  esPropietario = true;
-  esDueno = true;
+  esDueno = false;
   modalAbierto = false;
-  usuarioActual: any = null;
+  usuarioActual: any = this.authService.obtenerUsuario();
   mediaPuntuacion = 0;
   resenas: any[] = [];
   negocioId = 0;
   errorMensaje = '';
   reservaError = '';
-  ticketScannerAbierto = false;
-  ticketScannerMensaje = '';
-  puedeGestionarReservas = false;
-  mensajeReservasConfiguracion = 'Configura primero tu horario para gestionar reservas.';
-  negocioRouteKey = '';
   siguiendoNegocio = false;
   seguidoresTotal = 0;
-  seguidosTotal = 0;
   accessModalAbierto = false;
   accessModalMensaje = 'Necesitas iniciar sesion para seguir este negocio o reservar una franja.';
 
@@ -81,36 +64,24 @@ export class PerfilNegocioComponent implements OnInit {
   reservasOcupadas: { [dia: string]: string[] } = {};
   private fechasSemana: Record<string, string> = {};
 
-  constructor(private router: Router) {
-    this.usuarioActual = this.authService.obtenerUsuario() ?? readStoredUser();
-  }
-
   ngOnInit(): void {
     this.inicializarSemanaActual();
 
-    const negocioIdEnSesion = resolveOwnedBusinessId(this.usuarioActual);
-    if (negocioIdEnSesion) {
-      this.negocioId = negocioIdEnSesion;
-      this.negocioRouteKey = String(negocioIdEnSesion);
-      this.cargarNegocio();
+    this.authService.hydrateSession().subscribe({
+      next: (usuario) => {
+        this.usuarioActual = usuario;
+        this.actualizarRelacionConNegocio();
+      },
+    });
+
+    const negocioId = Number(this.route.snapshot.paramMap.get('id'));
+    if (!Number.isFinite(negocioId) || negocioId <= 0) {
+      this.errorMensaje = 'No hemos podido identificar el negocio.';
       return;
     }
 
-    this.negocioService.getMine().subscribe({
-      next: (negocio) => {
-        if (!negocio?.id) {
-          this.errorMensaje = 'No hemos podido identificar tu negocio.';
-          return;
-        }
-
-        this.negocioId = negocio.id;
-        this.negocioRouteKey = String(negocio.id);
-        this.cargarNegocio();
-      },
-      error: (error: unknown) => {
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido identificar tu negocio.');
-      },
-    });
+    this.negocioId = negocioId;
+    this.cargarNegocio();
   }
 
   getStars(n: number): string {
@@ -191,7 +162,7 @@ export class PerfilNegocioComponent implements OnInit {
       this.negocio?.nickname ??
       this.negocio?.slug ??
       this.negocio?.dueno?.nickname ??
-      this.negocioRouteKey;
+      (this.negocioId ? String(this.negocioId) : null);
 
     return nickname ? `@${String(nickname).trim()}` : '@negocio';
   }
@@ -291,16 +262,6 @@ export class PerfilNegocioComponent implements OnInit {
     });
   }
 
-  verificarPropietario(): void {
-    this.esDueno = Boolean(this.negocio);
-    this.actualizarAccesosGestion();
-  }
-
-  private actualizarAccesosGestion(): void {
-    this.puedeGestionarReservas =
-      this.esDueno && (Boolean(this.negocio?.aceptaReservas) || this.tieneHorarioConfigurado());
-  }
-
   tieneHorarioConfigurado(): boolean {
     const horario = this.negocio?.horario;
     if (!horario) return false;
@@ -316,22 +277,15 @@ export class PerfilNegocioComponent implements OnInit {
   }
 
   private cargarNegocio(): void {
-    if (!this.negocioId) {
-      return;
-    }
-
     this.negocioService.getNegocioById(this.negocioId).subscribe({
       next: (data: any) => {
         this.errorMensaje = '';
         this.negocio = data;
         this.negocioId = data.id;
-        this.negocioRouteKey = String(data.id);
+        this.actualizarRelacionConNegocio();
         this.refrescarResenas();
         this.cargarSeguimiento();
         this.generarHorasDisponibles();
-        this.verificarPropietario();
-        this.actualizarAccesosGestion();
-        this.cargarSeguidosPropios();
         this.recargarReservas();
       },
       error: (error: unknown) => {
@@ -443,22 +397,6 @@ export class PerfilNegocioComponent implements OnInit {
     });
   }
 
-  alternarTicketScanner(): void {
-    this.ticketScannerAbierto = !this.ticketScannerAbierto;
-    if (this.ticketScannerAbierto) {
-      this.ticketScannerMensaje = '';
-    }
-  }
-
-  onTicketScannerSaved(result: TicketScannerSubmitResult): void {
-    const total = Number(result.total || 0).toFixed(2);
-    this.ticketScannerMensaje =
-      result.pago
-        ? `Compra creada correctamente por ${total} €. Ya aparece asociada a tu cuenta en ${this.negocio?.nombre || 'este negocio'}.`
-        : `Compra creada correctamente por ${total} €.`;
-    this.ticketScannerAbierto = false;
-  }
-
   volver(): void { void this.router.navigate(['/inicio']); }
 
   irALogin(): void {
@@ -466,37 +404,13 @@ export class PerfilNegocioComponent implements OnInit {
     void this.router.navigate(['/estanque']);
   }
 
-  irALogosNenufar(): void {
-    void this.router.navigate(['/logos-nenufar']);
-  }
+  private actualizarRelacionConNegocio(): void {
+    const negocioPropioId = resolveOwnedBusinessId(this.usuarioActual);
+    const duenoId = Number(this.negocio?.dueno?.id ?? this.negocio?.duenoId ?? 0);
+    const usuarioId = Number(this.usuarioActual?.id ?? 0);
 
-  irAEditarNegocio(): void {
-    void this.router.navigate(['/mi-negocio/editar']);
-  }
-
-  irADashboardNegocio(): void {
-    void this.router.navigate(['/mi-negocio/dashboard']);
-  }
-
-  irAReservasNegocio(): void {
-    if (this.puedeGestionarReservas) {
-      void this.router.navigate(['/mi-negocio/reservas']);
-    }
-  }
-
-  private cargarSeguidosPropios(): void {
-    if (!this.esDueno) {
-      this.seguidosTotal = 0;
-      return;
-    }
-
-    this.negocioService.listSeguidos().subscribe({
-      next: (negocios) => {
-        this.seguidosTotal = negocios.length;
-      },
-      error: () => {
-        this.seguidosTotal = 0;
-      },
-    });
+    this.esDueno =
+      (Number.isFinite(negocioPropioId) && negocioPropioId === this.negocioId) ||
+      (Number.isFinite(duenoId) && duenoId > 0 && duenoId === usuarioId);
   }
 }

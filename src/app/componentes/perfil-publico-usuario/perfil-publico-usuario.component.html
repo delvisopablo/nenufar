@@ -1,12 +1,6 @@
 <div class="perfil-root">
   <nav class="perfil-topbar">
     <a class="back-link" routerLink="/inicio">← Inicio</a>
-
-    @if (esPerfilPropio()) {
-      <button class="edit-btn" type="button" (click)="modoEdicion.set(!modoEdicion())">
-        {{ modoEdicion() ? 'Cancelar' : 'Editar perfil' }}
-      </button>
-    }
   </nav>
 
   @if (cargando()) {
@@ -45,10 +39,10 @@
             </div>
 
             <div class="profile-actions">
-              @if (esPerfilPropio()) {
-                <a class="follow-btn" routerLink="/mis-logros">Mis logros</a>
-              } @else if (logros().length || usuario()?.petalosSaldo != null) {
-                <a class="follow-btn" href="#perfil-logros">Logros</a>
+              @if (logros().length || usuario()?.petalosSaldo != null) {
+                <a class="follow-btn" href="#perfil-logros">
+                  {{ esPerfilPropio() ? 'Mis logros' : 'Logros' }}
+                </a>
               }
 
               @if (!esPerfilPropio()) {
@@ -59,19 +53,9 @@
             </div>
           </div>
 
-          @if (!modoEdicion()) {
-            <p class="hero-bio">
-              {{ usuario()?.biografia || 'Este usuario aun no ha escrito una biografia.' }}
-            </p>
-          } @else {
-            <textarea
-              class="bio-editor"
-              [(ngModel)]="nuevaBio"
-              placeholder="Escribe algo sobre ti"
-              rows="3"
-            ></textarea>
-            <button class="save-btn" type="button" (click)="guardarCambios()">Guardar cambios</button>
-          }
+          <p class="hero-bio">
+            {{ usuario()?.biografia || 'Este usuario aun no ha escrito una biografia.' }}
+          </p>
 
           <div class="hero-meta">
             @if (usuario()?.petalosSaldo != null) {
@@ -109,101 +93,10 @@
       </div>
     </div>
 
-    @if (esPerfilPropio()) {
-      <section class="profile-section">
-        <div class="nenufarizar-head">
-          <div>
-            <h2 class="section-title">
-              <span class="section-icon">🌸</span>
-              Nenufarizar
-            </h2>
-            <p class="empty-state">
-              Comparte tu código para invitar a más gente al estanque y seguir sumando pétalos.
-            </p>
-          </div>
-        </div>
-
-        <div class="nenufarizar-code-card">
-          <div class="nenufarizar-code-copy">
-            <span class="nenufarizar-label">Tu código de invitación</span>
-            <code class="nenufarizar-code">{{ nenufarizar.codigoReferido() || '...' }}</code>
-          </div>
-
-          <div class="nenufarizar-actions">
-            <button
-              class="follow-btn"
-              type="button"
-              [disabled]="!nenufarizar.codigoReferido()"
-              (click)="copiarCodigoReferido()"
-            >
-              {{ accionCopiada() === 'codigo' ? 'Copiado' : 'Copiar' }}
-            </button>
-
-            <button
-              class="follow-btn"
-              type="button"
-              [disabled]="!nenufarizar.codigoReferido()"
-              (click)="compartirEnlaceReferido()"
-            >
-              {{ accionCopiada() === 'enlace' ? 'Enlace copiado' : 'Compartir enlace' }}
-            </button>
-
-            <button
-              class="edit-btn"
-              type="button"
-              [disabled]="regenerandoCodigo()"
-              (click)="regenerarCodigoReferido()"
-            >
-              {{ regenerandoCodigo() ? 'Generando...' : 'Generar nuevo código' }}
-            </button>
-          </div>
-        </div>
-
-        @if (nenufarizarError()) {
-          <p class="nenufarizar-feedback" role="alert">{{ nenufarizarError() }}</p>
-        }
-
-        <div class="nenufarizar-referidos">
-          <h3 class="nenufarizar-subtitle">Personas invitadas</h3>
-
-          @if (nenufarizar.referidos().length === 0) {
-            <p class="empty-state">Todavía no has nenufarizado a nadie. Cuando alguien se una con tu código, aparecerá aquí.</p>
-          } @else {
-            <div class="referidos-list">
-              @for (referido of nenufarizar.referidos(); track referido.id) {
-                <article class="referido-item">
-                  <div class="referido-avatar">
-                    @if (referido.foto) {
-                      <img
-                        class="referido-avatar__img"
-                        [src]="referido.foto"
-                        [alt]="referido.nickname"
-                        width="48"
-                        height="48"
-                      >
-                    } @else {
-                      <span class="referido-avatar__fallback">
-                        {{ getReferidoInitial(referido.nickname) }}
-                      </span>
-                    }
-                  </div>
-
-                  <div class="referido-meta">
-                    <strong>&#64;{{ referido.nickname }}</strong>
-                    <span>Se unió el {{ referido.creadoEn | date:'d MMM yyyy' }}</span>
-                  </div>
-                </article>
-              }
-            </div>
-          }
-        </div>
-      </section>
-    }
-
     <section class="profile-section">
       <h2 class="section-title">
         <span class="section-icon">🌿</span>
-        Reseñas de {{ esPerfilPropio() ? 'mi cuenta' : 'este usuario' }}
+        Reseñas públicas
       </h2>
 
       @if (resenas().length === 0) {
@@ -266,36 +159,6 @@
         </div>
       }
     </section>
-
-    @if (esPerfilPropio()) {
-      <section class="profile-section">
-        <h2 class="section-title">
-          <span class="section-icon">📅</span>
-          Mis reservas
-        </h2>
-
-        @if (reservas().length === 0) {
-          <p class="empty-state">No tienes reservas aun.</p>
-        }
-
-        @for (r of reservas(); track r.id) {
-          <article class="reserva-card">
-            <div class="reserva-info">
-              <strong class="reserva-negocio">{{ r.negocio?.nombre || 'Negocio' }}</strong>
-              <span class="reserva-fecha">
-                {{ r.fecha | date:'d MMM yyyy' }} · {{ r.fecha?.split('T')[1]?.substring(0,5) }}h
-              </span>
-              @if (r.nota) {
-                <span class="reserva-nota">{{ r.nota }}</span>
-              }
-            </div>
-            <span class="estado-tag estado-tag--{{ r.estado?.toLowerCase() }}">
-              {{ r.estado || 'PENDIENTE' }}
-            </span>
-          </article>
-        }
-      </section>
-    }
   }
 </div>
 

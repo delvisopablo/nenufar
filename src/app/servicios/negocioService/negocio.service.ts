@@ -116,6 +116,10 @@ export interface NegocioSummary {
   foto?: string | null;
   fotoPerfil?: string | null;
   fotoPortada?: string | null;
+  imagenNenufar?: string | null;
+  nenufarActivo?: string | null;
+  assetNenufar?: string | null;
+  nenufarColor?: string | null;
   nenufarKey?: string | null;
   nenufarAsset?: string | null;
   verificado?: boolean;
@@ -144,6 +148,10 @@ export interface NegocioSearchResult {
   foto?: string | null;
   fotoPerfil?: string | null;
   fotoPortada?: string | null;
+  imagenNenufar?: string | null;
+  nenufarActivo?: string | null;
+  assetNenufar?: string | null;
+  nenufarColor?: string | null;
   nenufarKey?: string | null;
   nenufarAsset?: string | null;
   raw: unknown;
@@ -488,6 +496,10 @@ export class NegocioService {
       foto?: string | null;
       fotoPerfil?: string | null;
       fotoPortada?: string | null;
+      imagenNenufar?: string | null;
+      nenufarActivo?: string | null;
+      assetNenufar?: string | null;
+      nenufarColor?: string | null;
       nenufarKey?: string | null;
       nenufarAsset?: string | null;
     };
@@ -530,6 +542,10 @@ export class NegocioService {
       foto: negocio.foto ?? null,
       fotoPerfil: negocio.fotoPerfil ?? null,
       fotoPortada: negocio.fotoPortada ?? null,
+      imagenNenufar: negocio.imagenNenufar ?? null,
+      nenufarActivo: negocio.nenufarActivo ?? null,
+      assetNenufar: negocio.assetNenufar ?? null,
+      nenufarColor: negocio.nenufarColor ?? null,
       nenufarKey: negocio.nenufarKey ?? null,
       nenufarAsset: negocio.nenufarAsset ?? null,
       raw: item,
@@ -711,6 +727,10 @@ export class NegocioService {
       foto?: string | null;
       fotoPerfil?: string | null;
       fotoPortada?: string | null;
+      imagenNenufar?: string | null;
+      nenufarActivo?: string | null;
+      assetNenufar?: string | null;
+      nenufarColor?: string | null;
       nenufarKey?: string | null;
       nenufarAsset?: string | null;
       verificado?: boolean;
@@ -765,6 +785,10 @@ export class NegocioService {
       ...(typeof negocio.foto === 'string' ? { foto: negocio.foto } : {}),
       ...(typeof negocio.fotoPerfil === 'string' ? { fotoPerfil: negocio.fotoPerfil } : {}),
       ...(typeof negocio.fotoPortada === 'string' ? { fotoPortada: negocio.fotoPortada } : {}),
+      ...(typeof negocio.imagenNenufar === 'string' ? { imagenNenufar: negocio.imagenNenufar } : {}),
+      ...(typeof negocio.nenufarActivo === 'string' ? { nenufarActivo: negocio.nenufarActivo } : {}),
+      ...(typeof negocio.assetNenufar === 'string' ? { assetNenufar: negocio.assetNenufar } : {}),
+      ...(typeof negocio.nenufarColor === 'string' ? { nenufarColor: negocio.nenufarColor } : {}),
       ...(typeof negocio.nenufarKey === 'string' ? { nenufarKey: negocio.nenufarKey } : {}),
       ...(typeof negocio.nenufarAsset === 'string' ? { nenufarAsset: negocio.nenufarAsset } : {}),
       ...(typeof negocio.verificado === 'boolean' ? { verificado: negocio.verificado } : {}),

@@ -176,6 +176,17 @@ describe('AuthService', () => {
     expect(service.obtenerUsuario()).toBeNull();
   });
 
+  it('hasSessionHint only returns true when there is local auth context', () => {
+    expect(service.hasSessionHint()).toBeFalse();
+
+    localStorage.setItem('usuarioLogueado', JSON.stringify({ id: 12, nombre: 'Nenu' }));
+    expect(service.hasSessionHint()).toBeTrue();
+
+    localStorage.removeItem('usuarioLogueado');
+    localStorage.setItem('access_token', 'legacy-cookie-hint');
+    expect(service.hasSessionHint()).toBeTrue();
+  });
+
   it('logout calls /auth/logout and clears local auth flags', () => {
     localStorage.setItem('usuarioLogueado', JSON.stringify({ id: 12 }));
     localStorage.setItem('accesoPermitido', 'true');

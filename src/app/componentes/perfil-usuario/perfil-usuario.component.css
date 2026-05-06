@@ -133,6 +133,13 @@
   gap: 0.25rem;
 }
 
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
 .hero-name,
 .section-title {
   margin: 0;
@@ -306,6 +313,122 @@
   font-weight: 800;
 }
 
+.nenufarizar-head,
+.nenufarizar-code-card,
+.referido-item {
+  border-radius: 20px;
+  background: var(--surface-soft);
+  border: 1px solid var(--secondary-button-border);
+}
+
+.nenufarizar-head {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.nenufarizar-head p,
+.nenufarizar-subtitle {
+  margin: 0;
+}
+
+.nenufarizar-code-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.1rem;
+}
+
+.nenufarizar-code-copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.nenufarizar-label,
+.nenufarizar-subtitle {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nenufarizar-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(1.35rem, 4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+
+.nenufarizar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.nenufarizar-feedback {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(244, 92, 156, 0.22);
+  background: rgba(244, 92, 156, 0.1);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.nenufarizar-referidos {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.referidos-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.referido-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+}
+
+.referido-avatar {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  flex: 0 0 auto;
+}
+
+.referido-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.referido-avatar__fallback {
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.referido-meta {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.referido-meta span {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
 .achievement-grid {
   display: grid;
   gap: 0.75rem;
@@ -367,6 +490,12 @@
   }
 
   .reserva-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .nenufarizar-code-card,
+  .referido-item {
     flex-direction: column;
     align-items: flex-start;
   }

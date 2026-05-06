@@ -27,6 +27,18 @@ export interface Promocion {
   titulo: string;
   descripcion?: string | null;
   negocioId: number;
+  negocio?: {
+    id: number;
+    nombre: string;
+    categoria?: { id?: number; nombre?: string } | string | null;
+    fotoPerfil?: string | null;
+    imagenNenufar?: string | null;
+    nenufarActivo?: string | null;
+    assetNenufar?: string | null;
+    nenufarColor?: string | null;
+    nenufarKey?: string | null;
+    nenufarAsset?: string | null;
+  } | null;
   fechaInicio?: string | null;
   fechaCaducidad: string;
   descuento: number;

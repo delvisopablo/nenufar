@@ -11,6 +11,15 @@ import { parseHttpError, parseTimeoutError, parseUnknownError } from './error-pa
 export const HTTP_REQUEST_TIMEOUT_MS = new HttpContextToken<number>(() => 30000);
 export const SKIP_HTTP_ERROR_HANDLING = new HttpContextToken<boolean>(() => false);
 
+function isSilentAuthMeUnauthorized(req: { method: string; urlWithParams: string }, error: unknown): boolean {
+  return (
+    req.method.toUpperCase() === 'GET' &&
+    error instanceof HttpErrorResponse &&
+    error.status === 401 &&
+    /\/api\/auth\/me(?:\?|$)/.test(req.urlWithParams)
+  );
+}
+
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.context.get(SKIP_HTTP_ERROR_HANDLING)) {
     return next(req);
@@ -22,11 +31,7 @@ export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return request$.pipe(
     catchError((error: unknown) => {
-      if (
-        error instanceof HttpErrorResponse &&
-        error.status === 401 &&
-        /\/auth\/me(?:\?|$)/.test(req.urlWithParams)
-      ) {
+      if (isSilentAuthMeUnauthorized(req, error)) {
         return throwError(() => error);
       }
 

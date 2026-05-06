@@ -1,33 +1,12 @@
 <div class="negocio-root">
-
-  <!-- Topbar -->
   <nav class="negocio-topbar">
     <button class="back-btn" type="button" (click)="volver()">← Volver</button>
-
-    @if (esDueno) {
-      <div class="owner-actions">
-        <button class="owner-btn" type="button" (click)="irADashboardNegocio()">Dashboard</button>
-        <a class="owner-btn" routerLink="/mis-logros">Mis logros</a>
-        <button
-          class="owner-btn"
-          type="button"
-          [class.owner-btn--disabled]="!puedeGestionarReservas"
-          [disabled]="!puedeGestionarReservas"
-          (click)="irAReservasNegocio()"
-        >Reservas</button>
-        <button class="owner-btn owner-btn--primary" type="button" (click)="irAEditarNegocio()">
-          Configurar
-        </button>
-      </div>
-    }
   </nav>
 
-  <!-- Error -->
   @if (errorMensaje) {
     <div class="alert-error" role="alert">{{ errorMensaje }}</div>
   }
 
-  <!-- Hero: portada + identidad -->
   <div class="negocio-hero">
     <div class="cover-wrap">
       <img
@@ -89,12 +68,7 @@
               <span class="hero-metric__label">Seguidores</span>
             </div>
 
-            @if (esDueno) {
-              <div class="hero-metric">
-                <span class="hero-metric__num">{{ seguidosTotal }}</span>
-                <span class="hero-metric__label">Seguidos</span>
-              </div>
-            } @else {
+            @if (shouldShowFollowButton()) {
               <button class="follow-btn" type="button" (click)="alternarSeguimiento()">
                 {{ siguiendoNegocio ? 'Siguiendo' : 'Seguir' }}
               </button>
@@ -104,26 +78,20 @@
       </div>
 
       <div class="identity-side">
-        <button class="nenufar-panel" type="button" (click)="irALogosNenufar()">
-          <span class="nenufar-panel__label">Nenúfar activo</span>
+        <div class="nenufar-panel">
+          <span class="nenufar-panel__label">Nenúfar del negocio</span>
           <img
             class="nenufar-panel__img"
             [src]="getNenufarAsset()"
-            alt="Nenúfar activo del negocio"
+            alt="Nenúfar del negocio"
           >
-          <span class="nenufar-panel__hint">Abrir menú de logos</span>
-        </button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Grid de contenido: columna principal + sidebar -->
   <div class="negocio-grid">
-
-    <!-- Columna principal -->
     <div class="main-col">
-
-      <!-- Descripción -->
       @if (negocio?.descripcionCorta || negocio?.historia) {
         <section class="n-section">
           <h2 class="n-section-title">Sobre nosotros</h2>
@@ -144,55 +112,8 @@
         </section>
       }
 
-      @if (negocio?.id) {
-        <section class="n-section ticket-section">
-          <div class="ticket-section__head">
-            <div>
-              <h2 class="n-section-title">Escanea tu ticket</h2>
-              <p class="ticket-section__lead">
-                Sube una foto del ticket para revisar productos, ajustar cantidades y guardar la compra vinculada a tu cuenta.
-              </p>
-            </div>
-            <button class="ticket-section__toggle" type="button" (click)="alternarTicketScanner()">
-              {{ ticketScannerAbierto ? 'Cerrar escáner' : 'Abrir escáner' }}
-            </button>
-          </div>
-
-          @if (!usuarioActual?.id) {
-            <p class="helper-note">
-              Puedes revisar el ticket ahora mismo, pero para crear la compra necesitas iniciar sesión.
-            </p>
-          }
-
-          @if (!esDueno) {
-            <p class="ticket-section__hint">
-              Si el ticket trae productos que todavía no existen en el catálogo del negocio, tendrás que ajustarlos o pedir a la cuenta propietaria que los cree primero.
-            </p>
-          }
-
-          @if (ticketScannerMensaje) {
-            <div class="ticket-section__success" role="status">{{ ticketScannerMensaje }}</div>
-          }
-
-          @if (ticketScannerAbierto) {
-            <app-ticket-scanner
-              [negocioId]="negocio?.id ?? null"
-              [negocioNombre]="negocio?.nombre ?? null"
-              [puedeCrearProductos]="esDueno"
-              (saved)="onTicketScannerSaved($event)"
-            />
-          }
-        </section>
-      }
-
-      <!-- Disponibilidad / Reservas -->
       <section class="n-section">
-        <div class="section-headline">
-          <h2 class="n-section-title">Horario</h2>
-          @if (esDueno) {
-            <button class="inline-owner-btn" type="button" (click)="irAEditarNegocio()">Editar horario</button>
-          }
-        </div>
+        <h2 class="n-section-title">Horario</h2>
 
         @if (tieneHorarioConfigurado()) {
           <div class="horario-display horario-display--main">
@@ -207,21 +128,13 @@
 
       <section class="n-section">
         <app-reservas
-          modo="negocio"
+          [modo]="esDueno ? 'negocio' : 'cliente'"
           [negocioId]="negocioId"
           [negocio]="negocio"
           [embebido]="true"
-          [permitirMisReservas]="false"
         />
       </section>
 
-      @if (negocio?.id && esDueno) {
-        <section class="n-section promo-section">
-          <app-promocion [negocioId]="negocioId" />
-        </section>
-      }
-
-      <!-- Reseñas -->
       <section class="n-section">
         <h2 class="n-section-title">Reseñas de clientes</h2>
 
@@ -271,10 +184,7 @@
       </section>
     </div>
 
-    <!-- Sidebar -->
     <aside class="side-col">
-
-      <!-- Calificación destacada -->
       @if (mediaPuntuacion > 0) {
         <section class="n-section rating-card">
           <p class="rating-big">{{ mediaPuntuacion }}</p>
@@ -283,7 +193,6 @@
         </section>
       }
 
-      <!-- Contacto -->
       @if (negocio?.telefono || negocio?.emailContacto || negocio?.web || negocio?.instagram) {
         <section class="n-section">
           <h3 class="n-side-title">Contacto</h3>
@@ -316,7 +225,6 @@
         </section>
       }
 
-      <!-- Ubicación -->
       @if (negocio?.direccion || negocio?.ciudad) {
         <section class="n-section">
           <h3 class="n-side-title">Ubicación</h3>
@@ -334,11 +242,9 @@
           }
         </section>
       }
-
     </aside>
   </div>
 
-  <!-- Botón flotante nueva reseña -->
   <button class="btn-flotante" type="button" (click)="abrirModalResena()" aria-label="Nueva reseña">
     ＋
   </button>
@@ -358,5 +264,4 @@
     (closed)="accessModalAbierto = false"
     (loginRequested)="irALogin()"
   />
-
 </div>

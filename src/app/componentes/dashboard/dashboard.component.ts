@@ -1,8 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { resolveBusinessImage } from '../../core/negocio/negocio-visuals';
-import { NegocioService } from '../../servicios/negocioService/negocio.service';
+import {
+  AuthService,
+  resolveOwnedBusinessId,
+} from '../../servicios/authService/auth.service';
+import { NegocioService, NegocioSummary } from '../../servicios/negocioService/negocio.service';
 import {
   DashboardNegocio,
   DashboardMetrica,
@@ -19,12 +23,11 @@ import {
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
+  private readonly authService = inject(AuthService);
   private readonly dashboardService = inject(DashboardService);
   private readonly negocioService = inject(NegocioService);
 
   readonly negocioId = signal<number>(0);
-  readonly negocioRouteKey = signal('');
   readonly cargando = signal(true);
   readonly error = signal('');
   readonly negocio = signal<DashboardNegocio | null>(null);
@@ -60,53 +63,37 @@ export class DashboardComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const routeParam = this.negocioService.normalizeRouteParam(
-      this.route.snapshot.paramMap.get('nickname') ??
-      this.route.snapshot.paramMap.get('slug'),
-    );
+    const negocioId = resolveOwnedBusinessId(this.authService.obtenerUsuario());
 
-    if (!routeParam) {
-      this.error.set('No hemos podido identificar el negocio de este dashboard.');
-      this.cargando.set(false);
+    if (negocioId) {
+      this.negocioId.set(negocioId);
+      this.cargarNegocioBase(negocioId);
       return;
     }
 
-    this.negocioService.resolveNegocioFromRouteParam(routeParam).subscribe({
+    this.negocioService.getMine().subscribe({
       next: (negocio) => {
-        if (!negocio) {
-          this.error.set('No hemos podido resolver el negocio de este dashboard.');
+        if (!negocio?.id) {
+          this.error.set('No hemos podido identificar el negocio de este dashboard.');
           this.cargando.set(false);
           return;
         }
 
         this.negocioId.set(negocio.id);
-        this.negocioRouteKey.set(this.negocioService.getRouteKey(negocio) ?? routeParam);
-        this.negocio.set({
-          id: negocio.id,
-          nombre: negocio.nombre,
-          foto: negocio.foto ?? undefined,
-          fotoPerfil: negocio.fotoPerfil ?? undefined,
-          fotoPortada: negocio.fotoPortada ?? undefined,
-          nenufarAsset: negocio.nenufarAsset ?? undefined,
-          nenufarKey: negocio.nenufarKey ?? undefined,
-          aceptaReservas: Boolean(negocio.aceptaReservas),
-          categoria:
-            typeof negocio.categoria === 'string'
-              ? { nombre: negocio.categoria }
-              : negocio.categoria,
-        });
+        this.aplicarNegocio(negocio);
         this.cargarDashboard();
       },
       error: () => {
-        this.error.set('No hemos podido resolver el negocio de este dashboard.');
+        this.error.set('No hemos podido identificar el negocio de este dashboard.');
         this.cargando.set(false);
-      }
+      },
     });
   }
 
   cargarDashboard(): void {
     this.cargando.set(true);
     this.error.set('');
+    this.pendingSources = 2;
 
     this.dashboardService.getResumen(this.negocioId()).subscribe({
       next: (resumen) => {
@@ -118,6 +105,36 @@ export class DashboardComponent implements OnInit {
         this.error.set('No hemos podido cargar el dashboard del negocio.');
         this.cargando.set(false);
       }
+    });
+  }
+
+  private cargarNegocioBase(negocioId: number): void {
+    this.negocioService.getNegocioById(negocioId).subscribe({
+      next: (negocio) => {
+        this.aplicarNegocio(negocio);
+        this.cargarDashboard();
+      },
+      error: () => {
+        this.error.set('No hemos podido resolver el negocio de este dashboard.');
+        this.cargando.set(false);
+      },
+    });
+  }
+
+  private aplicarNegocio(negocio: NegocioSummary): void {
+    this.negocio.set({
+      id: negocio.id,
+      nombre: negocio.nombre,
+      foto: negocio.foto ?? undefined,
+      fotoPerfil: negocio.fotoPerfil ?? undefined,
+      fotoPortada: negocio.fotoPortada ?? undefined,
+      nenufarAsset: negocio.nenufarAsset ?? undefined,
+      nenufarKey: negocio.nenufarKey ?? undefined,
+      aceptaReservas: Boolean(negocio.aceptaReservas),
+      categoria:
+        typeof negocio.categoria === 'string'
+          ? { nombre: negocio.categoria }
+          : negocio.categoria,
     });
   }
 
@@ -186,12 +203,5 @@ export class DashboardComponent implements OnInit {
 
   getBusinessCategory(): string {
     return this.negocio()?.categoria?.nombre || 'Negocio local';
-  }
-
-  getBusinessRouteKey(): string {
-    return this.negocioRouteKey() || this.negocioService.normalizeRouteParam(
-      this.route.snapshot.paramMap.get('nickname') ??
-      this.route.snapshot.paramMap.get('slug'),
-    ) || '';
   }
 }

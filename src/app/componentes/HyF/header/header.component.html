@@ -23,8 +23,12 @@
 
   <div class="header-actions">
     <div class="topbar-actions">
-      <button type="button" class="top-action top-action--achievements" (click)="irAMisLogros()">🏅 Mis logros</button>
       <button type="button" class="top-action top-action--info" (click)="abrirNenunInfo()">Nenuninfo</button>
+      @if (usuarioActual()?.id) {
+        <button type="button" class="top-action top-action--profile" (click)="irAPerfilPrivado()">
+          {{ getPerfilPrivadoLabel() }}
+        </button>
+      }
 
       <div class="search-shell">
         <form class="searchbar" (ngSubmit)="buscarPrimerNegocio()">
@@ -48,7 +52,12 @@
               <article class="search-result">
                 <button type="button" class="search-result__main" (click)="seleccionarNegocio(negocio)">
                   <span class="search-result__media">
-                    <img [src]="getBusinessImage(negocio)" [alt]="negocio.nombre">
+                    <img
+                      [src]="getNenufarNegocio(negocio)"
+                      [alt]="negocio.nombre"
+                      width="48"
+                      height="48"
+                    >
                   </span>
                   <span class="search-result__copy">
                     <strong>

@@ -40,6 +40,10 @@ export type NegocioLite = {
   foto?: string;
   fotoPerfil?: string;
   fotoPortada?: string;
+  imagenNenufar?: string;
+  nenufarActivo?: string;
+  assetNenufar?: string;
+  nenufarColor?: string;
   nenufarAsset?: string;
   nenufarKey?: string;
   descripcion?: string;
@@ -271,6 +275,10 @@ export class NegocioSearchService {
       ...(item.foto?.trim() ? { foto: item.foto.trim() } : {}),
       ...(item.fotoPerfil?.trim() ? { fotoPerfil: item.fotoPerfil.trim() } : {}),
       ...(item.fotoPortada?.trim() ? { fotoPortada: item.fotoPortada.trim() } : {}),
+      ...(item.imagenNenufar?.trim() ? { imagenNenufar: item.imagenNenufar.trim() } : {}),
+      ...(item.nenufarActivo?.trim() ? { nenufarActivo: item.nenufarActivo.trim() } : {}),
+      ...(item.assetNenufar?.trim() ? { assetNenufar: item.assetNenufar.trim() } : {}),
+      ...(item.nenufarColor?.trim() ? { nenufarColor: item.nenufarColor.trim() } : {}),
       ...(item.nenufarAsset?.trim() ? { nenufarAsset: item.nenufarAsset.trim() } : {}),
       ...(item.nenufarKey?.trim() ? { nenufarKey: item.nenufarKey.trim() } : {}),
       ...(resolveNegocioRouteKey(item) ? { routeKey: resolveNegocioRouteKey(item) ?? undefined } : {}),

@@ -66,6 +66,31 @@
           }
         </label>
 
+        <label class="field">
+          <div class="field-topline">
+            <span>Código de invitación</span>
+            <small>Opcional</small>
+          </div>
+          <input
+            type="text"
+            formControlName="codigoReferido"
+            autocomplete="off"
+            inputmode="text"
+            maxlength="6"
+            placeholder="Si alguien te compartió su código, escríbelo aquí"
+          >
+          @if (getCodigoInvitacionState() === 'valid') {
+            <small class="field-status field-status--valid">Código listo para usarse.</small>
+          } @else if (getCodigoInvitacionState() === 'neutral') {
+            <small class="field-status field-status--neutral">
+              Si quieres usar invitación, completa los 6 caracteres.
+            </small>
+          }
+          @if (campoInvalido('codigoReferido')) {
+            <small class="field-error">{{ getErrorCampo('codigoReferido') }}</small>
+          }
+        </label>
+
         <div class="field-grid">
           <label class="field">
             <span>Contraseña</span>

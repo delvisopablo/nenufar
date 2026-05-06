@@ -24,7 +24,14 @@
             (mouseleave)="ocultarTooltip()"
             (blur)="ocultarTooltip()"
           >
-            <img class="zone-lily__img" [src]="getLilyImage(item)" alt="" aria-hidden="true">
+            <img
+              class="zone-lily__img"
+              [src]="getLilyImage(item)"
+              alt=""
+              aria-hidden="true"
+              width="160"
+              height="160"
+            >
           </button>
         }
       </div>
@@ -56,7 +63,14 @@
             (mouseleave)="ocultarTooltip()"
             (blur)="ocultarTooltip()"
           >
-            <img class="zone-lily__img" [src]="getLilyImage(item)" alt="" aria-hidden="true">
+            <img
+              class="zone-lily__img"
+              [src]="getLilyImage(item)"
+              alt=""
+              aria-hidden="true"
+              width="160"
+              height="160"
+            >
           </button>
         }
       </div>
@@ -89,7 +103,14 @@
               (mouseleave)="ocultarTooltip()"
               (blur)="ocultarTooltip()"
             >
-              <img class="zone-lily__img" [src]="getLilyImage(item)" alt="" aria-hidden="true">
+              <img
+                class="zone-lily__img"
+                [src]="getLilyImage(item)"
+                alt=""
+                aria-hidden="true"
+                width="160"
+                height="160"
+              >
             </button>
           }
         </div>
@@ -123,7 +144,14 @@
               (mouseleave)="ocultarTooltip()"
               (blur)="ocultarTooltip()"
             >
-              <img class="zone-lily__img" [src]="getLilyImage(item)" alt="" aria-hidden="true">
+              <img
+                class="zone-lily__img"
+                [src]="getLilyImage(item)"
+                alt=""
+                aria-hidden="true"
+                width="160"
+                height="160"
+              >
             </button>
           }
         </div>
@@ -194,7 +222,7 @@
           <p>{{ activePopup.message }}</p>
 
           <div class="popup-actions">
-            <button type="button" class="primary-btn" (click)="irALogin()">Ir a login</button>
+            <button type="button" class="primary-btn" (click)="irALogin()">Ir al estanque</button>
             <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
           </div>
         }
@@ -216,8 +244,10 @@
 
           <img
             class="popup-business-image"
-            [src]="getBusinessImage(activePopup.business)"
+            [src]="getNenufarNegocio(activePopup.business)"
             [alt]="activePopup.business.nombre"
+            width="256"
+            height="256"
           >
 
           @if (activePopup.business.latestReviews.length) {

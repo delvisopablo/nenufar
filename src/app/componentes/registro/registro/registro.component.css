@@ -187,6 +187,19 @@
   font-size: 0.85rem;
 }
 
+.field-status {
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.field-status--valid {
+  color: #c5ffe7;
+}
+
+.field-status--neutral {
+  color: rgba(234, 244, 255, 0.72);
+}
+
 .field-error {
   color: #ffe3ef;
 }

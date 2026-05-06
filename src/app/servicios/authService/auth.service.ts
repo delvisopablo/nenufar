@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpContext } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import {
   Observable,
   catchError,
@@ -10,7 +10,6 @@ import {
   tap,
 } from 'rxjs';
 import { buildApiUrl } from '../../config/api.config';
-import { SKIP_HTTP_ERROR_HANDLING } from '../../core/errors/http-error.interceptor';
 
 export interface AuthBusiness {
   id?: number;
@@ -35,6 +34,28 @@ export interface AuthUser {
   [key: string]: unknown;
 }
 
+export function resolveOwnedBusinessId(
+  usuario: AuthUser | null | undefined,
+): number | null {
+  const directId = Number(usuario?.negocio?.id);
+  if (Number.isFinite(directId) && directId > 0) {
+    return directId;
+  }
+
+  const firstBusinessId = Number(usuario?.negocios?.[0]?.id);
+  if (Number.isFinite(firstBusinessId) && firstBusinessId > 0) {
+    return firstBusinessId;
+  }
+
+  return null;
+}
+
+export function resolvePrivateProfileRoute(
+  usuario: AuthUser | null | undefined,
+): string[] {
+  return resolveOwnedBusinessId(usuario) ? ['/mi-negocio'] : ['/mi-perfil'];
+}
+
 export interface AuthResponse {
   access_token?: string;
   accessToken?: string;
@@ -54,6 +75,7 @@ export interface RegisterPayload {
   email?: string;
   password?: string;
   biografia?: string;
+  codigoReferido?: string;
   nombreNegocio?: string;
   direccion?: string;
   fechaFundacion?: string | null;
@@ -161,13 +183,17 @@ export class AuthService {
   }
 
   register(data: RegisterPayload): Observable<AuthResponse> {
+    const codigoReferido =
+      typeof data.codigoReferido === 'string' ? data.codigoReferido.trim() : '';
+
     return this.http
       .post<AuthResponse>(buildApiUrl('/auth/registro'), {
         nombre: data.nombre,
         nickname: data.nickname,
         email: data.email,
         password: data.password,
-        biografia: data.biografia
+        biografia: data.biografia,
+        ...(codigoReferido ? { codigoReferido } : {}),
       })
       .pipe(
         tap((response) => this.persistirUsuarioDesdeRespuesta(response))
@@ -231,14 +257,27 @@ export class AuthService {
     return this.hydrationRequest$;
   }
 
+  hasSessionHint(): boolean {
+    if (this.obtenerUsuario()) {
+      return true;
+    }
+
+    if (typeof localStorage === 'undefined') {
+      return false;
+    }
+
+    return Boolean(
+      localStorage.getItem('token') ||
+      localStorage.getItem('access_token'),
+    );
+  }
+
   isAuthenticated(): boolean {
     return Boolean(this.obtenerUsuario());
   }
 
   me(): Observable<AuthUser | null> {
-    return this.http.get<unknown>(buildApiUrl('/auth/me'), {
-      context: new HttpContext().set(SKIP_HTTP_ERROR_HANDLING, true),
-    }).pipe(
+    return this.http.get<unknown>(buildApiUrl('/auth/me')).pipe(
       map((response) => this.normalizarUsuario(response)),
       tap((usuario) => {
         this.sessionHydrated = true;
@@ -250,9 +289,14 @@ export class AuthService {
 
         removeStorageKey('usuarioLogueado');
       }),
-      catchError(() => {
+      catchError((error: unknown) => {
         this.sessionHydrated = true;
-        removeStorageKey('usuarioLogueado');
+
+        if (error instanceof HttpErrorResponse && error.status === 401) {
+          this.clearStoredUser();
+          return of(null);
+        }
+
         return of(null);
       })
     );

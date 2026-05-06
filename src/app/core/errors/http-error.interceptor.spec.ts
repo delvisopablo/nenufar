@@ -1,4 +1,4 @@
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ErrorObservabilityService } from './error-observability.service';
@@ -49,6 +49,23 @@ describe('httpErrorInterceptor', () => {
           message: 'Sesion caducada',
         },
       },
+      { status: 401, statusText: 'Unauthorized' },
+    );
+  });
+
+  it('ignora el 401 de GET /api/auth/me sin reportarlo a observabilidad', (done) => {
+    http.get('/api/auth/me').subscribe({
+      next: () => fail('La peticion deberia fallar con 401 crudo'),
+      error: (error: HttpErrorResponse) => {
+        expect(error instanceof HttpErrorResponse).toBeTrue();
+        expect(error.status).toBe(401);
+        expect(observability.report).not.toHaveBeenCalled();
+        done();
+      },
+    });
+
+    httpMock.expectOne('/api/auth/me').flush(
+      { message: 'Unauthorized' },
       { status: 401, statusText: 'Unauthorized' },
     );
   });
@@ -116,4 +133,3 @@ describe('httpErrorInterceptor', () => {
     httpMock.expectOne('/offline').error(new ProgressEvent('error'));
   });
 });
-

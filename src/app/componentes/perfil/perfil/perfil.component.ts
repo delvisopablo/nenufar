@@ -1,88 +1,363 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { EMPTY, catchError, of, switchMap, tap } from 'rxjs';
+import { catchError, finalize, forkJoin, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../../core/errors/error-parser';
-import { AuthService } from '../../../servicios/authService/auth.service';
-import { NegocioService } from '../../../servicios/negocioService/negocio.service';
+import { AccessRequiredModalComponent } from '../../../components/shared/access-required-modal/access-required-modal.component';
+import { AuthService, AuthUser } from '../../../servicios/authService/auth.service';
+import { Logro, LogroServiceService } from '../../../servicios/logroServicio/logroService.service';
+import { ReservaService } from '../../../servicios/reservaService/reserva.service';
+import { ResenaService } from '../../../servicios/reviewServicio/resena.service';
+import { NenufarizarService } from '../../../services/nenufarizar.service';
+import {
+  PerfilUsuarioResponse,
+  UpdatePerfilPayload,
+  UsuarioServiceService,
+} from '../../../servicios/usuarioServicio/usuarioService.service';
+
+type UserReview = {
+  id?: number;
+  puntuacion?: number;
+  comentario?: string;
+  contenido?: string;
+  selloNenufar?: boolean;
+  fecha?: string;
+  creadoEn?: string;
+  negocio?: {
+    id?: number;
+    nombre?: string;
+  };
+};
+
+type CopiaReferidoAccion = '' | 'codigo' | 'enlace';
 
 @Component({
   selector: 'app-perfil',
   standalone: true,
-  imports: [CommonModule, RouterLink],
-  templateUrl: './perfil.component.html',
-  styleUrl: './perfil.component.css'
+  imports: [CommonModule, FormsModule, RouterLink, AccessRequiredModalComponent],
+  templateUrl: '../../perfil-usuario/perfil-usuario.component.html',
+  styleUrl: '../../perfil-usuario/perfil-usuario.component.css'
 })
 export class PerfilComponent implements OnInit {
-  private readonly authService = inject(AuthService);
-  private readonly negocioService = inject(NegocioService);
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly usuarioService = inject(UsuarioServiceService);
+  private readonly resenaService = inject(ResenaService);
+  private readonly reservaService = inject(ReservaService);
+  private readonly logroService = inject(LogroServiceService);
+  readonly nenufarizar = inject(NenufarizarService);
 
   readonly cargando = signal(true);
   readonly error = signal('');
+  readonly usuario = signal<PerfilUsuarioResponse | null>(null);
+  readonly usuarioActual = signal<AuthUser | null>(this.authService.obtenerUsuario());
+  readonly modoEdicion = signal(false);
+  readonly resenas = signal<UserReview[]>([]);
+  readonly reservas = signal<any[]>([]);
+  readonly logros = signal<Logro[]>([]);
+  readonly seguidoresTotal = signal(0);
+  readonly siguiendoTotal = signal(0);
+  readonly siguiendoUsuario = signal(false);
+  readonly accessModalAbierto = signal(false);
+  readonly accessModalMensaje = signal('Necesitas iniciar sesion para continuar.');
+  readonly regenerandoCodigo = signal(false);
+  readonly accionCopiada = signal<CopiaReferidoAccion>('');
+  readonly nenufarizarError = signal('');
+
+  nuevaBio = '';
+  private copyFeedbackTimerId: number | null = null;
+
+  readonly esPerfilPropio = computed(() => {
+    const actual = this.usuarioActual();
+    const perfil = this.usuario();
+
+    if (!actual || !perfil) {
+      return false;
+    }
+
+    return (
+      (actual.id != null && actual.id === perfil.id) ||
+      (actual.nickname?.trim().toLowerCase() ?? '') === perfil.nickname.trim().toLowerCase()
+    );
+  });
 
   ngOnInit(): void {
     this.authService.me()
       .pipe(
-        switchMap((usuario) => {
-          if (!usuario) {
+        switchMap((actual) => {
+          if (!actual?.id) {
             this.cargando.set(false);
-            void this.router.navigate(['/login'], {
-              queryParams: { returnUrl: '/perfil' },
-            });
-            return EMPTY;
+            void this.router.navigate(['/estanque']);
+            return of(null);
           }
 
-          const negocioEnSesion = usuario.negocio as { id?: number } | null | undefined;
-          const negocioIdEnSesion = Number(negocioEnSesion?.id);
-          if (Number.isFinite(negocioIdEnSesion) && negocioIdEnSesion > 0) {
-            return this.negocioService.getNegocioById(negocioIdEnSesion).pipe(
-              tap((negocio) => {
-                const routeKey = this.negocioService.getRouteKey(negocio);
-                if (routeKey) {
-                  void this.router.navigate(['/', routeKey], { replaceUrl: true });
-                  return;
-                }
+          this.usuarioActual.set(actual);
+          this.error.set('');
+          this.modoEdicion.set(false);
 
-                this.error.set('La sesión está activa, pero no hemos podido resolver una URL pública para tu negocio.');
-              }),
-              catchError(() => this.negocioService.getMine()),
-            );
-          }
+          return this.usuarioService.getById(actual.id).pipe(
+            switchMap((perfil) => {
+              this.usuario.set(perfil);
+              this.nuevaBio = perfil.biografia || '';
+              this.cargarSeguimiento(perfil);
 
-          return this.negocioService.getMine().pipe(
-            tap((negocio) => {
-              const routeKeyNegocio = this.negocioService.getRouteKey(negocio);
-              if (routeKeyNegocio) {
-                void this.router.navigate(['/', routeKeyNegocio], { replaceUrl: true });
-                return;
-              }
+              const resenas$ =
+                perfil.resenas && perfil.resenas.length
+                  ? of(perfil.resenas)
+                  : this.resenaService.getResenasPorUsuario(perfil.id).pipe(
+                      catchError(() => of([])),
+                    );
 
-              if (usuario.nickname?.trim()) {
-                void this.router.navigate(['/usuario', usuario.nickname.trim()], { replaceUrl: true });
-                return;
-              }
-
-              this.error.set('La sesion esta activa, pero no hemos podido resolver una URL publica para tu perfil.');
+              return forkJoin({
+                resenas: resenas$,
+                logros: this.cargarLogros(perfil.id),
+                reservas: this.reservaService.reservasPorUsuario(perfil.id).pipe(
+                  catchError(() => of([])),
+                ),
+                codigoReferido: this.nenufarizar.loadCodigo().pipe(
+                  catchError((error: unknown) => {
+                    this.registrarErrorNenufarizar(error);
+                    return of('');
+                  }),
+                ),
+                referidos: this.nenufarizar.loadReferidos().pipe(
+                  catchError((error: unknown) => {
+                    this.registrarErrorNenufarizar(error);
+                    return of([]);
+                  }),
+                ),
+              }).pipe(
+                catchError(() =>
+                  of({
+                    resenas: [],
+                    logros: [],
+                    reservas: [],
+                    codigoReferido: '',
+                    referidos: [],
+                  }),
+                ),
+              );
             }),
-            catchError(() => {
-              if (usuario.nickname?.trim()) {
-                void this.router.navigate(['/usuario', usuario.nickname.trim()], { replaceUrl: true });
-                return EMPTY;
-              }
-
-              this.error.set('La sesion esta activa, pero no hemos podido resolver tu perfil.');
+            catchError((error: unknown) => {
+              this.usuario.set(null);
+              this.resenas.set([]);
+              this.logros.set([]);
+              this.reservas.set([]);
+              this.error.set(getUserErrorMessage(error, 'No hemos podido cargar tu perfil.'));
               return of(null);
             }),
           );
         }),
       )
+      .subscribe((result) => {
+        if (result) {
+          this.resenas.set(result.resenas);
+          this.logros.set(result.logros);
+          this.reservas.set(result.reservas);
+        }
+
+        this.cargando.set(false);
+      });
+  }
+
+  getStars(n: number): string {
+    return '⭐'.repeat(Math.max(0, Math.min(5, Math.round(n))));
+  }
+
+  getCoverImage(): string | null {
+    const perfil = this.usuario() as (PerfilUsuarioResponse & {
+      fotoPortada?: string | null;
+      foto_portada?: string | null;
+    }) | null;
+
+    return perfil?.fotoPortada || perfil?.foto_portada || null;
+  }
+
+  toggleSeguirUsuario(): void {
+    return;
+  }
+
+  guardarCambios(): void {
+    const perfil = this.usuario();
+    if (!perfil?.id || !this.esPerfilPropio()) {
+      return;
+    }
+
+    const payload: UpdatePerfilPayload = {
+      biografia: this.nuevaBio,
+    };
+
+    this.usuarioService.updatePerfil(perfil.id, payload).subscribe({
+      next: (response) => {
+        const actual = this.usuarioActual();
+        const usuarioActualizado = {
+          ...perfil,
+          ...response,
+          biografia: response.biografia ?? this.nuevaBio,
+        };
+
+        this.usuario.set(usuarioActualizado);
+        this.nuevaBio = usuarioActualizado.biografia || '';
+        this.modoEdicion.set(false);
+
+        if (actual) {
+          this.authService.guardarUsuario({
+            ...actual,
+            ...response,
+            biografia: response.biografia ?? this.nuevaBio,
+            foto_perfil:
+              response.foto_perfil ??
+              (typeof response.foto === 'string' ? response.foto : actual.foto_perfil),
+          });
+          this.usuarioActual.set(this.authService.obtenerUsuario());
+        }
+      },
+      error: (error: unknown) => {
+        this.error.set(getUserErrorMessage(error, 'No hemos podido guardar los cambios del perfil.'));
+      },
+    });
+  }
+
+  getBusinessRoute(negocio: UserReview['negocio'] | undefined): (string | number)[] | null {
+    const negocioId = Number(negocio?.id);
+    return Number.isFinite(negocioId) && negocioId > 0 ? ['/negocio', negocioId] : null;
+  }
+
+  getReferidoInitial(nickname: string | null | undefined): string {
+    const normalized = String(nickname ?? '').trim();
+    return normalized ? normalized.charAt(0).toUpperCase() : 'N';
+  }
+
+  async copiarCodigoReferido(): Promise<void> {
+    await this.copiarTexto(this.nenufarizar.codigoReferido(), 'codigo');
+  }
+
+  async compartirEnlaceReferido(): Promise<void> {
+    const codigoReferido = this.nenufarizar.codigoReferido();
+    const enlace = codigoReferido
+      ? `${window.location.origin}/registro?ref=${encodeURIComponent(codigoReferido)}`
+      : '';
+
+    await this.copiarTexto(enlace, 'enlace');
+  }
+
+  regenerarCodigoReferido(): void {
+    if (!this.nenufarizar.codigoReferido()) {
+      return;
+    }
+
+    const confirmado = confirm(
+      '¿Quieres generar un nuevo código? Tus referidos actuales se mantendrán vinculados a tu cuenta.',
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    this.nenufarizarError.set('');
+    this.regenerandoCodigo.set(true);
+
+    this.nenufarizar
+      .regenerarCodigo()
+      .pipe(
+        finalize(() => this.regenerandoCodigo.set(false)),
+      )
       .subscribe({
-        complete: () => this.cargando.set(false),
         error: (error: unknown) => {
-          this.cargando.set(false);
-          this.error.set(getUserErrorMessage(error, 'No hemos podido cargar tu perfil.'));
+          this.nenufarizarError.set(
+            getUserErrorMessage(
+              error,
+              'No hemos podido generar un código nuevo ahora mismo.',
+            ),
+          );
         },
       });
+  }
+
+  private cargarLogros(usuarioId: number) {
+    return forkJoin({
+      asignados: this.logroService.porUsuario(usuarioId).pipe(catchError(() => of([]))),
+      catalogo: this.logroService.findAll().pipe(catchError(() => of([]))),
+    }).pipe(
+      switchMap(({ asignados, catalogo }) => {
+        const mapById = new Map(catalogo.map((item) => [item.id, item]));
+        const logros = asignados
+          .map((item) => mapById.get(item.logroId))
+          .filter((item): item is Logro => Boolean(item));
+        return of(logros);
+      }),
+    );
+  }
+
+  private cargarSeguimiento(perfil: PerfilUsuarioResponse): void {
+    forkJoin({
+      seguidores: this.usuarioService.getSeguidores(perfil.id).pipe(catchError(() => of([]))),
+      siguiendo: this.usuarioService.getSiguiendo(perfil.id).pipe(catchError(() => of([]))),
+    }).subscribe(({ seguidores, siguiendo }) => {
+      this.seguidoresTotal.set(
+        seguidores.length ||
+        Number(perfil._count?.seguidores ?? 0) ||
+        0,
+      );
+      this.siguiendoTotal.set(
+        siguiendo.length ||
+        Number(perfil._count?.siguiendo ?? 0) ||
+        0,
+      );
+    });
+  }
+
+  irALogin(): void {
+    this.accessModalAbierto.set(false);
+    void this.router.navigate(['/estanque']);
+  }
+
+  private async copiarTexto(
+    value: string | null | undefined,
+    accion: Exclude<CopiaReferidoAccion, ''>,
+  ): Promise<void> {
+    const texto = String(value ?? '').trim();
+    if (!texto || !navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(texto);
+      this.activarFeedbackCopia(accion);
+    } catch (error: unknown) {
+      this.nenufarizarError.set(
+        getUserErrorMessage(
+          error,
+          'No hemos podido copiar el contenido al portapapeles.',
+        ),
+      );
+    }
+  }
+
+  private activarFeedbackCopia(accion: Exclude<CopiaReferidoAccion, ''>): void {
+    this.accionCopiada.set(accion);
+
+    if (this.copyFeedbackTimerId) {
+      window.clearTimeout(this.copyFeedbackTimerId);
+    }
+
+    this.copyFeedbackTimerId = window.setTimeout(() => {
+      this.accionCopiada.set('');
+      this.copyFeedbackTimerId = null;
+    }, 2000);
+  }
+
+  private registrarErrorNenufarizar(error: unknown): void {
+    if (this.nenufarizarError()) {
+      return;
+    }
+
+    this.nenufarizarError.set(
+      getUserErrorMessage(
+        error,
+        'No hemos podido cargar tu zona de referidos ahora mismo.',
+      ),
+    );
   }
 }

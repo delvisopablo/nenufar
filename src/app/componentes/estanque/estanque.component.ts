@@ -176,7 +176,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
   loginPassword = '';
   loginSubmitting = false;
   loginError = '';
-  logoPath = 'assets/imagenes/logo_nenufar.png';
+  logoPath = 'assets/imagenes/logo_nenufar_small.png';
 
   lastScore = 0;
   bestScore = 0;

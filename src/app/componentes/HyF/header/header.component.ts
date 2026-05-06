@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import {
   Subscription,
   catchError,
   debounceTime,
   distinctUntilChanged,
+  filter,
   firstValueFrom,
   map,
   of,
@@ -15,10 +16,14 @@ import {
   tap
 } from 'rxjs';
 import { normalizeSearchText } from '../../../core/search/trie';
-import { resolveBusinessImage } from '../../../core/negocio/negocio-visuals';
+import { getNenufarNegocio as getNenufarNegocioAsset } from '../../../core/negocio/negocio-visuals';
 import { AccessRequiredModalComponent } from '../../../components/shared/access-required-modal/access-required-modal.component';
 import { NenunInfoComponent } from '../../nenun-info/nenun-info.component';
-import { AuthService } from '../../../servicios/authService/auth.service';
+import {
+  AuthService,
+  AuthUser,
+  resolvePrivateProfileRoute,
+} from '../../../servicios/authService/auth.service';
 import { NegocioService } from '../../../servicios/negocioService/negocio.service';
 import { NegocioLite, NegocioSearchService } from '../../../servicios/buscador/negocio-search.service';
 
@@ -37,7 +42,7 @@ export class HeaderComponent implements OnDestroy {
   private readonly negocioSearchService = inject(NegocioSearchService);
   private readonly negocioService = inject(NegocioService);
 
-  readonly logoSrc = 'assets/imagenes/logo_nenufar.png';
+  readonly logoSrc = 'assets/imagenes/logo_nenufar_small.png';
   readonly flowerSrc = 'assets/imagenes/flor_logo.png';
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly busquedaEstado = signal<SearchStatus>('idle');
@@ -46,6 +51,7 @@ export class HeaderComponent implements OnDestroy {
   readonly nenunInfoAbierto = signal(false);
   readonly accessModalAbierto = signal(false);
   readonly accessModalMessage = signal('Necesitas iniciar sesion para seguir negocios y guardar tus favoritos.');
+  readonly usuarioActual = signal<AuthUser | null>(this.authService.obtenerUsuario());
   readonly sinResultadosBusqueda = computed(
     () =>
       normalizeSearchText(this.currentQuery()).length >= 2 &&
@@ -53,6 +59,7 @@ export class HeaderComponent implements OnDestroy {
   );
 
   private readonly searchSubscription: Subscription;
+  private readonly routerSubscription: Subscription;
 
   constructor() {
     this.searchSubscription = this.searchControl.valueChanges
@@ -87,10 +94,16 @@ export class HeaderComponent implements OnDestroy {
 
         this.busquedaEstado.set(status);
       });
+
+    this.syncUsuarioActual();
+    this.routerSubscription = this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(() => this.syncUsuarioActual());
   }
 
   ngOnDestroy(): void {
     this.searchSubscription.unsubscribe();
+    this.routerSubscription.unsubscribe();
   }
 
   async buscarPrimerNegocio(): Promise<void> {
@@ -128,23 +141,7 @@ export class HeaderComponent implements OnDestroy {
     this.searchControl.setValue(negocio.nombre, { emitEvent: false });
     this.currentQuery.set(negocio.nombre);
     this.resetearBusqueda(false);
-
-    const routeKey =
-      negocio.routeKey?.trim() ||
-      negocio.nickname?.trim() ||
-      negocio.slug?.trim();
-    if (routeKey) {
-      void this.router.navigate(['/', routeKey]);
-      return;
-    }
-
-    this.negocioService.getRouteKeyById(negocio.id).subscribe({
-      next: (resolvedRouteKey) => {
-        if (resolvedRouteKey) {
-          void this.router.navigate(['/', resolvedRouteKey]);
-        }
-      },
-    });
+    void this.router.navigate(['/negocio', negocio.id]);
   }
 
   irAInicio(): void {
@@ -155,11 +152,6 @@ export class HeaderComponent implements OnDestroy {
   irAEstanque(): void {
     this.resetearBusqueda();
     void this.router.navigate(['/estanque']);
-  }
-
-  irAMisLogros(): void {
-    this.resetearBusqueda();
-    void this.router.navigate(['/mis-logros']);
   }
 
   abrirNenunInfo(): void {
@@ -177,7 +169,8 @@ export class HeaderComponent implements OnDestroy {
 
   getSearchMeta(negocio: NegocioLite): string {
     const parts = [
-      negocio.routeKey ? `/${negocio.routeKey}` : negocio.nickname ? `@${negocio.nickname}` : '',
+      `/negocio/${negocio.id}`,
+      negocio.nickname ? `@${negocio.nickname}` : '',
       this.getCategoriaNombre(negocio),
       negocio.ciudad || negocio.provincia || '',
     ].filter(Boolean);
@@ -185,8 +178,8 @@ export class HeaderComponent implements OnDestroy {
     return parts.join(' · ');
   }
 
-  getBusinessImage(negocio: NegocioLite): string {
-    return resolveBusinessImage(negocio);
+  getNenufarNegocio(negocio: NegocioLite): string {
+    return getNenufarNegocioAsset(negocio);
   }
 
   getReviewSummary(negocio: NegocioLite): string {
@@ -237,7 +230,18 @@ export class HeaderComponent implements OnDestroy {
 
   irALogin(): void {
     this.accessModalAbierto.set(false);
-    void this.router.navigate(['/login']);
+    void this.router.navigate(['/estanque']);
+  }
+
+  irAPerfilPrivado(): void {
+    this.resetearBusqueda();
+    void this.router.navigate(resolvePrivateProfileRoute(this.usuarioActual()));
+  }
+
+  getPerfilPrivadoLabel(): string {
+    return resolvePrivateProfileRoute(this.usuarioActual())[0] === '/mi-negocio'
+      ? 'Mi negocio'
+      : 'Mi perfil';
   }
 
   private searchWithState(value: string) {
@@ -275,5 +279,9 @@ export class HeaderComponent implements OnDestroy {
 
     this.resultadosBusqueda.set([]);
     this.busquedaEstado.set('idle');
+  }
+
+  private syncUsuarioActual(): void {
+    this.usuarioActual.set(this.authService.obtenerUsuario());
   }
 }

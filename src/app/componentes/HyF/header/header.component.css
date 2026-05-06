@@ -118,6 +118,11 @@
   background: linear-gradient(135deg, #f3ab4f, #e66f4f);
 }
 
+.top-action--profile {
+  background: linear-gradient(135deg, rgba(102, 171, 242, 0.95), rgba(53, 117, 197, 0.96));
+  box-shadow: 0 14px 24px rgba(53, 117, 197, 0.22);
+}
+
 .top-action--achievements {
   background: linear-gradient(135deg, rgba(242, 227, 187, 0.96), rgba(211, 173, 88, 0.96));
   color: #4f3600;
@@ -243,7 +248,7 @@
 .search-result__media img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .search-result__copy {

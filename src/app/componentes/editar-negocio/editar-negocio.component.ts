@@ -4,7 +4,7 @@ import {
   FormArray, FormControl
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import {
@@ -12,6 +12,10 @@ import {
   resolveNenufarAsset,
   resolveNenufarKey,
 } from '../../core/negocio/negocio-visuals';
+import {
+  AuthService,
+  resolveOwnedBusinessId,
+} from '../../servicios/authService/auth.service';
 import { NegocioService } from '../../servicios/negocioService/negocio.service';
 import {
   NenufarSelectorComponent,
@@ -52,8 +56,8 @@ interface NegocioDetalle {
 })
 export class EditarNegocioComponent implements OnInit {
   private fb = inject(FormBuilder);
-  private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private authService = inject(AuthService);
   private negocioService = inject(NegocioService);
   @ViewChild(NenufarSelectorComponent)
   private readonly nenufarSelector?: NenufarSelectorComponent;
@@ -68,11 +72,6 @@ export class EditarNegocioComponent implements OnInit {
   errorMensaje = '';
 
   ngOnInit(): void {
-    const routeParam = this.negocioService.normalizeRouteParam(
-      this.route.snapshot.paramMap.get('nickname') ??
-      this.route.snapshot.paramMap.get('slug'),
-    );
-
     this.negocioForm = this.fb.group({
       nombre: ['', Validators.required],
       nickname: ['', Validators.required],
@@ -94,27 +93,29 @@ export class EditarNegocioComponent implements OnInit {
     this.negocioForm.get('horario.cierre')?.valueChanges.subscribe(() => this.generarMatrizHoraria());
     this.negocioForm.get('horario.intervalo')?.valueChanges.subscribe(() => this.generarMatrizHoraria());
 
-    if (!routeParam) {
-      this.cargando = false;
-      this.errorMensaje = 'No hemos podido identificar el negocio que quieres editar.';
+    const negocioId = resolveOwnedBusinessId(this.authService.obtenerUsuario());
+    if (negocioId) {
+      this.negocioId = negocioId;
+      this.negocioRouteKey = String(negocioId);
+      this.cargarDatos();
       return;
     }
 
-    this.negocioService.resolveNegocioFromRouteParam(routeParam).subscribe({
+    this.negocioService.getMine().subscribe({
       next: (negocio) => {
-        if (!negocio) {
+        if (!negocio?.id) {
           this.cargando = false;
-          this.errorMensaje = 'No hemos podido resolver el negocio que quieres editar.';
+          this.errorMensaje = 'No hemos podido identificar el negocio que quieres editar.';
           return;
         }
 
         this.negocioId = negocio.id;
-        this.negocioRouteKey = this.negocioService.getRouteKey(negocio) ?? routeParam;
+        this.negocioRouteKey = String(negocio.id);
         this.cargarDatos();
       },
       error: (error: unknown) => {
         this.cargando = false;
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido resolver el negocio que quieres editar.');
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido identificar el negocio que quieres editar.');
       },
     });
   }
@@ -269,15 +270,12 @@ export class EditarNegocioComponent implements OnInit {
       )
       .subscribe({
         next: (negocioActualizado) => {
-          const routeKey =
-            this.negocioService.getRouteKey(negocioActualizado) ?? this.negocioRouteKey;
-
           this.guardando = false;
           this.sincronizarNegocioEnSesion(negocioActualizado);
           this.nenufarSelector?.markAsSaved(
             negocioActualizado.nenufarAsset ?? DEFAULT_NENUFAR_ASSET,
           );
-          void this.router.navigate(['/', routeKey]);
+          void this.router.navigate(['/mi-negocio']);
         },
         error: (error: unknown) => {
           this.guardando = false;

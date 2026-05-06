@@ -2,14 +2,14 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, forkJoin, of, switchMap } from 'rxjs';
+import { catchError, finalize, forkJoin, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { AccessRequiredModalComponent } from '../../components/shared/access-required-modal/access-required-modal.component';
 import { AuthService, AuthUser } from '../../servicios/authService/auth.service';
 import { Logro, LogroServiceService } from '../../servicios/logroServicio/logroService.service';
-import { resolveNegocioRouteKey } from '../../servicios/negocioService/negocio.service';
 import { ReservaService } from '../../servicios/reservaService/reserva.service';
 import { ResenaService } from '../../servicios/reviewServicio/resena.service';
+import { NenufarizarService } from '../../services/nenufarizar.service';
 import {
   PerfilUsuarioResponse,
   UpdatePerfilPayload,
@@ -32,6 +32,8 @@ type UserReview = {
   };
 };
 
+type CopiaReferidoAccion = '' | 'codigo' | 'enlace';
+
 @Component({
   selector: 'app-perfil-usuario',
   standalone: true,
@@ -47,6 +49,7 @@ export class PerfilUsuarioComponent implements OnInit {
   private readonly resenaService = inject(ResenaService);
   private readonly reservaService = inject(ReservaService);
   private readonly logroService = inject(LogroServiceService);
+  readonly nenufarizar = inject(NenufarizarService);
 
   readonly cargando = signal(true);
   readonly error = signal('');
@@ -61,8 +64,12 @@ export class PerfilUsuarioComponent implements OnInit {
   readonly siguiendoUsuario = signal(false);
   readonly accessModalAbierto = signal(false);
   readonly accessModalMensaje = signal('Necesitas iniciar sesion para seguir a este usuario.');
+  readonly regenerandoCodigo = signal(false);
+  readonly accionCopiada = signal<CopiaReferidoAccion>('');
+  readonly nenufarizarError = signal('');
 
   nuevaBio = '';
+  private copyFeedbackTimerId: number | null = null;
 
   readonly esPerfilPropio = computed(() => {
     const actual = this.usuarioActual();
@@ -85,6 +92,9 @@ export class PerfilUsuarioComponent implements OnInit {
         const perfil = this.usuario();
         if (perfil) {
           this.cargarSeguimiento(perfil);
+          if (this.esUsuarioActual(perfil)) {
+            this.cargarNenufarizar();
+          }
         }
       },
     });
@@ -125,12 +135,30 @@ export class PerfilUsuarioComponent implements OnInit {
                 resenas: resenas$,
                 logros: logros$,
                 reservas: reservas$,
+                codigoReferido: this.esUsuarioActual(perfil)
+                  ? this.nenufarizar.loadCodigo().pipe(
+                      catchError((error: unknown) => {
+                        this.registrarErrorNenufarizar(error);
+                        return of('');
+                      }),
+                    )
+                  : of(''),
+                referidos: this.esUsuarioActual(perfil)
+                  ? this.nenufarizar.loadReferidos().pipe(
+                      catchError((error: unknown) => {
+                        this.registrarErrorNenufarizar(error);
+                        return of([]);
+                      }),
+                    )
+                  : of([]),
               }).pipe(
                 catchError(() =>
                   of({
                     resenas: [],
                     logros: [],
                     reservas: [],
+                    codigoReferido: '',
+                    referidos: [],
                   }),
                 ),
               );
@@ -240,8 +268,59 @@ export class PerfilUsuarioComponent implements OnInit {
   }
 
   getBusinessRoute(negocio: UserReview['negocio'] | undefined): string[] | null {
-    const routeKey = resolveNegocioRouteKey(negocio);
-    return routeKey ? ['/', routeKey] : null;
+    const negocioId = Number(negocio?.id);
+    return Number.isFinite(negocioId) && negocioId > 0 ? ['/negocio', negocioId] : null;
+  }
+
+  getReferidoInitial(nickname: string | null | undefined): string {
+    const normalized = String(nickname ?? '').trim();
+    return normalized ? normalized.charAt(0).toUpperCase() : 'N';
+  }
+
+  async copiarCodigoReferido(): Promise<void> {
+    await this.copiarTexto(this.nenufarizar.codigoReferido(), 'codigo');
+  }
+
+  async compartirEnlaceReferido(): Promise<void> {
+    const codigoReferido = this.nenufarizar.codigoReferido();
+    const enlace = codigoReferido
+      ? `${window.location.origin}/registro?ref=${encodeURIComponent(codigoReferido)}`
+      : '';
+
+    await this.copiarTexto(enlace, 'enlace');
+  }
+
+  regenerarCodigoReferido(): void {
+    if (!this.esPerfilPropio() || !this.nenufarizar.codigoReferido()) {
+      return;
+    }
+
+    const confirmado = confirm(
+      '¿Quieres generar un nuevo código? Tus referidos actuales se mantendrán vinculados a tu cuenta.',
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    this.nenufarizarError.set('');
+    this.regenerandoCodigo.set(true);
+
+    this.nenufarizar
+      .regenerarCodigo()
+      .pipe(
+        finalize(() => this.regenerandoCodigo.set(false)),
+      )
+      .subscribe({
+        error: (error: unknown) => {
+          this.nenufarizarError.set(
+            getUserErrorMessage(
+              error,
+              'No hemos podido generar un código nuevo ahora mismo.',
+            ),
+          );
+        },
+      });
   }
 
   private esUsuarioActual(perfil: PerfilUsuarioResponse): boolean {
@@ -306,6 +385,70 @@ export class PerfilUsuarioComponent implements OnInit {
 
   irALogin(): void {
     this.accessModalAbierto.set(false);
-    void this.router.navigate(['/login']);
+    void this.router.navigate(['/estanque']);
+  }
+
+  private cargarNenufarizar(): void {
+    this.nenufarizar.loadCodigo().pipe(
+      catchError((error: unknown) => {
+        this.registrarErrorNenufarizar(error);
+        return of('');
+      }),
+    ).subscribe();
+
+    this.nenufarizar.loadReferidos().pipe(
+      catchError((error: unknown) => {
+        this.registrarErrorNenufarizar(error);
+        return of([]);
+      }),
+    ).subscribe();
+  }
+
+  private async copiarTexto(
+    value: string | null | undefined,
+    accion: Exclude<CopiaReferidoAccion, ''>,
+  ): Promise<void> {
+    const texto = String(value ?? '').trim();
+    if (!texto || !navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(texto);
+      this.activarFeedbackCopia(accion);
+    } catch (error: unknown) {
+      this.nenufarizarError.set(
+        getUserErrorMessage(
+          error,
+          'No hemos podido copiar el contenido al portapapeles.',
+        ),
+      );
+    }
+  }
+
+  private activarFeedbackCopia(accion: Exclude<CopiaReferidoAccion, ''>): void {
+    this.accionCopiada.set(accion);
+
+    if (this.copyFeedbackTimerId) {
+      window.clearTimeout(this.copyFeedbackTimerId);
+    }
+
+    this.copyFeedbackTimerId = window.setTimeout(() => {
+      this.accionCopiada.set('');
+      this.copyFeedbackTimerId = null;
+    }, 2000);
+  }
+
+  private registrarErrorNenufarizar(error: unknown): void {
+    if (this.nenufarizarError()) {
+      return;
+    }
+
+    this.nenufarizarError.set(
+      getUserErrorMessage(
+        error,
+        'No hemos podido cargar tu zona de referidos ahora mismo.',
+      ),
+    );
   }
 }

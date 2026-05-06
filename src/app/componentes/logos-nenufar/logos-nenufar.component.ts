@@ -15,7 +15,7 @@ import { RouterLink } from '@angular/router';
           Esta ruta queda preparada para conectar el selector visual del negocio
           sin romper el editor actual.
         </p>
-        <a class="logos-link" routerLink="/perfil">Volver al perfil</a>
+        <a class="logos-link" routerLink="/mi-negocio">Volver al perfil</a>
       </div>
     </section>
   `,

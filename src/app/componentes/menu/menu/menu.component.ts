@@ -34,17 +34,8 @@ constructor(private http: HttpClient, private router: Router) {}
 
 
   irANegocio(id: number) {
-    this.negocioService.getRouteKeyById(id).subscribe({
-      next: (routeKey) => {
-        if (routeKey) {
-          void this.router.navigate(['/', routeKey]);
-        }
-        this.resultados = [];
-      },
-      error: () => {
-        this.resultados = [];
-      },
-    });
+    void this.router.navigate(['/negocio', id]);
+    this.resultados = [];
   }
 
 }

@@ -16,11 +16,15 @@ import {
 } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, catchError, map, of } from 'rxjs';
 import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
 import { PromoMock, PROMOS_MOCK } from '../promocion/promocion/promocionesMock';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
-import { AuthService, AuthUser } from '../../servicios/authService/auth.service';
+import {
+  AuthService,
+  AuthUser,
+  resolvePrivateProfileRoute,
+} from '../../servicios/authService/auth.service';
 import { HomeHeaderService } from '../../servicios/homeHeaderServicio/home-header.service';
 import { NegocioService } from '../../servicios/negocioService/negocio.service';
 import {
@@ -28,7 +32,24 @@ import {
   NegocioReviewSnippet,
   NegocioSearchService,
 } from '../../servicios/buscador/negocio-search.service';
-import { resolveBusinessImage } from '../../core/negocio/negocio-visuals';
+import {
+  DEFAULT_NENUFAR_SMALL_ASSET,
+  getNenufarNegocio as getNenufarNegocioAsset,
+  NegocioVisualData,
+} from '../../core/negocio/negocio-visuals';
+import {
+  Promocion,
+  PromocionService,
+  TipoDescuento,
+} from '../../servicios/promocionServicio/promocionService.service';
+
+type HomePromo = PromoMock & {
+  negocio?: (NegocioVisualData & {
+    categoria?: { id?: number; nombre?: string } | string | null;
+    id?: number;
+    nombre?: string;
+  }) | null;
+};
 
 type ZoneKey = 'promos' | 'resenas' | 'perfil' | 'crear';
 type LilyKind = 'promo' | 'review' | 'profile' | 'create';
@@ -54,7 +75,7 @@ type HomePopup =
   | { kind: 'ayuda' }
   | { kind: 'signin'; message: string; title: string }
   | { kind: 'review'; lilyId: string; business: NegocioLite }
-  | { kind: 'promo'; lilyId: string; promo: PromoMock }
+  | { kind: 'promo'; lilyId: string; promo: HomePromo }
   | { kind: 'profile'; lilyId: string }
   | { kind: 'create'; lilyId: string };
 
@@ -69,7 +90,7 @@ type LilyView = {
   id: string;
   kind: LilyKind;
   label: string;
-  promo?: PromoMock;
+  promo?: HomePromo;
   business?: NegocioLite;
   subtitle: string;
   tone: 'fresh' | 'mustio';
@@ -166,14 +187,15 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly homeHeaderService = inject(HomeHeaderService);
   private readonly negocioService = inject(NegocioService);
   private readonly negocioSearchService = inject(NegocioSearchService);
+  private readonly promocionService = inject(PromocionService);
 
-  readonly freshLilyImageSrc = 'assets/imagenes/nenufar.png';
-  readonly mustioLilyImageSrc = 'assets/imagenes/nenufar_mustio.png';
+  readonly freshLilyImageSrc = DEFAULT_NENUFAR_SMALL_ASSET;
+  readonly mustioLilyImageSrc = 'assets/imagenes/nenufar_mustio_small.png';
 
   readonly crearResenaAbierto = signal(false);
   readonly hoveredTooltip = signal<HoverTooltip | null>(null);
   readonly popup = signal<HomePopup | null>(null);
-  readonly promociones = signal<PromoMock[]>(PROMOS_MOCK);
+  readonly promociones = signal<HomePromo[]>([]);
   readonly promoLilies = signal<LilyView[]>([]);
   readonly reviewLilies = signal<LilyView[]>([]);
   readonly negociosDestacados = signal<NegocioLite[]>([]);
@@ -260,6 +282,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     this.title.setTitle('Inicio');
     this.hidratarSesionPersistida();
     this.seedZoneLilies();
+    this.cargarPromocionesInicio();
     this.cargarNegociosDestacados();
   }
 
@@ -341,7 +364,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (this.usuarioLogueado()?.id) {
       this.schedulePopup(null);
-      void this.router.navigate(['/perfil']);
+      void this.router.navigate(resolvePrivateProfileRoute(this.usuarioLogueado()));
       return;
     }
 
@@ -356,8 +379,8 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     return negocio.latestReviews[0] ?? null;
   }
 
-  getBusinessImage(negocio: NegocioLite): string {
-    return resolveBusinessImage(negocio);
+  getNenufarNegocio(negocio: NegocioLite | NegocioVisualData | null | undefined): string {
+    return getNenufarNegocioAsset(negocio);
   }
 
   toggleSeguirNegocio(negocio: NegocioLite): void {
@@ -432,7 +455,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   irALogin(): void {
     this.schedulePopup(null);
-    void this.router.navigate(['/login']);
+    void this.router.navigate(['/estanque']);
   }
 
   irANegocio(negocioId: number): void {
@@ -455,6 +478,32 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         this.changeDetector.markForCheck();
       },
     });
+  }
+
+  private cargarPromocionesInicio(): void {
+    this.promocionService.findActivas()
+      .pipe(
+        map((items) =>
+          items
+            .map((item) => this.toHomePromo(item))
+            .filter((item): item is HomePromo => item !== null),
+        ),
+        catchError(() => of(PROMOS_MOCK)),
+      )
+      .subscribe({
+        next: (items) => {
+          this.promociones.set(items);
+          this.promoLilies.set(this.takeInitialLilies('promos'));
+          this.queueZoneSync();
+          this.changeDetector.markForCheck();
+        },
+        error: () => {
+          this.promociones.set(PROMOS_MOCK);
+          this.promoLilies.set(this.takeInitialLilies('promos'));
+          this.queueZoneSync();
+          this.changeDetector.markForCheck();
+        },
+      });
   }
 
   manejarResenaCreada(respuesta: any): void {
@@ -603,19 +652,13 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     this.emitRipple(event.clientX, event.clientY, 1);
   }
 
-  verPromo(promo: PromoMock): void {
+  verPromo(promo: HomePromo): void {
     this.schedulePopup(null);
     this.navegarANegocioPorId(promo.negocioId);
   }
 
   private navegarANegocioPorId(negocioId: number): void {
-    this.negocioService.getRouteKeyById(negocioId).subscribe({
-      next: (routeKey) => {
-        if (routeKey) {
-          void this.router.navigate(['/', routeKey]);
-        }
-      },
-    });
+    void this.router.navigate(['/negocio', negocioId]);
   }
 
   private abrirPopupDesdeNenufar(item: LilyView): void {
@@ -919,7 +962,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
-  private createPromoLily(promo: PromoMock): LilyView {
+  private createPromoLily(promo: HomePromo): LilyView {
     return {
       id: `promo-${promo.id}-${++this.lilyInstanceCounter}`,
       zone: 'promos',
@@ -944,11 +987,90 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getLilyImage(item: LilyView): string {
+    if (item.kind === 'promo' && item.promo) {
+      return this.getNenufarNegocio(this.getPromoBusiness(item.promo));
+    }
+
     if (item.kind === 'review' && item.business) {
-      return resolveBusinessImage(item.business);
+      return this.getNenufarNegocio(item.business);
     }
 
     return item.tone === 'mustio' ? this.mustioLilyImageSrc : this.freshLilyImageSrc;
+  }
+
+  private getPromoBusiness(promo: HomePromo): NegocioVisualData | null {
+    if (promo.negocio) {
+      return promo.negocio;
+    }
+
+    return this.negociosDestacados().find((item) => item.id === promo.negocioId) ?? null;
+  }
+
+  private getPromoDescriptionShort(value: string): string {
+    const normalized = value.trim();
+    if (!normalized) {
+      return 'Promocion activa en el estanque.';
+    }
+
+    return normalized.length > 96 ? `${normalized.slice(0, 93)}...` : normalized;
+  }
+
+  private getPromoDiscountText(promocion: Promocion): string {
+    const descuento = Number(promocion.descuento ?? 0);
+
+    switch (promocion.tipoDescuento as TipoDescuento) {
+      case 'PORCENTAJE':
+        return `${descuento}%`;
+      case 'IMPORTE_FIJO':
+        return `${descuento} €`;
+      case 'PACK':
+        return `Pack ${descuento}`;
+      case 'DOS_X_UNO':
+        return '2x1';
+      default:
+        return descuento > 0 ? String(descuento) : 'Promo activa';
+    }
+  }
+
+  private getPromoConditions(promocion: Promocion): string {
+    const parts = [
+      promocion.codigo ? `Codigo ${promocion.codigo}` : '',
+      promocion.fechaInicio ? `Desde ${this.formatearFechaCompleta(promocion.fechaInicio)}` : '',
+      promocion.fechaCaducidad ? `Hasta ${this.formatearFechaCompleta(promocion.fechaCaducidad)}` : '',
+    ].filter(Boolean);
+
+    return parts.join(' · ') || 'Consulta las condiciones completas en el negocio.';
+  }
+
+  private toHomePromo(promocion: Promocion): HomePromo | null {
+    const id = Number(promocion.id ?? 0);
+    const negocioId = Number(promocion.negocioId ?? promocion.negocio?.id ?? 0);
+
+    if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(negocioId) || negocioId <= 0) {
+      return null;
+    }
+
+    const descripcion = String(promocion.descripcion ?? '').trim();
+    const negocioNombre =
+      String(promocion.negocio?.nombre ?? promocion['negocioNombre'] ?? '').trim() ||
+      `Negocio ${negocioId}`;
+    const titulo = String(promocion.titulo ?? promocion['nombre_promo'] ?? '').trim() || 'Promocion activa';
+    const fechaCaducidadISO =
+      String(promocion.fechaCaducidad ?? promocion['fechaCaducidadISO'] ?? '').trim() ||
+      new Date().toISOString();
+
+    return {
+      id,
+      negocioId,
+      negocioNombre,
+      titulo,
+      descripcion: descripcion || 'Promocion activa en Nenufar.',
+      descripcionCorta: this.getPromoDescriptionShort(descripcion),
+      descuentoTexto: this.getPromoDiscountText(promocion),
+      fechaCaducidadISO,
+      condiciones: this.getPromoConditions(promocion),
+      ...(promocion.negocio ? { negocio: promocion.negocio } : {}),
+    };
   }
 
   private hidratarSesionPersistida(): void {

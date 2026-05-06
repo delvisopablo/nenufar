@@ -64,7 +64,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     if (accesoPermitido) {
       this.shouldAnimate = false;
       this.cuentaAtrasService.desbloquearAcceso();
-      const destino = this.authService.isAuthenticated() ? '/inicio' : '/login';
+      const destino = this.authService.isAuthenticated() ? '/inicio' : '/estanque';
       this.router.navigate([destino]);
     }
   }

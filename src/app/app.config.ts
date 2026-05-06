@@ -12,7 +12,9 @@ import { catchError, firstValueFrom, map, of } from 'rxjs';
 function initializeAuthSession(authService: AuthService) {
   return () =>
     firstValueFrom(
-      authService.hydrateSession({ forceRemote: true }).pipe(
+      authService.hydrateSession({
+        forceRemote: authService.hasSessionHint(),
+      }).pipe(
         map(() => void 0),
         catchError(() => of(void 0)),
       ),
