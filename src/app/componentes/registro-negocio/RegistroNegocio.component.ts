@@ -1,16 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import {
-  AfterViewInit,
   Component,
-  ElementRef,
-  NgZone,
-  OnDestroy,
+  DestroyRef,
   OnInit,
-  ViewChild,
   inject,
   signal
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -20,288 +17,93 @@ import {
 } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
+import { Subject, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
+import { getUserErrorMessage } from '../../core/errors/error-parser';
+import { buildApiUrl } from '../../config/api.config';
 import {
   AuthResponse,
   AuthService,
+  RegisterPayload,
 } from '../../servicios/authService/auth.service';
-import { getUserErrorMessage } from '../../core/errors/error-parser';
-import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 import {
-  ApiListResponse,
-  buildApiUrl,
-  extractItems,
-} from '../../config/api.config';
+  Categoria,
+  CategoriaServiceService,
+  Subcategoria,
+} from '../../servicios/categoriaServicio/categoriaService.service';
+import {
+  NenufarSelectorComponent,
+} from '../../components/shared/nenufar-selector/nenufar-selector.component';
+import {
+  NENUFAR_OPTIONS,
+  resolveNenufarAsset,
+} from '../../core/negocio/negocio-visuals';
+import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 
-type Categoria = { id: number; nombre: string };
-
-type PondSource = {
-  x: number;
-  y: number;
-  wl: number;
-  phase: number;
-  amp: number;
-  born: number;
-  life: number;
-};
-
-class PondBackgroundRenderer {
-  private readonly ctx: CanvasRenderingContext2D;
-  private readonly W = 600;
-  private readonly H = 600;
-  private readonly res = 4;
-  private readonly rows = Math.floor(this.H / this.res);
-  private readonly cols = Math.floor(this.W / this.res);
-  private readonly field = new Float32Array(this.rows * this.cols);
-
-  private readonly blues = [
-    '#0a1628', '#0d2137', '#0e3a5e', '#1a5276', '#1f618d',
-    '#2980b9', '#5dade2', '#85c1e9', '#aed6f1'
-  ];
-
-  // Fuentes base (siempre activas, sutiles)
-  private readonly baseSources: PondSource[] = [];
-
-  // Clicks generan olas temporales
-  private readonly clickSources: PondSource[] = [];
-
-  private readonly levels = [-1.4, -0.8, -0.3, 0, 0.3, 0.8, 1.4];
-
-  private time = 0;
-  private animationFrameId = 0;
-
-  constructor(private readonly canvas: HTMLCanvasElement) {
-    const ctx = canvas.getContext('2d', { alpha: false });
-
-    if (!ctx) {
-      throw new Error('No se pudo inicializar el fondo del estanque.');
-    }
-
-    this.ctx = ctx;
-    this.canvas.width = this.W;
-    this.canvas.height = this.H;
-
-    const ring = 8;
-    for (let i = 0; i < ring; i += 1) {
-      const angle = (i / ring) * Math.PI * 2;
-      this.baseSources.push({
-        x: this.W / 2 + Math.cos(angle) * 160,
-        y: this.H / 2 + Math.sin(angle) * 160,
-        wl: 40 + (i % 4) * 10,
-        phase: angle,
-        amp: 0.25,
-        born: -Infinity,
-        life: Infinity
-      });
-    }
-
-    this.canvas.addEventListener('click', this.handleClick);
-  }
-
-  start(): void {
-    this.animationFrameId = requestAnimationFrame(this.animate);
-  }
-
-  destroy(): void {
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-    }
-
-    this.canvas.removeEventListener('click', this.handleClick);
-  }
-
-  private handleClick = (event: MouseEvent): void => {
-    const rect = this.canvas.getBoundingClientRect();
-    const scaleX = this.W / rect.width;
-    const scaleY = this.H / rect.height;
-    const cx = (event.clientX - rect.left) * scaleX;
-    const cy = (event.clientY - rect.top) * scaleY;
-
-    // Varias sub-fuentes por click para efecto de piedra en agua
-    for (let k = 0; k < 3; k += 1) {
-      this.clickSources.push({
-        x: cx,
-        y: cy,
-        wl: 20 + k * 14,
-        phase: k * 1.1,
-        amp: 1.4 - k * 0.3,
-        born: this.time,
-        life: 6.0 + k * 0.5
-      });
-    }
-  };
-
-  private animate = (): void => {
-    this.ctx.fillStyle = '#0a1f3d';
-    this.ctx.fillRect(0, 0, this.W, this.H);
-
-    const now = this.time;
-    const allSources = this.baseSources.concat(
-      this.clickSources.filter((source) => now - source.born < source.life)
-    );
-
-    // Limpiar viejas
-    while (this.clickSources.length && now - this.clickSources[0].born >= this.clickSources[0].life) {
-      this.clickSources.shift();
-    }
-
-    for (let i = 0; i < this.rows; i += 1) {
-      for (let j = 0; j < this.cols; j += 1) {
-        const x = j * this.res;
-        const y = i * this.res;
-        let amp = 0;
-
-        for (let s = 0; s < allSources.length; s += 1) {
-          const source = allSources[s];
-          const age = now - source.born;
-
-          if (age < 0) {
-            continue;
-          }
-
-          // Fuentes base: oscilan levemente
-          const sx = source.born === -Infinity
-            ? source.x + Math.sin(now * 0.4 + source.phase) * 10
-            : source.x;
-          const sy = source.born === -Infinity
-            ? source.y + Math.cos(now * 0.3 + source.phase) * 10
-            : source.y;
-
-          const dx = x - sx;
-          const dy = y - sy;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          let falloff;
-          if (source.born === -Infinity) {
-            falloff = Math.max(0, 1 - dist / 320);
-          } else {
-            // Ola de click: se expande y se desvanece
-            const wavefront = age * 60;
-            const spread = 80 + age * 20;
-            const envelope = Math.max(0, 1 - Math.abs(dist - wavefront) / spread);
-            const decay = Math.max(0, 1 - age / source.life);
-            falloff = envelope * decay * Math.max(0, 1 - dist / 500);
-          }
-
-          amp += source.amp * falloff
-            * Math.sin((dist / source.wl - now * 0.9) * 2 * Math.PI + source.phase);
-        }
-
-        this.field[i * this.cols + j] = amp;
-      }
-    }
-
-    for (let li = 0; li < this.levels.length; li += 1) {
-      const level = this.levels[li];
-      this.ctx.strokeStyle = this.blues[li];
-      this.ctx.lineWidth = li === 3 ? 1.2 : 0.7;
-      this.ctx.globalAlpha = 0.75 + (li / this.levels.length) * 0.25;
-      this.ctx.beginPath();
-
-      for (let i = 0; i < this.rows - 1; i += 1) {
-        for (let j = 0; j < this.cols - 1; j += 1) {
-          const idx = i * this.cols + j;
-          const x = j * this.res;
-          const y = i * this.res;
-          const v00 = this.field[idx] > level;
-          const v10 = this.field[idx + 1] > level;
-          const v11 = this.field[idx + this.cols + 1] > level;
-          const v01 = this.field[idx + this.cols] > level;
-
-          if (v00 !== v10) {
-            this.ctx.moveTo(x + this.res / 2, y);
-            this.ctx.lineTo(x + this.res, y + this.res / 2);
-          }
-          if (v10 !== v11) {
-            this.ctx.moveTo(x + this.res, y + this.res / 2);
-            this.ctx.lineTo(x + this.res / 2, y + this.res);
-          }
-          if (v11 !== v01) {
-            this.ctx.moveTo(x + this.res / 2, y + this.res);
-            this.ctx.lineTo(x, y + this.res / 2);
-          }
-          if (v01 !== v00) {
-            this.ctx.moveTo(x, y + this.res / 2);
-            this.ctx.lineTo(x + this.res / 2, y);
-          }
-        }
-      }
-
-      this.ctx.stroke();
-    }
-
-    this.ctx.globalAlpha = 1;
-    this.time += 0.012;
-    this.animationFrameId = requestAnimationFrame(this.animate);
-  };
-}
+type CodigoEstado = 'idle' | 'comprobando' | 'valido' | 'invalido';
 
 @Component({
   selector: 'app-registro-negocio',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, EstanqueBackgroundComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    EstanqueBackgroundComponent,
+    NenufarSelectorComponent,
+  ],
   templateUrl: './RegistroNegocio.component.html',
   styleUrls: ['./RegistroNegocio.component.css']
 })
-export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('pondCanvas') private pondCanvasRef?: ElementRef<HTMLCanvasElement>;
-
+export class RegistroNegocioComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly http = inject(HttpClient);
   private readonly title = inject(Title);
-  private readonly zone = inject(NgZone);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly categoriaService = inject(CategoriaServiceService);
 
-  private pondBackground?: PondBackgroundRenderer;
+  private readonly codigoInput$ = new Subject<string>();
 
   readonly categorias = signal<Categoria[]>([]);
-  readonly categoriasFiltradas = signal<Categoria[]>([]);
   readonly cargandoCategorias = signal(true);
   readonly categoriasError = signal('');
+  readonly categoriaSeleccionadaId = signal<number | null>(null);
+
+  readonly subcategorias = signal<Subcategoria[]>([]);
+  readonly cargandoSubcategorias = signal(false);
+  readonly subcategoriasError = signal('');
+
+  readonly nenufarOptions = NENUFAR_OPTIONS;
+  readonly mostrarSelectorNenufar = signal(false);
+  readonly mostrarCodigoNenufarizacion = signal(false);
+  readonly codigoEstado = signal<CodigoEstado>('idle');
   readonly registrando = signal(false);
   readonly errorMensaje = signal('');
-  readonly mostrarSugerencias = signal(false);
 
   readonly negocioForm = this.fb.group(
     {
-      nombreDueño: ['', [Validators.required, Validators.minLength(2)]],
+      nombreDueno: ['', [Validators.required, Validators.minLength(2)]],
       nickname: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
       confirmarContrasena: ['', [Validators.required]],
       nombreNegocio: ['', [Validators.required, Validators.minLength(2)]],
+      categoriaId: [null as number | null, [Validators.required]],
+      subcategoriaId: [null as number | null],
+      fechaFundacion: [''],
+      nenufarActivo: [null as string | null],
+      codigoNenufarizacion: [''],
       direccion: [''],
-      fechaFundacion: ['', [Validators.required]],
       historia: ['', [Validators.maxLength(320)]],
-      categoriaNombre: ['', [Validators.required]]
     },
     { validators: this.passwordMatchValidator }
   );
 
   ngOnInit(): void {
     this.title.setTitle('Registra tu negocio');
+    this.configurarCambioCategoria();
     this.cargarCategorias();
-  }
-
-  ngAfterViewInit(): void {
-    const canvas = this.pondCanvasRef?.nativeElement;
-
-    if (!canvas) {
-      return;
-    }
-
-    this.zone.runOutsideAngular(() => {
-      try {
-        this.pondBackground = new PondBackgroundRenderer(canvas);
-        this.pondBackground.start();
-      } catch {
-        this.pondBackground = undefined;
-      }
-    });
-  }
-
-  ngOnDestroy(): void {
-    this.pondBackground?.destroy();
+    this.configurarValidacionCodigo();
   }
 
   registrar(): void {
@@ -313,17 +115,45 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     const datos = this.negocioForm.getRawValue();
+    const categoriaId = this.normalizarNumeroPositivo(datos.categoriaId);
+    const subcategoriaId = this.normalizarNumeroPositivo(datos.subcategoriaId);
+    const fechaFundacion = this.normalizarFechaFundacion(datos.fechaFundacion);
+    const codigoNenufarizacion = this.normalizarTextoOpcional(datos.codigoNenufarizacion)?.toUpperCase();
+    const direccion = this.normalizarTextoOpcional(datos.direccion);
+    const historia = this.normalizarTextoOpcional(datos.historia);
+    const nenufarActivo = this.normalizarTextoOpcional(datos.nenufarActivo);
 
-    const payload: Record<string, unknown> = {
-      nombreDueno: datos.nombreDueño?.trim(),
-      nickname: datos.nickname?.trim(),
-      email: datos.email?.trim(),
-      password: datos.password,
-      nombreNegocio: datos.nombreNegocio?.trim(),
-      direccion: datos.direccion?.trim() || '',
-      fechaFundacion: datos.fechaFundacion,
-      historia: datos.historia?.trim() || '',
-      categoriaNombre: datos.categoriaNombre?.trim() || ''
+    if (!categoriaId) {
+      this.negocioForm.get('categoriaId')?.markAsTouched();
+      this.errorMensaje.set('Selecciona una categoría válida.');
+      return;
+    }
+
+    if (codigoNenufarizacion && this.codigoEstado() === 'comprobando') {
+      this.mostrarCodigoNenufarizacion.set(true);
+      this.errorMensaje.set('Estamos comprobando tu código de nenufarización. Espera un instante.');
+      return;
+    }
+
+    if (codigoNenufarizacion && this.codigoEstado() === 'invalido') {
+      this.mostrarCodigoNenufarizacion.set(true);
+      this.errorMensaje.set('Ese código de nenufarización no es válido. Corrígelo o elimínalo para continuar.');
+      return;
+    }
+
+    const payload: RegisterPayload = {
+      nombreDueno: datos.nombreDueno?.trim() ?? '',
+      nickname: datos.nickname?.trim() ?? '',
+      email: datos.email?.trim().toLowerCase() ?? '',
+      password: datos.password ?? '',
+      nombreNegocio: datos.nombreNegocio?.trim() ?? '',
+      categoriaId,
+      ...(subcategoriaId ? { subcategoriaId } : {}),
+      ...(direccion ? { direccion } : {}),
+      ...(fechaFundacion ? { fechaFundacion } : {}),
+      ...(historia ? { historia } : {}),
+      ...(codigoNenufarizacion ? { codigoNenufarizacion } : {}),
+      nenufarActivo,
     };
 
     this.registrando.set(true);
@@ -336,47 +166,36 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
         void this.router.navigate(['/inicio']);
       },
       error: (error: unknown) => {
-        console.error('[RegistroNegocio] Error al crear negocio:', error);
         this.registrando.set(false);
         this.errorMensaje.set(this.extraerMensajeError(error));
       }
     });
   }
 
-  filtrarCategorias(): void {
-    const texto = (this.negocioForm.get('categoriaNombre')?.value || '').trim().toLowerCase();
-    const lista = this.categorias();
+  onNenufarChange(value: string | null): void {
+    this.negocioForm.get('nenufarActivo')?.setValue(value);
+  }
 
-    if (!texto) {
-      this.categoriasFiltradas.set(lista.slice(0, 8));
-      return;
+  toggleSelectorNenufar(): void {
+    this.mostrarSelectorNenufar.update((open) => !open);
+  }
+
+  onCodigoInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value.trim();
+    this.codigoInput$.next(value);
+  }
+
+  toggleCodigoNenufarizacion(): void {
+    const siguienteEstado = !this.mostrarCodigoNenufarizacion();
+    this.mostrarCodigoNenufarizacion.set(siguienteEstado);
+
+    if (!siguienteEstado && !this.normalizarTextoOpcional(this.negocioForm.get('codigoNenufarizacion')?.value)) {
+      this.codigoEstado.set('idle');
     }
-
-    this.categoriasFiltradas.set(
-      lista.filter((categoria) => categoria.nombre.toLowerCase().includes(texto)).slice(0, 8)
-    );
-  }
-
-  mostrarPanelCategorias(): void {
-    this.mostrarSugerencias.set(true);
-    this.filtrarCategorias();
-  }
-
-  seleccionarCategoria(categoria: Categoria): void {
-    this.negocioForm.get('categoriaNombre')?.setValue(categoria.nombre);
-    this.mostrarSugerencias.set(false);
-  }
-
-  ocultarSugerenciasConRetraso(): void {
-    setTimeout(() => this.mostrarSugerencias.set(false), 160);
   }
 
   volverAOpciones(): void {
     void this.router.navigate(['/registro-opciones']);
-  }
-
-  irARegistroUsuario(): void {
-    void this.router.navigate(['/registro']);
   }
 
   irAlEstanque(): void {
@@ -419,9 +238,12 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
     return 'Revisa este campo.';
   }
 
-  get historiaRestante(): number {
-    const texto = this.negocioForm.get('historia')?.value ?? '';
-    return 320 - texto.length;
+  get nenufarSeleccionadoLabel(): string {
+    const asset = resolveNenufarAsset(this.negocioForm.get('nenufarActivo')?.value, this.nenufarOptions);
+
+    return (
+      this.nenufarOptions.find((option) => option.asset === asset)?.label ?? ''
+    );
   }
 
   private passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -435,24 +257,93 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
     return password === confirmacion ? null : { passwordMismatch: true };
   }
 
-  private cargarCategorias(): void {
-    this.http
-      .get<ApiListResponse<Categoria>>(buildApiUrl('/categorias'))
+  private configurarValidacionCodigo(): void {
+    this.codigoInput$
+      .pipe(
+        debounceTime(500),
+        distinctUntilChanged(),
+        switchMap((codigo) => {
+          if (!codigo) {
+            this.codigoEstado.set('idle');
+            return of(null);
+          }
+          this.codigoEstado.set('comprobando');
+          return this.http
+            .get<{ valido: boolean }>(
+              buildApiUrl(`/codigos-nenufarizacion/validar?codigo=${encodeURIComponent(codigo)}`)
+            )
+            .pipe(
+              switchMap((r) => of(r)),
+            );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe({
+        next: (response) => {
+          if (response === null) return;
+          this.codigoEstado.set(response.valido ? 'valido' : 'invalido');
+        },
+        error: () => {
+          this.codigoEstado.set('invalido');
+        }
+      });
+  }
+
+  private configurarCambioCategoria(): void {
+    const categoriaControl = this.negocioForm.get('categoriaId');
+
+    if (!categoriaControl) {
+      return;
+    }
+
+    categoriaControl.valueChanges
+      .pipe(distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => {
+        const categoriaId = this.normalizarNumeroPositivo(value);
+
+        this.categoriaSeleccionadaId.set(categoriaId);
+        this.subcategorias.set([]);
+        this.subcategoriasError.set('');
+        this.negocioForm.get('subcategoriaId')?.setValue(null, { emitEvent: false });
+
+        if (!categoriaId) {
+          this.cargandoSubcategorias.set(false);
+          return;
+        }
+
+        this.cargarSubcategorias(categoriaId);
+      });
+  }
+
+  private cargarSubcategorias(categoriaId: number): void {
+    this.cargandoSubcategorias.set(true);
+    this.subcategoriasError.set('');
+
+    this.categoriaService.listSubcategorias(categoriaId).subscribe({
       next: (data) => {
-        const categorias = extractItems(data);
+        this.subcategorias.set(data);
+        this.cargandoSubcategorias.set(false);
+      },
+      error: (error: unknown) => {
+        this.cargandoSubcategorias.set(false);
+        this.subcategoriasError.set(
+          getUserErrorMessage(error, 'No hemos podido cargar las subcategorías.')
+        );
+      }
+    });
+  }
+
+  private cargarCategorias(): void {
+    this.categoriaService.list().subscribe({
+      next: (categorias) => {
         this.categorias.set(categorias);
-        this.categoriasFiltradas.set(categorias.slice(0, 8));
         this.cargandoCategorias.set(false);
-        this.categoriasError.set('');
       },
       error: (error: unknown) => {
         this.cargandoCategorias.set(false);
         this.categoriasError.set(
           getUserErrorMessage(error, 'No hemos podido cargar las categorías.')
         );
-        this.categorias.set([]);
-        this.categoriasFiltradas.set([]);
       }
     });
   }
@@ -460,17 +351,14 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
   private extraerMensajeError(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
       if (error.status === 409) {
-        return 'Ese email o nickname ya esta en uso. Prueba con otro distinto.';
+        return 'Ese email o nickname ya está en uso. Prueba con otro.';
       }
-
       if (error.status === 400) {
-        return 'Hay datos pendientes o invalidos. Revisa el formulario e intentalo otra vez.';
+        return 'Hay datos pendientes o inválidos. Revisa el formulario e inténtalo otra vez.';
       }
-
       if (error.status === 401) {
-        return 'No hemos podido iniciar la sesion del nuevo negocio. Intentalo de nuevo.';
+        return 'No hemos podido iniciar la sesión del nuevo negocio. Inténtalo de nuevo.';
       }
-
       if (error.status >= 500) {
         return 'Ahora mismo el servidor no puede completar el alta. Prueba en unos minutos.';
       }
@@ -480,5 +368,38 @@ export class RegistroNegocioComponent implements OnInit, AfterViewInit, OnDestro
       error,
       'No hemos podido registrar el negocio ahora mismo. Revisa los datos e inténtalo otra vez.'
     );
+  }
+
+  private normalizarTextoOpcional(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const normalized = value.trim();
+    return normalized || null;
+  }
+
+  private normalizarFechaFundacion(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const normalized = value.trim();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+      return null;
+    }
+
+    return `${normalized}T00:00:00.000Z`;
+  }
+
+  private normalizarNumeroPositivo(value: unknown): number | null {
+    const normalized = Number(value);
+
+    if (!Number.isFinite(normalized) || normalized <= 0) {
+      return null;
+    }
+
+    return normalized;
   }
 }

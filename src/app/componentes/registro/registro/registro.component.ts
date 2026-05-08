@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   Component,
-  DestroyRef,
   ElementRef,
   NgZone,
   OnDestroy,
@@ -18,8 +17,6 @@ import {
   ValidationErrors,
   Validators
 } from '@angular/forms';
-import { HttpErrorResponse } from '@angular/common/http';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../servicios/authService/auth.service';
@@ -227,10 +224,6 @@ class PondBackgroundRenderer {
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
 @Component({
   selector: 'app-registro',
   standalone: true,
@@ -241,7 +234,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('pondCanvas') private pondCanvasRef?: ElementRef<HTMLCanvasElement>;
 
-  private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -250,6 +242,7 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly zone = inject(NgZone);
 
   private pondBackground?: PondBackgroundRenderer;
+  private codigoReferidoDesdeUrl = '';
 
   readonly registrando = signal(false);
   readonly errorMensaje = signal('');
@@ -262,24 +255,13 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
       password: ['', [Validators.required, Validators.minLength(6)]],
       confirmarContrasena: ['', [Validators.required]],
       biografia: ['', [Validators.maxLength(220)]],
-      codigoReferido: [''],
     },
     { validators: this.passwordMatchValidator }
   );
 
   ngOnInit(): void {
     this.title.setTitle('Regístrate');
-
-    const codigoDesdeUrl = this.route.snapshot.queryParamMap.get('ref')?.trim();
-    if (codigoDesdeUrl) {
-      this.registroForm.patchValue({ codigoReferido: codigoDesdeUrl });
-    }
-
-    this.getCodigoReferidoControl()?.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.limpiarErrorCodigoReferido();
-      });
+    this.codigoReferidoDesdeUrl = this.route.snapshot.queryParamMap.get('ref')?.trim() ?? '';
   }
 
   ngAfterViewInit(): void {
@@ -305,7 +287,6 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
 
   registrarUsuario(): void {
     this.errorMensaje.set('');
-    this.limpiarErrorCodigoReferido();
 
     if (this.registroForm.invalid) {
       this.registroForm.markAllAsTouched();
@@ -313,7 +294,7 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const datos = this.registroForm.getRawValue();
-    const codigoReferido = String(datos.codigoReferido ?? '').trim();
+    const codigoReferido = this.codigoReferidoDesdeUrl;
     this.registrando.set(true);
 
     this.auth
@@ -334,11 +315,6 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.registrando.set(false);
-
-          if (this.aplicarErrorCodigoReferido(error)) {
-            return;
-          }
-
           this.errorMensaje.set(this.extraerMensajeError(error));
         }
       });
@@ -352,10 +328,6 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
     void this.router.navigate(['/estanque']);
   }
 
-  irARegistroNegocio(): void {
-    void this.router.navigate(['/registro-negocio']);
-  }
-
   campoInvalido(nombreCampo: string): boolean {
     const control = this.registroForm.get(nombreCampo);
     return !!control && control.invalid && (control.touched || control.dirty);
@@ -366,10 +338,6 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (!control || !(control.touched || control.dirty)) {
       return '';
-    }
-
-    if (control.hasError('backend')) {
-      return String(control.getError('backend') ?? 'No hemos podido validar este código.');
     }
 
     if (control.hasError('required')) {
@@ -396,26 +364,6 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
     return 'Revisa este campo.';
   }
 
-  getCodigoInvitacionState(): 'empty' | 'neutral' | 'valid' | 'error' {
-    const control = this.getCodigoReferidoControl();
-    const codigoReferido = String(control?.value ?? '').trim();
-
-    if (control?.hasError('backend')) {
-      return 'error';
-    }
-
-    if (!codigoReferido) {
-      return 'empty';
-    }
-
-    return codigoReferido.length === 6 ? 'valid' : 'neutral';
-  }
-
-  get biografiaRestante(): number {
-    const texto = this.registroForm.get('biografia')?.value ?? '';
-    return 220 - texto.length;
-  }
-
   private passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
     const password = control.get('password')?.value;
     const confirmacion = control.get('confirmarContrasena')?.value;
@@ -431,114 +379,6 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
     return getUserErrorMessage(
       error,
       'No hemos podido crear la cuenta ahora mismo. Revisa los datos e inténtalo otra vez.'
-    );
-  }
-
-  private getCodigoReferidoControl() {
-    return this.registroForm.get('codigoReferido');
-  }
-
-  private limpiarErrorCodigoReferido(): void {
-    const control = this.getCodigoReferidoControl();
-
-    if (!control?.hasError('backend')) {
-      return;
-    }
-
-    const nextErrors = { ...(control.errors ?? {}) };
-    delete nextErrors['backend'];
-    control.setErrors(Object.keys(nextErrors).length ? nextErrors : null);
-  }
-
-  private aplicarErrorCodigoReferido(error: unknown): boolean {
-    const control = this.getCodigoReferidoControl();
-    const mensaje = this.extraerMensajeCodigoReferido(error);
-
-    if (!control || !mensaje) {
-      return false;
-    }
-
-    control.setErrors({
-      ...(control.errors ?? {}),
-      backend: mensaje,
-    });
-    control.markAsTouched();
-    return true;
-  }
-
-  private extraerMensajeCodigoReferido(error: unknown): string | null {
-    if (!(error instanceof HttpErrorResponse) || !isRecord(error.error)) {
-      return null;
-    }
-
-    const payload = error.error;
-    const detalles = isRecord(payload['details']) ? payload['details'] : null;
-    const mensajeDetallado = detalles
-      ? this.buscarMensajeCodigoReferido(detalles)
-      : null;
-
-    if (mensajeDetallado) {
-      return mensajeDetallado;
-    }
-
-    const mensaje = this.leerMensaje(payload);
-    return mensaje && this.mencionaCodigoReferido(mensaje) ? mensaje : null;
-  }
-
-  private buscarMensajeCodigoReferido(detalles: Record<string, unknown>): string | null {
-    const campos = [
-      'codigoReferido',
-      'codigo_referido',
-      'inviteCode',
-      'ref',
-    ];
-
-    for (const campo of campos) {
-      const mensaje = this.leerMensaje(detalles[campo]);
-      if (mensaje) {
-        return mensaje;
-      }
-    }
-
-    return null;
-  }
-
-  private leerMensaje(value: unknown): string | null {
-    if (Array.isArray(value)) {
-      const mensajes = value
-        .map((item) => (typeof item === 'string' ? item.trim() : ''))
-        .filter(Boolean);
-      return mensajes.length ? mensajes.join(' ') : null;
-    }
-
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-
-    if (isRecord(value)) {
-      const message = value['message'] ?? value['mensaje'];
-      if (Array.isArray(message)) {
-        const mensajes = message
-          .map((item) => (typeof item === 'string' ? item.trim() : ''))
-          .filter(Boolean);
-        return mensajes.length ? mensajes.join(' ') : null;
-      }
-
-      return typeof message === 'string' && message.trim() ? message.trim() : null;
-    }
-
-    return null;
-  }
-
-  private mencionaCodigoReferido(mensaje: string): boolean {
-    const normalized = mensaje
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-
-    return (
-      normalized.includes('codigo') &&
-      (normalized.includes('referid') || normalized.includes('invit'))
     );
   }
 }

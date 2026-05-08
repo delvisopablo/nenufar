@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { AccessRequiredModalComponent } from '../../components/shared/access-required-modal/access-required-modal.component';
+import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 import { AuthService, AuthUser } from '../../servicios/authService/auth.service';
 import { Logro, LogroServiceService } from '../../servicios/logroServicio/logroService.service';
 import { ResenaService } from '../../servicios/reviewServicio/resena.service';
@@ -23,13 +24,15 @@ type UserReview = {
   negocio?: {
     id?: number;
     nombre?: string;
+    slug?: string | null;
+    nickname?: string | null;
   };
 };
 
 @Component({
   selector: 'app-perfil-publico-usuario',
   standalone: true,
-  imports: [CommonModule, RouterLink, AccessRequiredModalComponent],
+  imports: [CommonModule, RouterLink, AccessRequiredModalComponent, EstanqueBackgroundComponent],
   templateUrl: './perfil-publico-usuario.component.html',
   styleUrl: '../perfil-usuario/perfil-usuario.component.css'
 })
@@ -178,6 +181,10 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
   }
 
   getBusinessRoute(negocio: UserReview['negocio'] | undefined): (string | number)[] | null {
+    const slug = String(negocio?.slug ?? negocio?.nickname ?? '').trim();
+    if (slug) {
+      return ['/', slug];
+    }
     const negocioId = Number(negocio?.id);
     return Number.isFinite(negocioId) && negocioId > 0 ? ['/negocio', negocioId] : null;
   }

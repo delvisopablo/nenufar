@@ -1,7 +1,17 @@
 <div class="dashboard-shell">
   <header class="dashboard-header">
     <div class="dashboard-identity">
-      <img class="dashboard-identity__media" [src]="getBusinessImage()" alt="Imagen del negocio">
+      <img
+        class="dashboard-identity__media"
+        [src]="getBusinessImage()"
+        [srcset]="getBusinessImageSrcset()"
+        sizes="68px"
+        alt="Imagen del negocio"
+        width="68"
+        height="68"
+        loading="eager"
+        decoding="async"
+      >
 
       <div>
         <p class="dashboard-kicker">Perfil de negocio</p>

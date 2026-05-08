@@ -1,7 +1,23 @@
-<div *ngFor="let r of resenasPaginadas()">
-  <p>{{ r.contenido }}</p>
-  <small>Puntuación: {{ r.puntuacion }}</small>
-</div>
+<section class="resenas-container">
+  @for (r of resenasPaginadas(); track r.id ?? $index) {
+    <article class="resena">
+      <div class="resena-head">
+        <span class="estrellas">{{ getStars(r.puntuacion) }}</span>
+        <small>{{ r.fecha | date:'d MMM yyyy' }}</small>
+      </div>
 
-<button (click)="anteriorPagina()">Anterior</button>
-<button (click)="siguientePagina()">Siguiente</button>
+      @if (getReviewProductLabel(r); as productoNombre) {
+        <span class="producto-chip">{{ productoNombre }}</span>
+      }
+
+      <p>{{ r.contenido }}</p>
+    </article>
+  } @empty {
+    <p class="empty-state">Todavía no hay reseñas para mostrar.</p>
+  }
+
+  <div class="paginacion">
+    <button type="button" (click)="anteriorPagina()">Anterior</button>
+    <button type="button" (click)="siguientePagina()">Siguiente</button>
+  </div>
+</section>

@@ -1,0 +1,61 @@
+<div class="horario-card" (mouseup)="onMouseUp()" (mouseleave)="onMouseUp()">
+
+  <div class="horario-header">
+    <span class="h-icono">🗓️</span>
+    <span class="h-titulo">Configura tu horario</span>
+    <span class="h-badge">{{ totalOpen() }} franjas abiertas</span>
+  </div>
+
+  <p class="h-hint">Clic para abrir/cerrar · Arrastra para varios</p>
+
+  <div class="grid-wrap">
+    <div class="g-header">
+      <div class="hora-col"></div>
+      @for (d of dias; track d) {
+        <button
+          class="dia-btn"
+          [class.dia-activo]="isDiaOpen(d)"
+          (click)="toggleDia(d)"
+          [title]="'Alternar ' + d"
+        >{{ d }}</button>
+      }
+    </div>
+
+    <div class="g-body">
+      @for (h of horas; track h; let hi = $index) {
+        <div class="g-row">
+          <div class="hora-label">{{ h }}</div>
+          @for (d of dias; track d) {
+            <div
+              class="slot"
+              [class.slot-open]="getState(d, hi) === 'open'"
+              [class.slot-closed]="getState(d, hi) === 'closed'"
+              (mousedown)="onSlotDown(d, hi)"
+              (mouseenter)="onSlotEnter(d, hi)"
+            ></div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="leyenda">
+    <span class="ley-item"><span class="ley-dot open"></span>Abierto</span>
+    <span class="ley-item"><span class="ley-dot closed"></span>Cerrado</span>
+  </div>
+
+  <div class="horario-footer">
+    <button class="btn-reset" (click)="resetDefault()">Restaurar</button>
+    <button
+      class="btn-guardar"
+      [class.saving]="saveState() === 'saving'"
+      [class.saved]="saveState() === 'saved'"
+      [disabled]="saveState() !== 'idle'"
+      (click)="guardar()"
+    >
+      @if (saveState() === 'idle') { <span>Guardar horario</span> }
+      @if (saveState() === 'saving') { <span class="spinner"></span> }
+      @if (saveState() === 'saved') { <span>✓ Guardado</span> }
+    </button>
+  </div>
+</div>

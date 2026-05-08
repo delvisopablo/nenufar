@@ -1,55 +1,100 @@
-<div class="perfil-root">
-  <nav class="perfil-topbar">
-    <a class="back-link" routerLink="/inicio">← Inicio</a>
+<div class="user-pond-shell">
+  <app-estanque-background class="user-pond-bg" />
 
-    @if (esPerfilPropio()) {
-      <button class="edit-btn" type="button" (click)="modoEdicion.set(!modoEdicion())">
-        {{ modoEdicion() ? 'Cancelar' : 'Editar perfil' }}
-      </button>
-    }
-  </nav>
+  <div class="user-page">
+    <nav class="perfil-topbar">
+      <a class="back-link" routerLink="/inicio">← Inicio</a>
 
-  @if (cargando()) {
-    <section class="profile-section">
-      <h2 class="section-title">Cargando perfil</h2>
-      <p class="empty-state">Estamos preparando la informacion de este usuario.</p>
-    </section>
-  } @else if (error()) {
-    <section class="profile-section">
-      <h2 class="section-title">Perfil no disponible</h2>
-      <p class="empty-state">{{ error() }}</p>
-    </section>
-  } @else if (usuario()) {
-    <section class="hero-card">
-      <div class="hero-cover">
-        @if (getCoverImage(); as coverImage) {
-          <img class="hero-cover__img" [src]="coverImage" alt="Portada del perfil">
-        }
-        <div class="hero-cover__overlay"></div>
+      @if (esPerfilPropio()) {
+        <div class="topbar-actions">
+          <button class="edit-btn" type="button" (click)="modoEdicion.set(!modoEdicion())">
+            {{ modoEdicion() ? 'Cerrar' : 'Menúditar' }}
+          </button>
+
+          <button
+            class="codigo-btn"
+            type="button"
+            (click)="mostrarCodigoPanel.set(!mostrarCodigoPanel())"
+            [class.codigo-btn--active]="mostrarCodigoPanel()"
+            title="Código de nenufarizar"
+          >
+            Código
+          </button>
+        </div>
+      }
+    </nav>
+
+    <!-- Panel compacto de código de nenufarizar -->
+    @if (esPerfilPropio() && mostrarCodigoPanel()) {
+      <div class="codigo-panel">
+        <div class="codigo-panel__inner">
+          <div class="codigo-panel__row">
+            <span class="codigo-panel__label">Tu código de nenufarización</span>
+            <code class="codigo-panel__code">{{ nenufarizar.codigoReferido() || '...' }}</code>
+          </div>
+          <div class="codigo-panel__btns">
+            <button
+              class="codigo-action-btn"
+              type="button"
+              [disabled]="!nenufarizar.codigoReferido()"
+              (click)="copiarCodigoReferido()"
+            >{{ accionCopiada() === 'codigo' ? 'Copiado' : 'Copiar' }}</button>
+            <button
+              class="codigo-action-btn"
+              type="button"
+              [disabled]="!nenufarizar.codigoReferido()"
+              (click)="compartirEnlaceReferido()"
+            >{{ accionCopiada() === 'enlace' ? 'Enlace copiado' : 'Compartir enlace' }}</button>
+            <button
+              class="codigo-action-btn codigo-action-btn--soft"
+              type="button"
+              [disabled]="regenerandoCodigo()"
+              (click)="regenerarCodigoReferido()"
+            >{{ regenerandoCodigo() ? 'Generando...' : 'Nuevo código' }}</button>
+          </div>
+          @if (nenufarizarError()) {
+            <p class="codigo-panel__error" role="alert">{{ nenufarizarError() }}</p>
+          }
+          @if (nenufarizar.referidos().length) {
+            <p class="codigo-panel__referidos-label">
+              {{ nenufarizar.referidos().length }} persona{{ nenufarizar.referidos().length !== 1 ? 's' : '' }} invitada{{ nenufarizar.referidos().length !== 1 ? 's' : '' }}
+            </p>
+          }
+        </div>
       </div>
+    }
 
-      <div class="hero-content">
-        <div class="avatar-ring">
+    @if (cargando()) {
+      <section class="user-section">
+        <p class="empty-state">Cargando perfil…</p>
+      </section>
+    } @else if (error()) {
+      <section class="user-section">
+        <p class="empty-state">{{ error() }}</p>
+      </section>
+    } @else if (usuario()) {
+
+      <!-- ── Tarjeta de identidad ───────────────────────────────────── -->
+      <section class="user-card">
+        <div class="user-card__media">
           <img
-            class="hero-avatar"
+            class="user-avatar"
             [src]="usuario()?.foto_perfil || usuario()?.foto || 'assets/imagenes/rana1_profile_foto.png'"
             alt="Foto de perfil"
           >
         </div>
 
-        <div class="hero-body">
-          <div class="name-row">
-            <div class="hero-name-stack">
+        <div class="user-card__body">
+          <div class="user-card__head">
+            <div class="user-card__title">
               <h1 class="hero-name">{{ usuario()?.nombre || 'Nombre no disponible' }}</h1>
-              <span class="hero-nick">&#64;{{ usuario()?.nickname || 'sin_nickname' }}</span>
+              <p class="hero-nick">&#64;{{ usuario()?.nickname || 'sin_nickname' }}</p>
             </div>
 
-            <div class="profile-actions">
-              @if (esPerfilPropio()) {
-                <a class="follow-btn" routerLink="/mis-logros">Mis logros</a>
-              } @else if (logros().length || usuario()?.petalosSaldo != null) {
-                <a class="follow-btn" href="#perfil-logros">Logros</a>
-              }
+            <div class="hero-actions">
+              <a class="follow-btn" routerLink="/mis-logros">
+                Mis logros
+              </a>
 
               @if (!esPerfilPropio()) {
                 <button class="follow-btn" type="button" (click)="toggleSeguirUsuario()">
@@ -61,242 +106,146 @@
 
           @if (!modoEdicion()) {
             <p class="hero-bio">
-              {{ usuario()?.biografia || 'Este usuario aun no ha escrito una biografia.' }}
+              {{ usuario()?.biografia || 'Este usuario aún no ha escrito una biografía.' }}
             </p>
           } @else {
-            <textarea
-              class="bio-editor"
-              [(ngModel)]="nuevaBio"
-              placeholder="Escribe algo sobre ti"
-              rows="3"
-            ></textarea>
-            <button class="save-btn" type="button" (click)="guardarCambios()">Guardar cambios</button>
+            <div class="edit-panel">
+              <textarea
+                class="bio-editor"
+                [(ngModel)]="nuevaBio"
+                placeholder="Escribe algo sobre ti"
+                rows="3"
+              ></textarea>
+              <button class="save-btn" type="button" (click)="guardarCambios()">Guardar cambios</button>
+            </div>
           }
 
           <div class="hero-meta">
             @if (usuario()?.petalosSaldo != null) {
-              <span class="meta-chip meta-chip--gold">
-                🌸 {{ usuario()?.petalosSaldo }} petalos
-              </span>
+              <span class="meta-chip meta-chip--gold">{{ usuario()?.petalosSaldo }} pétalos</span>
             }
             @if (usuario()?.creadoEn) {
-              <span class="meta-chip">
-                Miembro desde {{ usuario()?.creadoEn | date:'yyyy' }}
-              </span>
+              <span class="meta-chip">Desde {{ usuario()?.creadoEn | date:'yyyy' }}</span>
             }
             @if (usuario()?.rolGlobal && usuario()?.rolGlobal !== 'USUARIO') {
               <span class="meta-chip meta-chip--role">{{ usuario()?.rolGlobal }}</span>
             }
           </div>
-        </div>
-      </div>
-    </section>
 
-    <div class="stats-band">
-      <div class="stat-item">
-        <span class="stat-num">{{ seguidoresTotal() }}</span>
-        <span class="stat-label">Seguidores</span>
-      </div>
-      <div class="stat-divider" aria-hidden="true"></div>
-      <div class="stat-item">
-        <span class="stat-num">{{ siguiendoTotal() }}</span>
-        <span class="stat-label">Seguidos</span>
-      </div>
-      <div class="stat-divider" aria-hidden="true"></div>
-      <div class="stat-item">
-        <span class="stat-num">{{ resenas().length }}</span>
-        <span class="stat-label">Reseñas</span>
-      </div>
-    </div>
-
-    @if (esPerfilPropio()) {
-      <section class="profile-section">
-        <div class="nenufarizar-head">
-          <div>
-            <h2 class="section-title">
-              <span class="section-icon">🌸</span>
-              Nenufarizar
-            </h2>
-            <p class="empty-state">
-              Comparte tu código para invitar a más gente al estanque y seguir sumando pétalos.
-            </p>
-          </div>
-        </div>
-
-        <div class="nenufarizar-code-card">
-          <div class="nenufarizar-code-copy">
-            <span class="nenufarizar-label">Tu código de invitación</span>
-            <code class="nenufarizar-code">{{ nenufarizar.codigoReferido() || '...' }}</code>
-          </div>
-
-          <div class="nenufarizar-actions">
-            <button
-              class="follow-btn"
-              type="button"
-              [disabled]="!nenufarizar.codigoReferido()"
-              (click)="copiarCodigoReferido()"
-            >
-              {{ accionCopiada() === 'codigo' ? 'Copiado' : 'Copiar' }}
-            </button>
-
-            <button
-              class="follow-btn"
-              type="button"
-              [disabled]="!nenufarizar.codigoReferido()"
-              (click)="compartirEnlaceReferido()"
-            >
-              {{ accionCopiada() === 'enlace' ? 'Enlace copiado' : 'Compartir enlace' }}
-            </button>
-
-            <button
-              class="edit-btn"
-              type="button"
-              [disabled]="regenerandoCodigo()"
-              (click)="regenerarCodigoReferido()"
-            >
-              {{ regenerandoCodigo() ? 'Generando...' : 'Generar nuevo código' }}
-            </button>
-          </div>
-        </div>
-
-        @if (nenufarizarError()) {
-          <p class="nenufarizar-feedback" role="alert">{{ nenufarizarError() }}</p>
-        }
-
-        <div class="nenufarizar-referidos">
-          <h3 class="nenufarizar-subtitle">Personas invitadas</h3>
-
-          @if (nenufarizar.referidos().length === 0) {
-            <p class="empty-state">Todavía no has nenufarizado a nadie. Cuando alguien se una con tu código, aparecerá aquí.</p>
-          } @else {
-            <div class="referidos-list">
-              @for (referido of nenufarizar.referidos(); track referido.id) {
-                <article class="referido-item">
-                  <div class="referido-avatar">
-                    @if (referido.foto) {
-                      <img
-                        class="referido-avatar__img"
-                        [src]="referido.foto"
-                        [alt]="referido.nickname"
-                        width="48"
-                        height="48"
-                      >
-                    } @else {
-                      <span class="referido-avatar__fallback">
-                        {{ getReferidoInitial(referido.nickname) }}
-                      </span>
-                    }
-                  </div>
-
-                  <div class="referido-meta">
-                    <strong>&#64;{{ referido.nickname }}</strong>
-                    <span>Se unió el {{ referido.creadoEn | date:'d MMM yyyy' }}</span>
-                  </div>
-                </article>
-              }
+          <div class="stats-row">
+            <div class="stat-pill">
+              <strong>{{ seguidoresTotal() }}</strong>
+              <span>Seguidores</span>
             </div>
-          }
+            <div class="stat-pill">
+              <strong>{{ siguiendoTotal() }}</strong>
+              <span>Seguidos</span>
+            </div>
+            <div class="stat-pill">
+              <strong>{{ resenas().length }}</strong>
+              <span>Reseñas</span>
+            </div>
+          </div>
         </div>
       </section>
-    }
 
-    <section class="profile-section">
-      <h2 class="section-title">
-        <span class="section-icon">🌿</span>
-        Reseñas de {{ esPerfilPropio() ? 'mi cuenta' : 'este usuario' }}
-      </h2>
+      <!-- ── 1. Reseñas (primero) ───────────────────────────────────── -->
+      <section class="user-section">
+        <div class="section-head">
+          <h2 class="section-title">
+            Reseñas de {{ esPerfilPropio() ? 'mi cuenta' : 'este usuario' }}
+          </h2>
+        </div>
 
-      @if (resenas().length === 0) {
-        <p class="empty-state">Todavia no hay resenas publicas para mostrar.</p>
-      }
+        @if (resenas().length === 0) {
+          <p class="empty-state">Todavía no hay reseñas públicas para mostrar.</p>
+        }
 
-      @for (resena of resenas(); track resena.id) {
-        <article class="review-card">
-          <header class="review-card-header">
-            <div class="review-stars">{{ getStars(resena.puntuacion || 0) }}</div>
-            <time class="review-date">{{ (resena.fecha || resena.creadoEn) | date:'d MMM yyyy' }}</time>
-          </header>
+        <div class="reviews-list">
+          @for (resena of resenas(); track resena.id) {
+            <article class="review-card">
+              <header class="review-card-header">
+                <div class="review-stars">{{ getStars(resena.puntuacion || 0) }}</div>
+                <time class="review-date">{{ (resena.fecha || resena.creadoEn) | date:'d MMM yyyy' }}</time>
+              </header>
 
-          <p class="review-text">{{ resena.comentario || resena.contenido || 'Sin comentario' }}</p>
+              @if (getReviewProductLabel(resena); as productoNombre) {
+                <span class="review-product-chip">{{ productoNombre }}</span>
+              }
+              <p class="review-text">{{ resena.comentario || resena.contenido || 'Sin comentario' }}</p>
 
-          <footer class="review-card-foot">
-            @if (getBusinessRoute(resena.negocio); as negocioRoute) {
-              <a class="review-negocio" [routerLink]="negocioRoute">
-                En <strong>{{ resena.negocio?.nombre || 'Negocio' }}</strong>
-              </a>
-            } @else {
-              <span class="review-negocio">
-                En <strong>{{ resena.negocio?.nombre || 'Negocio' }}</strong>
-              </span>
-            }
-
-            @if (resena.selloNenufar) {
-              <span class="nenufar-seal">Sello Nenufar</span>
-            }
-          </footer>
-        </article>
-      }
-    </section>
-
-    <section class="profile-section" id="perfil-logros">
-      <h2 class="section-title">
-        <span class="section-icon">🏅</span>
-        Logros y petalos
-      </h2>
-
-      @if (logros().length === 0 && usuario()?.petalosSaldo == null) {
-        <p class="empty-state">Todavia no hay logros ni petalos visibles en este perfil.</p>
-      }
-
-      @if (usuario()?.petalosSaldo != null) {
-        <article class="metric-card">
-          <strong>{{ usuario()?.petalosSaldo }}</strong>
-          <span>Petalos acumulados</span>
-        </article>
-      }
-
-      @if (logros().length) {
-        <div class="achievement-grid">
-          @for (logro of logros(); track logro.id) {
-            <article class="achievement-card">
-              <strong>{{ logro.titulo }}</strong>
-              <span>{{ logro.descripcion || 'Logro desbloqueado en Nenufar.' }}</span>
+              <footer class="review-card-foot">
+                @if (getBusinessRoute(resena.negocio); as negocioRoute) {
+                  <a class="review-negocio" [routerLink]="negocioRoute">
+                    En <strong>{{ resena.negocio?.nombre || 'Negocio' }}</strong>
+                  </a>
+                } @else {
+                  <span class="review-negocio">
+                    En <strong>{{ resena.negocio?.nombre || 'Negocio' }}</strong>
+                  </span>
+                }
+                @if (resena.selloNenufar) {
+                  <span class="nenufar-seal">Sello Nenúfar</span>
+                }
+              </footer>
             </article>
           }
         </div>
-      }
-    </section>
-
-    @if (esPerfilPropio()) {
-      <section class="profile-section">
-        <h2 class="section-title">
-          <span class="section-icon">📅</span>
-          Mis reservas
-        </h2>
-
-        @if (reservas().length === 0) {
-          <p class="empty-state">No tienes reservas aun.</p>
-        }
-
-        @for (r of reservas(); track r.id) {
-          <article class="reserva-card">
-            <div class="reserva-info">
-              <strong class="reserva-negocio">{{ r.negocio?.nombre || 'Negocio' }}</strong>
-              <span class="reserva-fecha">
-                {{ r.fecha | date:'d MMM yyyy' }} · {{ r.fecha?.split('T')[1]?.substring(0,5) }}h
-              </span>
-              @if (r.nota) {
-                <span class="reserva-nota">{{ r.nota }}</span>
-              }
-            </div>
-            <span class="estado-tag estado-tag--{{ r.estado?.toLowerCase() }}">
-              {{ r.estado || 'PENDIENTE' }}
-            </span>
-          </article>
-        }
       </section>
+
+      <!-- ── 2. Mis reservas (segundo, solo perfil propio) ──────────── -->
+      @if (esPerfilPropio()) {
+        <section class="user-section">
+          <div class="section-head">
+            <h2 class="section-title">Mis reservas</h2>
+          </div>
+
+          @if (reservas().length === 0) {
+            <p class="empty-state">No tienes reservas aún.</p>
+          }
+
+          <div class="bookings-list">
+            @for (r of reservas(); track r.id) {
+              <article class="reserva-card">
+                <div class="reserva-info">
+                  <strong class="reserva-negocio">{{ r.negocio?.nombre || 'Negocio' }}</strong>
+                  <span class="reserva-fecha">
+                    {{ r.fecha | date:'d MMM yyyy' }} · {{ r.fecha?.split('T')[1]?.substring(0,5) }}h
+                  </span>
+                  @if (r.nota) {
+                    <span class="reserva-nota">{{ r.nota }}</span>
+                  }
+                </div>
+                <span class="estado-tag estado-tag--{{ r.estado?.toLowerCase() }}">
+                  {{ r.estado || 'PENDIENTE' }}
+                </span>
+              </article>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- ── 3. Enlace a Mis logros (no inline) ─────────────────────── -->
+      <section class="user-section logros-cta-section">
+        <div class="section-head">
+          <h2 class="section-title">Logros y pétalos</h2>
+        </div>
+
+        <div class="logros-cta">
+          @if (usuario()?.petalosSaldo != null) {
+            <span class="meta-chip meta-chip--gold">{{ usuario()?.petalosSaldo }} pétalos acumulados</span>
+          }
+          @if (logros().length) {
+            <span class="meta-chip">{{ logros().length }} logro{{ logros().length !== 1 ? 's' : '' }} desbloqueado{{ logros().length !== 1 ? 's' : '' }}</span>
+          }
+          <a class="follow-btn" routerLink="/mis-logros">
+            Ver todos los logros →
+          </a>
+        </div>
+      </section>
+
     }
-  }
+  </div>
 </div>
 
 <app-access-required-modal

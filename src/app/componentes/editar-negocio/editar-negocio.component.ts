@@ -1,14 +1,14 @@
-import { Component, OnInit, ViewChild, inject } from '@angular/core';
+import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import {
   FormBuilder, FormGroup, Validators, ReactiveFormsModule,
   FormArray, FormControl
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import {
-  DEFAULT_NENUFAR_ASSET,
   resolveNenufarAsset,
   resolveNenufarKey,
 } from '../../core/negocio/negocio-visuals';
@@ -20,24 +20,31 @@ import { NegocioService } from '../../servicios/negocioService/negocio.service';
 import {
   NenufarSelectorComponent,
 } from '../../components/shared/nenufar-selector/nenufar-selector.component';
+import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 
 interface NegocioDetalle {
   id?: number;
   nombre?: string;
   nickname?: string | null;
   slug?: string | null;
+  descripcionCorta?: string | null;
+  historia?: string | null;
   direccion?: string;
-  historia?: string;
+  ciudad?: string | null;
+  provincia?: string | null;
+  codigoPostal?: string | null;
+  telefono?: string | null;
+  emailContacto?: string | null;
+  web?: string | null;
+  instagram?: string | null;
+  fotoPerfil?: string | null;
+  fotoPortada?: string | null;
   nenufarAsset?: string | null;
   nenufarKey?: string | null;
   aceptaReservas?: boolean;
   intervaloReserva?: number;
-  dueno?: {
-    nickname?: string;
-  };
-  categoria?: {
-    nombre?: string;
-  };
+  dueno?: { nickname?: string };
+  categoria?: { nombre?: string };
   horario?: {
     apertura?: string;
     cierre?: string;
@@ -47,10 +54,12 @@ interface NegocioDetalle {
   };
 }
 
+type Seccion = 'perfil' | 'contacto' | 'visual' | 'horario' | 'peligro';
+
 @Component({
   selector: 'app-editar-negocio',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, NenufarSelectorComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, NenufarSelectorComponent, EstanqueBackgroundComponent],
   templateUrl: './editar-negocio.component.html',
   styleUrl: './editar-negocio.component.css'
 })
@@ -59,44 +68,64 @@ export class EditarNegocioComponent implements OnInit {
   private router = inject(Router);
   private authService = inject(AuthService);
   private negocioService = inject(NegocioService);
+
   @ViewChild(NenufarSelectorComponent)
   private readonly nenufarSelector?: NenufarSelectorComponent;
 
   negocioForm!: FormGroup;
   negocioId!: number;
   negocioRouteKey = '';
-  diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-  matrizHoraria: { hora: string, ocupado: boolean }[][] = [];
+
+  readonly diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  readonly intervalosReserva = [15, 30, 45, 60, 90, 120];
+
   cargando = true;
   guardando = false;
+  borrando = false;
   errorMensaje = '';
+  exitoMensaje = '';
+  confirmandoBorrar = false;
+  textoConfirmacion = '';
+
+  readonly seccionAbierta = signal<Seccion>('perfil');
 
   ngOnInit(): void {
     this.negocioForm = this.fb.group({
+      // Datos principales
       nombre: ['', Validators.required],
-      nickname: ['', Validators.required],
+      slug: [''],
+      descripcionCorta: ['', Validators.maxLength(160)],
+      historia: ['', Validators.maxLength(800)],
+      // Ubicación
       direccion: [''],
-      historia: [''],
-      nenufarAsset: [DEFAULT_NENUFAR_ASSET, Validators.required],
+      ciudad: [''],
+      provincia: [''],
+      codigoPostal: [''],
+      // Contacto
+      telefono: [''],
+      emailContacto: ['', Validators.email],
+      web: [''],
+      instagram: [''],
+      // Imágenes — URL por ahora (TODO: subida de fichero)
+      fotoPerfil: [''],
+      fotoPortada: [''],
+      // Nenúfar
+      nenufarAsset: [null as string | null],
+      // Categoría (solo lectura en este form, editaría mediante selector externo)
       categoria: [''],
+      // Reservas
       aceptaReservas: [false],
+      intervaloReserva: [30],
       horario: this.fb.group({
         apertura: [''],
         cierre: [''],
-        intervalo: [30],
-        diasAbre: this.fb.array([]) // String[]
-      })
+        diasAbre: this.fb.array([]),
+      }),
     });
-
-    // Regenerar slots si cambia algo
-    this.negocioForm.get('horario.apertura')?.valueChanges.subscribe(() => this.generarMatrizHoraria());
-    this.negocioForm.get('horario.cierre')?.valueChanges.subscribe(() => this.generarMatrizHoraria());
-    this.negocioForm.get('horario.intervalo')?.valueChanges.subscribe(() => this.generarMatrizHoraria());
 
     const negocioId = resolveOwnedBusinessId(this.authService.obtenerUsuario());
     if (negocioId) {
       this.negocioId = negocioId;
-      this.negocioRouteKey = String(negocioId);
       this.cargarDatos();
       return;
     }
@@ -108,14 +137,12 @@ export class EditarNegocioComponent implements OnInit {
           this.errorMensaje = 'No hemos podido identificar el negocio que quieres editar.';
           return;
         }
-
         this.negocioId = negocio.id;
-        this.negocioRouteKey = String(negocio.id);
         this.cargarDatos();
       },
       error: (error: unknown) => {
         this.cargando = false;
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido identificar el negocio que quieres editar.');
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido identificar el negocio.');
       },
     });
   }
@@ -124,23 +151,34 @@ export class EditarNegocioComponent implements OnInit {
     return this.negocioForm.get('horario.diasAbre') as FormArray;
   }
 
-  toggleDia(dia: string) {
-    const index = this.diasAbre.controls.findIndex(c => c.value === dia);
-    if (index === -1) {
+  toggleDia(dia: string): void {
+    const idx = this.diasAbre.controls.findIndex(c => c.value === dia);
+    if (idx === -1) {
       this.diasAbre.push(new FormControl(dia));
     } else {
-      this.diasAbre.removeAt(index);
+      this.diasAbre.removeAt(idx);
     }
-    this.generarMatrizHoraria();
   }
 
-  cargarDatos() {
+  isDiaActivo(dia: string): boolean {
+    return this.diasAbre.controls.some(c => c.value === dia);
+  }
+
+  abrirSeccion(s: Seccion): void {
+    this.seccionAbierta.set(this.seccionAbierta() === s ? 'perfil' : s);
+  }
+
+  esSeccionAbierta(s: Seccion): boolean {
+    return this.seccionAbierta() === s;
+  }
+
+  cargarDatos(): void {
     this.errorMensaje = '';
     this.cargando = true;
 
     forkJoin({
       negocio: this.negocioService.getNegocioById(this.negocioId).pipe(
-        map((negocio) => negocio as NegocioDetalle),
+        map((n) => n as NegocioDetalle),
       ),
       horario: this.negocioService.getHorario(this.negocioId).pipe(
         catchError(() => of(null)),
@@ -152,26 +190,28 @@ export class EditarNegocioComponent implements OnInit {
 
         this.diasAbre.clear();
         this.negocioForm.patchValue({
-          nombre: negocio.nombre,
-          nickname: negocio.nickname || negocio.dueno?.nickname || '',
-          direccion: negocio.direccion,
-          historia: negocio.historia,
-          nenufarAsset:
-            negocio.nenufarAsset ??
-            resolveNenufarAsset(negocio.nenufarKey) ??
-            DEFAULT_NENUFAR_ASSET,
-          categoria: negocio.categoria?.nombre || '',
-          aceptaReservas: negocio.aceptaReservas || false,
+          nombre: negocio.nombre ?? '',
+          slug: negocio.slug ?? negocio.nickname ?? '',
+          descripcionCorta: negocio.descripcionCorta ?? '',
+          historia: negocio.historia ?? '',
+          direccion: negocio.direccion ?? '',
+          ciudad: (negocio as any).ciudad ?? '',
+          provincia: (negocio as any).provincia ?? '',
+          codigoPostal: (negocio as any).codigoPostal ?? '',
+          telefono: (negocio as any).telefono ?? '',
+          emailContacto: (negocio as any).emailContacto ?? '',
+          web: (negocio as any).web ?? '',
+          instagram: (negocio as any).instagram ?? '',
+          fotoPerfil: negocio.fotoPerfil ?? '',
+          fotoPortada: negocio.fotoPortada ?? '',
+          nenufarAsset: negocio.nenufarAsset ?? resolveNenufarAsset(negocio.nenufarKey) ?? null,
+          categoria: negocio.categoria?.nombre ?? '',
+          aceptaReservas: negocio.aceptaReservas ?? false,
+          intervaloReserva: Number(negocio.intervaloReserva ?? horarioActual?.intervalo ?? 30) || 30,
           horario: {
             apertura: rangoBase.apertura,
             cierre: rangoBase.cierre,
-            intervalo:
-              Number(
-                negocio.intervaloReserva ??
-                horarioActual?.intervalo ??
-                30,
-              ) || 30,
-          }
+          },
         });
 
         if (Array.isArray(horarioActual?.diasAbre)) {
@@ -180,50 +220,18 @@ export class EditarNegocioComponent implements OnInit {
           });
         }
 
-        this.generarMatrizHoraria();
         this.cargando = false;
       },
       error: (error: unknown) => {
         this.cargando = false;
         this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
-      }
+      },
     });
   }
 
-  generarMatrizHoraria() {
-    const apertura = this.negocioForm.get('horario.apertura')?.value;
-    const cierre = this.negocioForm.get('horario.cierre')?.value;
-    const intervalo = +this.negocioForm.get('horario.intervalo')?.value || 30;
-
-    if (!apertura || !cierre) {
-      this.matrizHoraria = [];
-      return;
-    }
-
-    const [hStart, mStart] = apertura.split(':').map(Number);
-    const [hEnd, mEnd] = cierre.split(':').map(Number);
-    const start = hStart * 60 + mStart;
-    const end = hEnd * 60 + mEnd;
-
-    this.matrizHoraria = this.diasSemana.map(() => {
-      const slots: { hora: string, ocupado: boolean }[] = [];
-      for (let t = start; t < end; t += intervalo) {
-        const h = Math.floor(t / 60).toString().padStart(2, '0');
-        const m = (t % 60).toString().padStart(2, '0');
-        slots.push({ hora: `${h}:${m}`, ocupado: false });
-      }
-      return slots;
-    });
-  }
-
-  reservar(hora: string) {
-    const ok = confirm(`¿Reservar a las ${hora}?`);
-    if (!ok) return;
-    alert(`✅ ¡Reserva confirmada a las ${hora}!`);
-  }
-
-  guardarCambios() {
+  guardarCambios(): void {
     this.errorMensaje = '';
+    this.exitoMensaje = '';
 
     if (this.negocioForm.invalid) {
       this.negocioForm.markAllAsTouched();
@@ -231,23 +239,34 @@ export class EditarNegocioComponent implements OnInit {
     }
 
     const datos = this.negocioForm.getRawValue();
-    const nenufarAsset =
-      resolveNenufarAsset(datos.nenufarAsset) ?? DEFAULT_NENUFAR_ASSET;
+    const nenufarAsset = resolveNenufarAsset(datos.nenufarAsset);
     const nenufarKey = resolveNenufarKey(nenufarAsset);
-    const negocioPayload = {
-      nombre: datos.nombre,
-      direccion: datos.direccion,
-      historia: datos.historia,
+
+    const negocioPayload: Record<string, unknown> = {
+      nombre: datos.nombre?.trim(),
+      descripcionCorta: datos.descripcionCorta?.trim() || null,
+      historia: datos.historia?.trim() || null,
+      direccion: datos.direccion?.trim() || null,
+      ciudad: datos.ciudad?.trim() || null,
+      provincia: datos.provincia?.trim() || null,
+      codigoPostal: datos.codigoPostal?.trim() || null,
+      telefono: datos.telefono?.trim() || null,
+      emailContacto: datos.emailContacto?.trim() || null,
+      web: datos.web?.trim() || null,
+      instagram: datos.instagram?.trim() || null,
       aceptaReservas: Boolean(datos.aceptaReservas),
-      nenufarAsset,
+      ...(datos.fotoPerfil?.trim() ? { fotoPerfil: datos.fotoPerfil.trim() } : {}),
+      ...(datos.fotoPortada?.trim() ? { fotoPortada: datos.fotoPortada.trim() } : {}),
+      ...(nenufarAsset ? { nenufarAsset } : {}),
       ...(nenufarKey ? { nenufarKey } : {}),
     };
+
     const horarioPayload = this.buildHorarioPayload(datos);
 
     this.guardando = true;
 
     forkJoin({
-      negocioActualizado: this.negocioService.update(this.negocioId, negocioPayload),
+      negocioActualizado: this.negocioService.update(this.negocioId, negocioPayload as any),
       horarioActualizado: this.negocioService.configHorario(this.negocioId, horarioPayload).pipe(
         catchError((error: unknown) => {
           if ((error as { status?: number })?.status === 404) {
@@ -256,7 +275,6 @@ export class EditarNegocioComponent implements OnInit {
               intervaloReserva: horarioPayload.intervaloReserva,
             });
           }
-
           throw error;
         }),
       ),
@@ -264,60 +282,80 @@ export class EditarNegocioComponent implements OnInit {
       .pipe(
         switchMap(() =>
           this.negocioService.getNegocioById(this.negocioId).pipe(
-            map((negocio) => negocio as NegocioDetalle),
+            map((n) => n as NegocioDetalle),
           ),
         ),
       )
       .subscribe({
         next: (negocioActualizado) => {
           this.guardando = false;
+          this.exitoMensaje = 'Cambios guardados correctamente.';
           this.sincronizarNegocioEnSesion(negocioActualizado);
-          this.nenufarSelector?.markAsSaved(
-            negocioActualizado.nenufarAsset ?? DEFAULT_NENUFAR_ASSET,
-          );
-          void this.router.navigate(['/mi-negocio']);
+          this.nenufarSelector?.markAsSaved(negocioActualizado.nenufarAsset ?? null);
+          setTimeout(() => void this.router.navigate(['/mi-negocio']), 900);
         },
         error: (error: unknown) => {
           this.guardando = false;
           this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar el negocio.');
-        }
+        },
       });
   }
 
-  private resolveHorarioBase(
-    horario: NegocioDetalle['horario'] | null | undefined,
-  ): { apertura: string; cierre: string } {
-    if (!horario) {
-      return { apertura: '', cierre: '' };
-    }
+  iniciarBorrado(): void {
+    this.confirmandoBorrar = true;
+    this.textoConfirmacion = '';
+  }
 
-    if (horario.apertura && horario.cierre) {
-      return {
-        apertura: horario.apertura,
-        cierre: horario.cierre,
-      };
-    }
+  cancelarBorrado(): void {
+    this.confirmandoBorrar = false;
+    this.textoConfirmacion = '';
+  }
 
-    const ranges = horario.weekly && typeof horario.weekly === 'object'
-      ? Object.values(horario.weekly).flat()
-      : [];
-    const firstRange = ranges.find(
-      (range): range is [string, string] =>
-        Array.isArray(range) && range.length >= 2,
-    );
+  get puedeConfirmarBorrado(): boolean {
+    return this.textoConfirmacion.trim().toLowerCase() === 'borrar';
+  }
 
-    return {
-      apertura: firstRange?.[0] ?? '',
-      cierre: firstRange?.[1] ?? '',
-    };
+  confirmarBorrado(): void {
+    if (!this.puedeConfirmarBorrado || this.borrando) return;
+
+    this.borrando = true;
+    this.errorMensaje = '';
+
+    // TODO(backend): verificar que DELETE /api/negocios/:id elimina el negocio y cierra la sesión
+    this.negocioService.remove(this.negocioId).subscribe({
+      next: () => {
+        this.authService.clearSession();
+        void this.router.navigate(['/estanque']);
+      },
+      error: (error: unknown) => {
+        this.borrando = false;
+        this.confirmandoBorrar = false;
+        this.errorMensaje = getUserErrorMessage(
+          error,
+          'No hemos podido eliminar el negocio. Si el problema persiste, contacta con soporte.',
+        );
+      },
+    });
+  }
+
+  volver(): void {
+    void this.router.navigate(['/mi-negocio']);
+  }
+
+  private resolveHorarioBase(horario: NegocioDetalle['horario'] | null | undefined): { apertura: string; cierre: string } {
+    if (!horario) return { apertura: '', cierre: '' };
+    if (horario.apertura && horario.cierre) return { apertura: horario.apertura, cierre: horario.cierre };
+    const ranges = horario.weekly ? Object.values(horario.weekly).flat() : [];
+    const first = ranges.find((r): r is [string, string] => Array.isArray(r) && r.length >= 2);
+    return { apertura: first?.[0] ?? '', cierre: first?.[1] ?? '' };
   }
 
   private buildHorarioPayload(datos: ReturnType<FormGroup['getRawValue']>) {
     const apertura = String(datos.horario?.apertura ?? '').trim();
     const cierre = String(datos.horario?.cierre ?? '').trim();
-    const intervalo = Number(datos.horario?.intervalo ?? 30) || 30;
+    const intervalo = Number(datos.intervaloReserva ?? 30) || 30;
     const diasAbre = Array.isArray(datos.horario?.diasAbre)
-      ? datos.horario.diasAbre.filter((dia: unknown): dia is string => typeof dia === 'string')
+      ? datos.horario.diasAbre.filter((d: unknown): d is string => typeof d === 'string')
       : [];
 
     return {
@@ -329,29 +367,13 @@ export class EditarNegocioComponent implements OnInit {
   }
 
   private sincronizarNegocioEnSesion(negocioActualizado: NegocioDetalle): void {
-    if (typeof localStorage === 'undefined') {
-      return;
-    }
-
+    if (typeof localStorage === 'undefined') return;
     const raw = localStorage.getItem('usuarioLogueado');
-    if (!raw || raw === 'undefined' || raw === 'null') {
-      return;
-    }
-
+    if (!raw || raw === 'undefined' || raw === 'null') return;
     try {
-      const usuario = JSON.parse(raw) as {
-        negocio?: Record<string, unknown> & { id?: number };
-      };
-
-      if (usuario?.negocio?.id !== this.negocioId) {
-        return;
-      }
-
-      usuario.negocio = {
-        ...usuario.negocio,
-        ...negocioActualizado,
-      };
-
+      const usuario = JSON.parse(raw) as { negocio?: Record<string, unknown> & { id?: number } };
+      if (usuario?.negocio?.id !== this.negocioId) return;
+      usuario.negocio = { ...usuario.negocio, ...negocioActualizado };
       localStorage.setItem('usuarioLogueado', JSON.stringify(usuario));
     } catch {
       localStorage.removeItem('usuarioLogueado');

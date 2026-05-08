@@ -5,10 +5,17 @@ import { AuthService } from '../../../servicios/authService/auth.service';
 import { buildApiUrl } from '../../../config/api.config';
 
 interface Reseña {
+  id?: number;
   contenido: string;
   puntuacion: number;
   negocioId: number;
   fecha: string;
+  productoNombre?: string | null;
+  precioProducto?: number | null;
+  producto?: {
+    id?: number;
+    nombre?: string;
+  } | null;
 }
 
 @Component({
@@ -74,6 +81,21 @@ cargarReseñasGlobales() {
     const inicio = (this.paginaActual() - 1) * this.resenasPorPagina;
     return this.reseñas().slice(inicio, inicio + this.resenasPorPagina);
   });
+
+  getStars(puntuacion: number): string {
+    return '★'.repeat(Math.max(0, Math.min(5, Math.round(Number(puntuacion) || 0))));
+  }
+
+  getReviewProductLabel(resena: Reseña | null | undefined): string | null {
+    const productoNombre =
+      resena?.producto?.nombre ??
+      resena?.productoNombre ??
+      (resena as { nombreProducto?: string | null } | null)?.nombreProducto ??
+      (resena as { servicioNombre?: string | null } | null)?.servicioNombre;
+
+    const normalized = String(productoNombre ?? '').trim();
+    return normalized || null;
+  }
 
   // ✅ Navegación
   siguientePagina() {

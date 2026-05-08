@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { AccessRequiredModalComponent } from '../../components/shared/access-required-modal/access-required-modal.component';
+import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 import { AuthService, AuthUser } from '../../servicios/authService/auth.service';
 import { Logro, LogroServiceService } from '../../servicios/logroServicio/logroService.service';
 import { ReservaService } from '../../servicios/reservaService/reserva.service';
@@ -24,6 +25,14 @@ type UserReview = {
   selloNenufar?: boolean;
   fecha?: string;
   creadoEn?: string;
+  productoId?: number | null;
+  productoNombre?: string | null;
+  precioProducto?: number | null;
+  producto?: {
+    id?: number;
+    nombre?: string;
+    precio?: number | null;
+  } | null;
   negocio?: {
     id?: number;
     nombre?: string;
@@ -37,7 +46,7 @@ type CopiaReferidoAccion = '' | 'codigo' | 'enlace';
 @Component({
   selector: 'app-perfil-usuario',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, AccessRequiredModalComponent],
+  imports: [CommonModule, FormsModule, RouterLink, AccessRequiredModalComponent, EstanqueBackgroundComponent],
   templateUrl: './perfil-usuario.component.html',
   styleUrl: './perfil-usuario.component.css'
 })
@@ -67,6 +76,7 @@ export class PerfilUsuarioComponent implements OnInit {
   readonly regenerandoCodigo = signal(false);
   readonly accionCopiada = signal<CopiaReferidoAccion>('');
   readonly nenufarizarError = signal('');
+  readonly mostrarCodigoPanel = signal(false);
 
   nuevaBio = '';
   private copyFeedbackTimerId: number | null = null;
@@ -127,7 +137,7 @@ export class PerfilUsuarioComponent implements OnInit {
                       catchError(() => of([])),
                     );
               const logros$ = this.cargarLogros(perfil.id);
-              const reservas$ = this.esUsuarioActual(perfil)
+              const reservas$ = this.esUsuarioActual(perfil) && this.authService.hasAccessToken()
                 ? this.reservaService.reservasPorUsuario(perfil.id).pipe(catchError(() => of([])))
                 : of([]);
 
@@ -186,7 +196,18 @@ export class PerfilUsuarioComponent implements OnInit {
   }
 
   getStars(n: number): string {
-    return '⭐'.repeat(Math.max(0, Math.min(5, Math.round(n))));
+    return '★'.repeat(Math.max(0, Math.min(5, Math.round(n))));
+  }
+
+  getReviewProductLabel(review: UserReview | null | undefined): string | null {
+    const productoNombre =
+      review?.producto?.nombre ??
+      review?.productoNombre ??
+      (review as { nombreProducto?: string | null } | null)?.nombreProducto ??
+      (review as { servicioNombre?: string | null } | null)?.servicioNombre;
+
+    const normalized = String(productoNombre ?? '').trim();
+    return normalized || null;
   }
 
   getCoverImage(): string | null {
@@ -268,6 +289,10 @@ export class PerfilUsuarioComponent implements OnInit {
   }
 
   getBusinessRoute(negocio: UserReview['negocio'] | undefined): string[] | null {
+    const slug = String(negocio?.slug ?? negocio?.nickname ?? '').trim();
+    if (slug) {
+      return ['/', slug];
+    }
     const negocioId = Number(negocio?.id);
     return Number.isFinite(negocioId) && negocioId > 0 ? ['/negocio', negocioId] : null;
   }

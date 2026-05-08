@@ -24,9 +24,9 @@
   <div class="header-actions">
     <div class="topbar-actions">
       <button type="button" class="top-action top-action--info" (click)="abrirNenunInfo()">Nenuninfo</button>
-      @if (usuarioActual()?.id) {
-        <button type="button" class="top-action top-action--profile" (click)="irAPerfilPrivado()">
-          {{ getPerfilPrivadoLabel() }}
+      @if (mostrarAccesoAdmin()) {
+        <button type="button" class="top-action top-action--admin" (click)="irAAdmin()">
+          Admin
         </button>
       }
 
@@ -54,9 +54,13 @@
                   <span class="search-result__media">
                     <img
                       [src]="getNenufarNegocio(negocio)"
+                      [srcset]="getNenufarNegocioSrcset(negocio)"
+                      sizes="48px"
                       [alt]="negocio.nombre"
                       width="48"
                       height="48"
+                      loading="lazy"
+                      decoding="async"
                     >
                   </span>
                   <span class="search-result__copy">
@@ -88,6 +92,12 @@
           <div class="search-empty">Sin resultados.</div>
         }
       </div>
+
+      @if (mostrarMiPerfil()) {
+        <button type="button" class="top-action top-action--profile" (click)="irAPerfilPrivado()">
+          Mi perfil
+        </button>
+      }
     </div>
   </div>
 </header>

@@ -1,0 +1,61 @@
+:host { display: block; width: 100%; }
+
+.pond-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.pond-canvas {
+  display: block;
+  width: 100%;
+  height: 310px;
+}
+
+.pond-label {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 12px));
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  padding: 5px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: 'Segoe UI', sans-serif;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  animation: popIn 0.15s ease;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 5px;
+    background: rgba(0, 0, 0, 0.72);
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+  }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translate(-50%, calc(-100% - 6px)) scale(0.85); }
+  to   { opacity: 1; transform: translate(-50%, calc(-100% - 12px)) scale(1); }
+}
+
+.pond-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: 'Segoe UI', sans-serif;
+  pointer-events: none;
+  white-space: nowrap;
+}

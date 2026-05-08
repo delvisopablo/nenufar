@@ -33,14 +33,14 @@
 }
 
 .auth-card {
-  width: min(100%, 580px);
-  margin-top: min(7vh, 4.5rem);
+  width: min(100%, 980px);
+  margin-top: min(4vh, 2.75rem);
   padding: 1.6rem 1.35rem;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 20px;
+  border-radius: 24px;
   background: rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
   display: grid;
   gap: 1rem;
@@ -111,10 +111,10 @@
 
 .auth-form {
   display: grid;
-  gap: 0.95rem;
+  gap: 1rem;
 }
 
-.field-grid {
+.form-layout {
   display: grid;
   gap: 0.95rem;
 }
@@ -163,7 +163,7 @@
 }
 
 .field textarea {
-  min-height: 7.5rem;
+  min-height: 6.6rem;
   padding: 0.95rem 1rem;
   resize: vertical;
 }
@@ -187,19 +187,6 @@
   font-size: 0.85rem;
 }
 
-.field-status {
-  font-size: 0.84rem;
-  font-weight: 700;
-}
-
-.field-status--valid {
-  color: #c5ffe7;
-}
-
-.field-status--neutral {
-  color: rgba(234, 244, 255, 0.72);
-}
-
 .field-error {
   color: #ffe3ef;
 }
@@ -213,8 +200,8 @@
 }
 
 .form-actions {
-  display: grid;
-  gap: 0.75rem;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .primary-btn,
@@ -236,6 +223,7 @@
   background: linear-gradient(135deg, #f45c9c, #db4d88);
   color: #fff8fc;
   box-shadow: 0 18px 28px rgba(244, 92, 156, 0.22);
+  width: min(100%, 320px);
 }
 
 .secondary-btn {
@@ -272,7 +260,17 @@
     padding: 1.8rem;
   }
 
-  .field-grid {
+  .form-layout {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field--span-2 {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 860px) {
+  .auth-card {
+    padding: 2rem;
   }
 }

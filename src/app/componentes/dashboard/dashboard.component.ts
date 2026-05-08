@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { resolveBusinessImage } from '../../core/negocio/negocio-visuals';
+import { resolveBusinessImage, addUnsplashParams, buildUnsplashSrcset } from '../../core/negocio/negocio-visuals';
 import {
   AuthService,
   resolveOwnedBusinessId,
@@ -198,7 +198,11 @@ export class DashboardComponent implements OnInit {
   }
 
   getBusinessImage(): string {
-    return resolveBusinessImage(this.negocio());
+    return addUnsplashParams(resolveBusinessImage(this.negocio()), 136);
+  }
+
+  getBusinessImageSrcset(): string {
+    return buildUnsplashSrcset(resolveBusinessImage(this.negocio()), [68, 136]);
   }
 
   getBusinessCategory(): string {

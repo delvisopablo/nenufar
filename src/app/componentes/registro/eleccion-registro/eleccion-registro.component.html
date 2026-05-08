@@ -4,16 +4,15 @@
   <div class="lily-layer">
     @for (lily of lilies(); track lily.id) {
       <app-nenufar
-        [id]="lily.id"
-        [actionType]="lily.route ? 'navigate' : undefined"
-        [actionValue]="lily.route ?? undefined"
         [badge]="lily.badge"
-        [clickable]="!!lily.route"
-        [contextMenuEnabled]="true"
+        [clickable]="lily.kind !== 'empty'"
+        [contextMenuEnabled]="lily.kind !== 'empty'"
         [data]="lily"
+        [id]="lily.id"
         [imageSrc]="lily.imageSrc"
         [kind]="lily.kind"
         [label]="lily.label"
+        [overlayEnabled]="false"
         [radius]="lily.radius"
         [state]="lily.state"
         [subtitle]="lily.subtitle"
@@ -24,37 +23,43 @@
     }
   </div>
 
+  <div class="lily-action-layer">
+    @for (lily of actionableLilies(); track lily.id) {
+      <div
+        class="lily-action"
+        [class.is-business]="lily.id === 'negocio'"
+        [style.left.px]="lily.state.x"
+        [style.top.px]="lily.state.y - (lily.radius * 0.58)"
+      >
+        <button type="button" class="lily-action__button" (click)="seleccionarTipoRegistro(lily.id)">
+          {{ lily.id === 'usuario' ? 'Registrar usuario' : 'Registrar negocio' }}
+        </button>
+      </div>
+    }
+  </div>
+
   <div class="page-shell">
     <article class="choice-card" #card>
       <p class="eyebrow">Registro</p>
-      <h1>Regístrate</h1>
+      <h1>Elige tu nenúfar</h1>
       <p class="choice-copy">
-        Elige cómo quieres entrar en Nenúfar. Los nenúfares grandes del fondo también funcionan
-        como acceso directo a cada formulario.
+        Cada camino empieza distinto. Toca el nenúfar que más te llame y te enseñamos su
+        recorrido antes de entrar al registro real.
       </p>
-      <p class="choice-hint">{{ contextHint() }}</p>
 
-      <div class="option-list">
-        <section class="option-block">
-          <div class="option-copy">
-            <h2>Usuario</h2>
-            <p>Para guardar reseñas, reservar con más calma y moverte por tu actividad.</p>
-          </div>
-          <button type="button" class="primary-btn" (click)="irARuta('/registro')">
-            Registrar usuario
-          </button>
+      <div class="choice-summary">
+        <section class="choice-note">
+          <h2>Como rana</h2>
+          <p>Guarda tus saltos, deja reseñas, reserva con calma y sigue el movimiento del estanque.</p>
         </section>
 
-        <section class="option-block">
-          <div class="option-copy">
-            <h2>Negocio</h2>
-            <p>Para crear tu perfil, gestionar horarios y lanzar promociones dentro de Nenúfar.</p>
-          </div>
-          <button type="button" class="primary-btn" (click)="irARuta('/registro-negocio')">
-            Registrar negocio
-          </button>
+        <section class="choice-note">
+          <h2>Como negocio</h2>
+          <p>Prepara tu perfil, activa horarios, mueve promociones y abre hueco a nuevas reservas.</p>
         </section>
       </div>
+
+      <p class="choice-hint">{{ contextHint() }}</p>
 
       <div class="choice-links">
         <button type="button" class="text-link" (click)="volverAlEstanque()">
@@ -63,4 +68,11 @@
       </div>
     </article>
   </div>
+
+  <app-onboarding
+    [visible]="onboardingVisible()"
+    [modo]="onboardingModo()"
+    (cerrar)="cerrarPopupInfo()"
+    (continuar)="continuarOnboarding($event)"
+  ></app-onboarding>
 </section>

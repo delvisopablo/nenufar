@@ -1,0 +1,53 @@
+<div class="dash-card">
+  <div class="dash-header">
+    <span class="dash-icono">📊</span>
+    <span class="dash-titulo">Dashboard</span>
+    <span class="dash-periodo">Esta semana</span>
+  </div>
+
+  <div class="metricas-grid">
+    @for (m of metricas(); track m.label) {
+      <div
+        class="metrica"
+        [style.border-color]="m.color + '33'"
+        [style.background]="m.fondo"
+      >
+        <span class="m-icono">{{ m.icono }}</span>
+        <div class="m-valor" [style.color]="m.color">
+          {{ m.prefijo }}{{ formatValor(m) }}{{ m.sufijo }}
+        </div>
+        <div class="m-label">{{ m.label }}</div>
+      </div>
+    }
+  </div>
+
+  <div class="chart-section">
+    <span class="chart-titulo">Ventas por día</span>
+    <div class="chart-bars">
+      @for (b of barras(); track b.dia; let i = $index) {
+        <div class="bar-col">
+          <div class="bar-wrap">
+            <div
+              class="bar"
+              [style.height]="b.animado ? b.porcentaje + '%' : '0%'"
+              [class.bar-max]="b.porcentaje === 100"
+            ></div>
+          </div>
+          <span class="bar-dia">{{ b.dia }}</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="reservas-lista">
+    <div class="reservas-titulo">Próximas reservas</div>
+    @for (r of reservaItems; track r.hora) {
+      <div class="reserva-item">
+        <span class="r-hora">{{ r.hora }}</span>
+        <span class="r-nombre">{{ r.nombre }}</span>
+        <span class="r-personas">👥 {{ r.personas }}</span>
+        <span class="r-estado">Pendiente</span>
+      </div>
+    }
+  </div>
+</div>

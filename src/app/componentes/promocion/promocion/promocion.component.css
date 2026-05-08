@@ -136,11 +136,27 @@
   font-size: 0.76rem;
 }
 
+.field-hint {
+  color: rgba(235, 247, 240, 0.68);
+  font-size: 0.76rem;
+}
+
 .promo-form__actions,
 .promo-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
+}
+
+.promo-form__actions--secondary {
+  justify-content: flex-start;
+}
+
+.promo-producto-rapido {
+  padding: 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .promo-list {

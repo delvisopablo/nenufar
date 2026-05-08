@@ -1,0 +1,204 @@
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.25rem;
+  width: 100%;
+  font-family: 'Segoe UI', sans-serif;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  position: relative;
+
+  &.modo-promo .card-header { background: linear-gradient(135deg, #eff6ff, #dbeafe); }
+  &.modo-promo .btn-publicar { background: linear-gradient(135deg, #1d4ed8, #7c3aed); }
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: linear-gradient(135deg, #fefce8, #fef9c3);
+  border-radius: 10px;
+  padding: 0.55rem 0.85rem;
+
+  .icono-modo  { font-size: 1.1rem; }
+  .titulo-modo { font-weight: 700; font-size: 0.88rem; color: #1c1917; }
+}
+
+.textarea {
+  width: 100%;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.65rem;
+  font-size: 0.82rem;
+  color: #374151;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.5;
+  box-sizing: border-box;
+  background: #fafafa;
+}
+
+.estrellas {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+
+  .estrella {
+    font-size: 1.4rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #d1d5db;
+    transition: color 0.15s, transform 0.15s;
+    padding: 0;
+    line-height: 1;
+
+    &.activa, &.hover { color: #f59e0b; transform: scale(1.15); }
+  }
+
+  .estrellas-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #d97706;
+    margin-left: 0.35rem;
+  }
+}
+
+.descuento-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+
+  .descuento-label { font-size: 0.78rem; font-weight: 600; color: #6b7280; }
+  .descuento-chips { display: flex; gap: 0.35rem; }
+
+  .chip {
+    padding: 0.25rem 0.65rem;
+    border-radius: 7px;
+    border: 1.5px solid #e5e7eb;
+    background: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: #374151;
+    transition: all 0.15s;
+
+    &.activo { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+    &:not(.activo):hover { border-color: #6366f1; }
+  }
+}
+
+.boton-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.btn-publicar {
+  padding: 0.55rem 1.25rem;
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+
+  &:hover  { transform: scale(1.04); }
+  &:active { transform: scale(0.97); }
+}
+
+.explosion-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 130px;
+}
+
+.explosion-centro {
+  font-size: 2.5rem;
+  animation: estallido 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  z-index: 2;
+}
+
+@keyframes estallido {
+  0%   { transform: scale(0); opacity: 1; }
+  50%  { transform: scale(1.6); }
+  100% { transform: scale(1.2); opacity: 0.8; }
+}
+
+.particula {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: volar 0.7s ease-out both;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes volar {
+  0%   { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0); opacity: 0; }
+}
+
+.exito-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  animation: aparecer 0.4s ease;
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.exito-check {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 8px rgba(5, 150, 105, 0.15);
+  animation: pulso 0.5s ease;
+}
+
+@keyframes pulso {
+  0%   { transform: scale(0); }
+  70%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.exito-texto {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #065f46;
+}
+
+.btn-reiniciar {
+  background: none;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  padding: 0.35rem 0.9rem;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.75rem;
+
+  &:hover { background: #f9fafb; }
+}

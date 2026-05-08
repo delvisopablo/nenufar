@@ -21,23 +21,23 @@ export interface NegocioVisualData {
 const NENUFAR_ASSET_BASE = 'assets/nenufares_colores';
 
 export const NENUFAR_OPTIONS: NenufarOption[] = [
-  { id: 'nenufar_var1', label: 'Nenufar 01', asset: `${NENUFAR_ASSET_BASE}/nenufar_var1.png`, description: 'Base fresca y botanica.' },
-  { id: 'nenufar_var2', label: 'Nenufar 02', asset: `${NENUFAR_ASSET_BASE}/nenufar_var2.png`, description: 'Tono suave y equilibrado.' },
-  { id: 'nenufar_var3', label: 'Nenufar 03', asset: `${NENUFAR_ASSET_BASE}/nenufar_var3.png`, description: 'Acento vivo y cercano.' },
-  { id: 'nenufar_var4', label: 'Nenufar 04', asset: `${NENUFAR_ASSET_BASE}/nenufar_var4.png`, description: 'Presencia limpia y luminosa.' },
-  { id: 'nenufar_var5', label: 'Nenufar 05', asset: `${NENUFAR_ASSET_BASE}/nenufar_var5.png`, description: 'Un toque alegre sin recargar.' },
-  { id: 'nenufar_var6', label: 'Nenufar 06', asset: `${NENUFAR_ASSET_BASE}/nenufar_var6.png`, description: 'Perfil sereno y natural.' },
-  { id: 'nenufar_var7', label: 'Nenufar 07', asset: `${NENUFAR_ASSET_BASE}/nenufar_var7.png`, description: 'Contraste amable para destacar.' },
-  { id: 'nenufar_var8', label: 'Nenufar 08', asset: `${NENUFAR_ASSET_BASE}/nenufar_var8.png`, description: 'Lectura clara y muy versatil.' },
-  { id: 'nenufar_var9', label: 'Nenufar 09', asset: `${NENUFAR_ASSET_BASE}/nenufar_var9.png`, description: 'Aspecto calido y acogedor.' },
-  { id: 'nenufar_var10', label: 'Nenufar 10', asset: `${NENUFAR_ASSET_BASE}/nenufar_var10.png`, description: 'Equilibrio entre energia y calma.' },
-  { id: 'nenufar_var11', label: 'Nenufar 11', asset: `${NENUFAR_ASSET_BASE}/nenufar_var11.png`, description: 'Ideal para una identidad alegre.' },
-  { id: 'nenufar_var12', label: 'Nenufar 12', asset: `${NENUFAR_ASSET_BASE}/nenufar_var12.png`, description: 'Matiz delicado y luminoso.' },
-  { id: 'nenufar_var13', label: 'Nenufar 13', asset: `${NENUFAR_ASSET_BASE}/nenufar_var13.png`, description: 'Tono marcado con aire artesanal.' },
-  { id: 'nenufar_var14', label: 'Nenufar 14', asset: `${NENUFAR_ASSET_BASE}/nenufar_var14.png`, description: 'Acabado vegetal y elegante.' },
-  { id: 'nenufar_var15', label: 'Nenufar 15', asset: `${NENUFAR_ASSET_BASE}/nenufar_var15.png`, description: 'Variante vibrante pero limpia.' },
-  { id: 'nenufar_var16', label: 'Nenufar 16', asset: `${NENUFAR_ASSET_BASE}/nenufar_var16.png`, description: 'Tono expresivo para diferenciarse.' },
-  { id: 'nenufar_var17', label: 'Nenufar 17', asset: `${NENUFAR_ASSET_BASE}/nenufar_var17.png`, description: 'Cierre intenso y memorable.' },
+  { id: 'nenufar_var1', label: 'Nenufar original', asset: `${NENUFAR_ASSET_BASE}/nenufar_var1.png`, description: 'Fucsia sobre verde.' },
+  { id: 'nenufar_var2', label: 'Nenufar gris', asset: `${NENUFAR_ASSET_BASE}/nenufar_var2.png`, description: 'Gris suave y aguamarina.' },
+  { id: 'nenufar_var3', label: 'Nenufar azul', asset: `${NENUFAR_ASSET_BASE}/nenufar_var3.png`, description: 'Azul vivo sobre verde.' },
+  { id: 'nenufar_var4', label: 'Nenufar naranja', asset: `${NENUFAR_ASSET_BASE}/nenufar_var4.png`, description: 'Naranja sobre turquesa.' },
+  { id: 'nenufar_var5', label: 'Nenufar verde', asset: `${NENUFAR_ASSET_BASE}/nenufar_var5.png`, description: 'Verde jade y petroleo.' },
+  { id: 'nenufar_var6', label: 'Nenufar rojo', asset: `${NENUFAR_ASSET_BASE}/nenufar_var6.png`, description: 'Rojo intenso sobre verde.' },
+  { id: 'nenufar_var7', label: 'Nenufar dorado', asset: `${NENUFAR_ASSET_BASE}/nenufar_var7.png`, description: 'Dorado sobre violeta.' },
+  { id: 'nenufar_var8', label: 'Nenufar celeste', asset: `${NENUFAR_ASSET_BASE}/nenufar_var8.png`, description: 'Celeste luminoso.' },
+  { id: 'nenufar_var9', label: 'Nenufar rosado', asset: `${NENUFAR_ASSET_BASE}/nenufar_var9.png`, description: 'Crema sobre rosa.' },
+  { id: 'nenufar_var10', label: 'Nenufar brillante', asset: `${NENUFAR_ASSET_BASE}/nenufar_var10.png`, description: 'Fucsia sobre lima.' },
+  { id: 'nenufar_var11', label: 'Nenufar menta', asset: `${NENUFAR_ASSET_BASE}/nenufar_var11.png`, description: 'Menta sobre azul noche.' },
+  { id: 'nenufar_var12', label: 'Nenufar violeta', asset: `${NENUFAR_ASSET_BASE}/nenufar_var12.png`, description: 'Violeta sobre turquesa.' },
+  { id: 'nenufar_var13', label: 'Nenufar coral', asset: `${NENUFAR_ASSET_BASE}/nenufar_var13.png`, description: 'Coral con fondo salvia.' },
+  { id: 'nenufar_var14', label: 'Nenufar amarillo', asset: `${NENUFAR_ASSET_BASE}/nenufar_var14.png`, description: 'Amarillo sobre lavanda.' },
+  { id: 'nenufar_var15', label: 'Nenufar melocoton', asset: `${NENUFAR_ASSET_BASE}/nenufar_var15.png`, description: 'Melocoton sobre azul.' },
+  { id: 'nenufar_var16', label: 'Nenufar atardecer', asset: `${NENUFAR_ASSET_BASE}/nenufar_var16.png`, description: 'Coral sobre verde agua.' },
+  { id: 'nenufar_var17', label: 'Nenufar negro', asset: `${NENUFAR_ASSET_BASE}/nenufar_var17.png`, description: 'Negro sobre oliva.' },
 ];
 
 export const DEFAULT_NENUFAR_ASSET = NENUFAR_OPTIONS[0].asset;
@@ -162,4 +162,15 @@ export function resolveBusinessImage(
   }
 
   return profile || cover || fallback;
+}
+
+export function addUnsplashParams(url: string, width: number): string {
+  if (!url.includes('images.unsplash.com')) return url;
+  return `${url.split('?')[0]}?auto=format&fit=max&q=75&w=${width}`;
+}
+
+export function buildUnsplashSrcset(url: string, widths: number[]): string {
+  if (!url.includes('images.unsplash.com')) return '';
+  const base = url.split('?')[0];
+  return widths.map(w => `${base}?auto=format&fit=max&q=75&w=${w} ${w}w`).join(', ');
 }

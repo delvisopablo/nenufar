@@ -15,6 +15,14 @@ export interface Resena {
   contenido?: string;
   selloNenufar?: boolean;
   creadoEn?: string;
+  productoId?: number | null;
+  productoNombre?: string | null;
+  precioProducto?: number | null;
+  producto?: {
+    id?: number;
+    nombre?: string;
+    precio?: number | null;
+  } | null;
   [key: string]: unknown;
 }
 
@@ -23,12 +31,18 @@ export interface CreateResenaPayload {
   puntuacion: number;
   contenido?: string;
   selloNenufar?: boolean;
+  productoId?: number;
+  productoNombre?: string;
+  precioProducto?: number;
 }
 
 export interface UpdateResenaPayload {
   puntuacion?: number;
   contenido?: string;
   selloNenufar?: boolean;
+  productoId?: number | null;
+  productoNombre?: string | null;
+  precioProducto?: number | null;
 }
 
 @Injectable({

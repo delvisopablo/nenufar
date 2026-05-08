@@ -41,6 +41,7 @@ export class NenufarComponent<T = unknown> {
   @Input() imageSrc = 'assets/imagenes/nenufar_mustio.png';
   @Input() kind: NenufarKind = 'empty';
   @Input() label?: string;
+  @Input() overlayEnabled = true;
   @Input() radius = 56;
   @Input() state?: NenufarRenderState | null;
   @Input() subtitle?: string;
@@ -101,7 +102,7 @@ export class NenufarComponent<T = unknown> {
   }
 
   get shouldShowOverlay(): boolean {
-    if (this.kind === 'empty') {
+    if (!this.overlayEnabled || this.kind === 'empty') {
       return false;
     }
 

@@ -1,0 +1,84 @@
+<div class="card" [class.modo-promo]="modo === 'promo'">
+
+  <div class="card-header">
+    <span class="icono-modo">{{ config.icono }}</span>
+    <span class="titulo-modo">{{ config.titulo }}</span>
+  </div>
+
+  @if (estado() === 'escribiendo') {
+    <div class="form-area">
+      <textarea
+        class="textarea"
+        [value]="texto()"
+        [placeholder]="config.placeholder"
+        rows="3"
+        readonly
+      ></textarea>
+
+      @if (modo === 'resena') {
+        <div class="estrellas">
+          @for (n of rango(5); track n) {
+            <button
+              class="estrella"
+              [class.activa]="n <= estrellas()"
+              [class.hover]="n <= estrellasHover()"
+              (mouseenter)="estrellasHover.set(n)"
+              (mouseleave)="estrellasHover.set(0)"
+              (click)="seleccionarEstrella(n)"
+            >★</button>
+          }
+          @if (estrellas() > 0) {
+            <span class="estrellas-label">
+              {{ ['','Malo','Regular','Bien','Muy bien','Excelente'][estrellas()] }}
+            </span>
+          }
+        </div>
+      }
+
+      @if (modo === 'promo') {
+        <div class="descuento-row">
+          <span class="descuento-label">Descuento</span>
+          <div class="descuento-chips">
+            @for (d of ['10%','20%','30%','50%']; track d) {
+              <button
+                class="chip"
+                [class.activo]="descuento() === d"
+                (click)="descuento.set(d)"
+              >{{ d }}</button>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="boton-wrap">
+        <button class="btn-publicar" (click)="publicar()">
+          {{ config.boton }}
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (estado() === 'explotando') {
+    <div class="explosion-area">
+      <div class="explosion-centro">💥</div>
+      @for (p of particulas(); track $index) {
+        <div
+          class="particula"
+          [style.--tx]="p.tx"
+          [style.--ty]="p.ty"
+          [style.animation-delay]="p.delay"
+          [style.font-size]="p.size"
+        >{{ p.emoji }}</div>
+      }
+    </div>
+  }
+
+  @if (estado() === 'listo') {
+    <div class="exito-area">
+      <div class="exito-check">✓</div>
+      <p class="exito-texto">{{ config.exito }}</p>
+      <button class="btn-reiniciar" (click)="reiniciar()">Volver a intentarlo</button>
+    </div>
+  }
+
+</div>

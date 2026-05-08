@@ -1,0 +1,122 @@
+@if (visible) {
+  <div class="onboarding-overlay" (click)="onOverlayClick($event)">
+    <section
+      class="onboarding-modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="cabecera().titulo"
+      (click)="$event.stopPropagation()"
+    >
+      <button type="button" class="close-btn" (click)="cerrar.emit()" aria-label="Cerrar">
+        ×
+      </button>
+
+      <div class="modal-copy">
+        <p class="modal-kicker">{{ cabecera().kicker }}</p>
+        <h2>{{ cabecera().titulo }}</h2>
+        <p class="modal-desc">{{ cabecera().descripcion }}</p>
+      </div>
+
+      <div
+        class="slide-shell"
+        [style.background]="slideActual().gradiente"
+        [class.is-entering-forward]="animando() && direccion() === 'adelante'"
+        [class.is-entering-backward]="animando() && direccion() === 'atras'"
+        [class.has-anim]="animacionActual() !== null"
+      >
+        <!-- Bloque de texto siempre visible -->
+        <div class="slide-text">
+          <span class="slide-badge">{{ slideActual().badge }}</span>
+          <p class="slide-kicker">{{ slideActual().kicker }}</p>
+          <h3>{{ slideActual().titulo }}</h3>
+          <p class="slide-desc">{{ slideActual().descripcion }}</p>
+
+          @if (!animacionActual()) {
+            <ul class="slide-points">
+              @for (punto of slideActual().puntos; track punto; let i = $index) {
+                <li [style.animation-delay]="(i * 70) + 'ms'">
+                  <span class="point-mark"></span>
+                  <span>{{ punto }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <!-- Panel de animación (solo cuando hay animación asignada) -->
+        @if (animacionActual()) {
+          <div class="anim-panel">
+            <div class="anim-zoom">
+              @if (animacionActual() === 'nenufar-pond') {
+                <app-nenufar-pond></app-nenufar-pond>
+              }
+              @if (animacionActual() === 'reserva') {
+                <app-reserva-anim></app-reserva-anim>
+              }
+              @if (animacionActual() === 'publicar-resena') {
+                <app-publicar-anim modo="resena"></app-publicar-anim>
+              }
+              @if (animacionActual() === 'publicar-promo') {
+                <app-publicar-anim modo="promo"></app-publicar-anim>
+              }
+              @if (animacionActual() === 'dashboard') {
+                <app-dashboard-anim></app-dashboard-anim>
+              }
+              @if (animacionActual() === 'horario') {
+                <app-horario-negocio-anim></app-horario-negocio-anim>
+              }
+              @if (animacionActual() === 'logro') {
+                <app-logro-anim></app-logro-anim>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="slide-nav">
+        <button
+          type="button"
+          class="nav-btn"
+          (click)="anterior()"
+          [disabled]="esPrimero()"
+          aria-label="Diapositiva anterior"
+        >
+          ←
+        </button>
+
+        <div class="dots">
+          @for (slide of slides(); track slide.titulo; let i = $index) {
+            <button
+              type="button"
+              class="dot"
+              [class.is-active]="i === indice()"
+              (click)="irA(i)"
+              [attr.aria-label]="'Ir a la diapositiva ' + (i + 1)"
+            ></button>
+          }
+        </div>
+
+        <button
+          type="button"
+          class="nav-btn"
+          (click)="siguiente()"
+          [disabled]="esUltimo()"
+          aria-label="Siguiente diapositiva"
+        >
+          →
+        </button>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="secondary-btn" (click)="cerrar.emit()">
+          Volver
+        </button>
+        <button type="button" class="primary-btn" (click)="continuarRegistro()">
+          Continuar al registro
+        </button>
+      </div>
+
+      <p class="counter">{{ indice() + 1 }} / {{ total() }}</p>
+    </section>
+  </div>
+}

@@ -524,6 +524,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     if (options?.guest) {
       localStorage.setItem('guestMode', 'true');
       localStorage.removeItem('usuarioLogueado');
+      localStorage.removeItem('accessToken');
       localStorage.removeItem('token');
       localStorage.removeItem('access_token');
     } else {

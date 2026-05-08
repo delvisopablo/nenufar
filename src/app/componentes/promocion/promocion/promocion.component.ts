@@ -19,6 +19,10 @@ import {
 import { catchError, finalize, of } from 'rxjs';
 import { getUserErrorMessage } from '../../../core/errors/error-parser';
 import {
+  Producto,
+  ProductoServiceService,
+} from '../../../servicios/productoServicio/productoService.service';
+import {
   Promocion,
   PromocionEstado,
   PromocionMutationPayload,
@@ -90,13 +94,18 @@ export class PromocionComponent implements OnChanges {
 
   private readonly fb = inject(FormBuilder);
   private readonly promocionService = inject(PromocionService);
+  private readonly productoService = inject(ProductoServiceService);
 
   readonly promociones = signal<Promocion[]>([]);
+  readonly productos = signal<Producto[]>([]);
   readonly cargando = signal(false);
+  readonly cargandoProductos = signal(false);
   readonly guardando = signal(false);
+  readonly guardandoProducto = signal(false);
   readonly errorMensaje = signal('');
   readonly exitoMensaje = signal('');
   readonly editorAbierto = signal(false);
+  readonly editorProductoAbierto = signal(false);
   readonly promocionEditandoId = signal<number | null>(null);
   readonly tipoDescuentoOptions = TIPO_DESCUENTO_OPTIONS;
   readonly estadoOptions = ESTADO_OPTIONS;
@@ -128,9 +137,16 @@ export class PromocionComponent implements OnChanges {
     },
   );
 
+  readonly productoForm = this.fb.group({
+    nombre: ['', [Validators.required, Validators.maxLength(191)]],
+    precio: [0, [Validators.required, Validators.min(0)]],
+    descripcion: [''],
+  });
+
   ngOnChanges(changes: SimpleChanges): void {
     if ('negocioId' in changes && this.negocioId > 0) {
       this.cargarPromociones();
+      this.cargarProductos();
     }
   }
 
@@ -178,9 +194,67 @@ export class PromocionComponent implements OnChanges {
 
   cancelarEdicion(): void {
     this.editorAbierto.set(false);
+    this.editorProductoAbierto.set(false);
     this.promocionEditandoId.set(null);
     this.form.reset();
+    this.productoForm.reset({
+      nombre: '',
+      precio: 0,
+      descripcion: '',
+    });
     this.errorMensaje.set('');
+  }
+
+  abrirCrearProducto(): void {
+    this.editorProductoAbierto.set(true);
+    this.productoForm.reset({
+      nombre: '',
+      precio: 0,
+      descripcion: '',
+    });
+  }
+
+  cancelarCrearProducto(): void {
+    this.editorProductoAbierto.set(false);
+    this.productoForm.reset({
+      nombre: '',
+      precio: 0,
+      descripcion: '',
+    });
+  }
+
+  crearProductoRapido(): void {
+    if (!this.negocioId || this.productoForm.invalid) {
+      this.productoForm.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.productoForm.getRawValue();
+    this.guardandoProducto.set(true);
+    this.errorMensaje.set('');
+
+    this.productoService.create(this.negocioId, {
+      nombre: String(raw.nombre ?? '').trim(),
+      precio: Number(raw.precio ?? 0),
+      descripcion: this.optionalString(raw.descripcion) ?? undefined,
+    })
+      .pipe(finalize(() => this.guardandoProducto.set(false)))
+      .subscribe({
+        next: (producto) => {
+          this.productos.update((items) => [...items, producto]);
+          this.form.get('productoId')?.setValue(String(producto.id));
+          this.exitoMensaje.set('Producto creado y listo para asociar a la promoción.');
+          this.cancelarCrearProducto();
+        },
+        error: (error: unknown) => {
+          this.errorMensaje.set(
+            getUserErrorMessage(
+              error,
+              'No hemos podido crear el producto básico.',
+            ),
+          );
+        },
+      });
   }
 
   guardarPromocion(): void {
@@ -356,6 +430,24 @@ export class PromocionComponent implements OnChanges {
       )
       .subscribe((items) => {
         this.promociones.set(items);
+      });
+  }
+
+  private cargarProductos(): void {
+    if (!this.negocioId) {
+      this.productos.set([]);
+      return;
+    }
+
+    this.cargandoProductos.set(true);
+
+    this.productoService.listByNegocio(this.negocioId)
+      .pipe(
+        catchError(() => of([] as Producto[])),
+        finalize(() => this.cargandoProductos.set(false)),
+      )
+      .subscribe((items) => {
+        this.productos.set(items);
       });
   }
 

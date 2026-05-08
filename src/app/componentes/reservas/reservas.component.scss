@@ -24,6 +24,18 @@
 
 .reservas-shell.is-embedded {
   margin-top: 1rem;
+  --bg: transparent;
+  --paper: rgba(8, 31, 41, 0.88);
+  --ink: #f3fffa;
+  --ink-soft: rgba(225, 239, 234, 0.72);
+  --line: rgba(189, 231, 214, 0.1);
+  --poppy: #f3ab4f;
+  --poppy-dark: #ef6f6f;
+  --butter: #f6c36d;
+  --mint: #7cd9b5;
+  --bubble: #f3a9c9;
+  --leaf: #3c9b8a;
+  --shadow: 0 18px 38px rgba(2, 10, 15, 0.22);
 }
 
 .reservas-header,
@@ -54,6 +66,19 @@
   border: 1px solid var(--line);
   border-radius: 1.6rem;
   box-shadow: var(--shadow);
+}
+
+.reservas-shell.is-embedded .embedded-header,
+.reservas-shell.is-embedded .panel-card,
+.reservas-shell.is-embedded .feedback-card,
+.reservas-shell.is-embedded .summary-card,
+.reservas-shell.is-embedded .stat-card,
+.reservas-shell.is-embedded .client-booking-card,
+.reservas-shell.is-embedded .booking-card {
+  background:
+    linear-gradient(180deg, rgba(9, 40, 52, 0.96), rgba(9, 33, 43, 0.94)),
+    radial-gradient(circle at top right, rgba(246, 195, 109, 0.08), transparent 18rem);
+  color: var(--ink);
 }
 
 .reservas-header,
@@ -130,6 +155,12 @@
   color: var(--ink);
 }
 
+.reservas-shell.is-embedded .ghost-btn {
+  background: rgba(189, 231, 214, 0.08);
+  color: var(--ink);
+  border: 1px solid rgba(189, 231, 214, 0.12);
+}
+
 .ghost-btn:hover,
 .primary-btn:hover,
 .tiny-btn:hover,
@@ -171,6 +202,16 @@
   background: linear-gradient(180deg, rgba(235, 252, 237, 0.95), rgba(250, 255, 250, 0.95));
 }
 
+.reservas-shell.is-embedded .feedback-card--error {
+  background: rgba(240, 145, 183, 0.12);
+  border-color: rgba(240, 145, 183, 0.28);
+}
+
+.reservas-shell.is-embedded .feedback-card--success {
+  background: rgba(124, 217, 181, 0.12);
+  border-color: rgba(124, 217, 181, 0.26);
+}
+
 .stats-grid,
 .details-grid,
 .slots-grid,
@@ -205,6 +246,22 @@
 
 .stat-card.tone-bubble {
   background: linear-gradient(135deg, rgba(244, 202, 215, 0.35), rgba(255, 250, 242, 0.98));
+}
+
+.reservas-shell.is-embedded .stat-card.tone-poppy {
+  background: linear-gradient(135deg, rgba(243, 171, 79, 0.18), rgba(9, 40, 52, 0.98));
+}
+
+.reservas-shell.is-embedded .stat-card.tone-butter {
+  background: linear-gradient(135deg, rgba(246, 195, 109, 0.2), rgba(9, 40, 52, 0.98));
+}
+
+.reservas-shell.is-embedded .stat-card.tone-mint {
+  background: linear-gradient(135deg, rgba(124, 217, 181, 0.2), rgba(9, 40, 52, 0.98));
+}
+
+.reservas-shell.is-embedded .stat-card.tone-bubble {
+  background: linear-gradient(135deg, rgba(243, 169, 201, 0.18), rgba(9, 40, 52, 0.98));
 }
 
 .stat-label {
@@ -254,6 +311,19 @@
   border: 1px solid rgba(31, 36, 30, 0.08);
 }
 
+.reservas-shell.is-embedded .date-input input,
+.reservas-shell.is-embedded .field-card select,
+.reservas-shell.is-embedded .notes-field textarea {
+  border-color: rgba(189, 231, 214, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+}
+
+.reservas-shell.is-embedded .field-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(189, 231, 214, 0.08);
+}
+
 .field-card span,
 .notes-field span {
   font-size: 0.8rem;
@@ -294,6 +364,17 @@
   border-radius: 1.2rem;
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(31, 36, 30, 0.1);
+}
+
+.reservas-shell.is-embedded .day-chip,
+.reservas-shell.is-embedded .slot-card,
+.reservas-shell.is-embedded .slot-card--action,
+.reservas-shell.is-embedded .booking-avatar,
+.reservas-shell.is-embedded .tab-badge,
+.reservas-shell.is-embedded .step-chip span {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(189, 231, 214, 0.1);
+  color: var(--ink);
 }
 
 .day-chip strong {
@@ -348,6 +429,14 @@
   background: linear-gradient(135deg, rgba(244, 202, 215, 0.45), rgba(255, 255, 255, 0.88));
 }
 
+.reservas-shell.is-embedded .slot-card.is-free {
+  background: linear-gradient(135deg, rgba(124, 217, 181, 0.22), rgba(255, 255, 255, 0.06));
+}
+
+.reservas-shell.is-embedded .slot-card.is-busy {
+  background: linear-gradient(135deg, rgba(243, 169, 201, 0.18), rgba(255, 255, 255, 0.04));
+}
+
 .slot-card--action {
   background: rgba(255, 255, 255, 0.92);
   font-weight: 700;
@@ -382,6 +471,19 @@
   color: #fff;
 }
 
+.reservas-shell.is-embedded .filter-chip,
+.reservas-shell.is-embedded .client-tab,
+.reservas-shell.is-embedded .step-chip {
+  background: rgba(189, 231, 214, 0.08);
+  color: var(--ink);
+}
+
+.reservas-shell.is-embedded .filter-chip.is-active,
+.reservas-shell.is-embedded .client-tab.is-active {
+  background: rgba(246, 195, 109, 0.16);
+  color: #fff1d0;
+}
+
 .booking-list,
 .client-bookings {
   grid-template-columns: 1fr;
@@ -409,6 +511,11 @@
   border-radius: 999px;
   background: rgba(107, 161, 111, 0.15);
   font-weight: 700;
+}
+
+.reservas-shell.is-embedded .booking-card,
+.reservas-shell.is-embedded .client-booking-card {
+  border-color: rgba(189, 231, 214, 0.08);
 }
 
 .booking-copy,
@@ -544,6 +651,11 @@
   border-top: 1px dashed rgba(31, 36, 30, 0.12);
 }
 
+.reservas-shell.is-embedded .summary-row,
+.reservas-shell.is-embedded .summary-note {
+  border-top-color: rgba(189, 231, 214, 0.12);
+}
+
 .summary-row:first-of-type {
   border-top: none;
   padding-top: 0;
@@ -634,4 +746,251 @@
   .feedback-card {
     padding: 1.1rem;
   }
+}
+
+/* ══ NUEVO: selector compacto de día+hora ══════════════════════════════════ */
+
+/* Detalles inline (sin panel-card propio) */
+.details-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: flex-end;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 100px;
+
+  &--grow { flex: 1; min-width: 180px; }
+
+  span {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  select,
+  input {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    color: inherit;
+    font: inherit;
+    font-size: 0.88rem;
+    padding: 0.45rem 0.65rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 150ms;
+    -webkit-appearance: none;
+
+    &:focus { border-color: rgba(34, 197, 94, 0.6); }
+
+    option { background: #0e2d22; }
+  }
+}
+
+/* Panel calendario: encabezado con flechas */
+.panel-card--calendar { gap: 0; }
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cal-month-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  flex: 1;
+}
+
+.cal-arrow {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 140ms;
+
+  &:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
+  &:disabled { opacity: 0.3; cursor: not-allowed; }
+}
+
+/* Mini cuadrícula de días (2 semanas) */
+.mini-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mini-cal-row {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.day-mini {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.4rem 0.25rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background 130ms, border-color 130ms;
+  gap: 0.1rem;
+
+  &__name {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.04em;
+  }
+
+  &__num {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  &:hover:not(:disabled):not(.day-mini--active) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  &--active {
+    background: rgba(22, 163, 74, 0.25);
+    border-color: rgba(22, 163, 74, 0.6);
+
+    .day-mini__name { color: #a8ffd4; }
+    .day-mini__num  { color: #a8ffd4; }
+  }
+
+  &--hoy:not(.day-mini--active) {
+    border-color: rgba(255, 200, 80, 0.35);
+    .day-mini__num { color: #fde68a; }
+  }
+
+  &--closed {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  &:disabled { cursor: not-allowed; }
+}
+
+/* Panel de horas (justo debajo del calendario) */
+.hours-panel {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hours-panel__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 0.6rem;
+}
+
+.time-groups-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.time-group-compact {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+
+  &__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.45);
+    padding-top: 0.35rem;
+    min-width: 44px;
+  }
+}
+
+.slots-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  flex: 1;
+}
+
+.slot-mini {
+  padding: 0.35rem 0.7rem;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 130ms, border-color 130ms, color 130ms;
+
+  &:hover { background: rgba(255, 255, 255, 0.14); }
+
+  &--selected {
+    background: rgba(22, 163, 74, 0.28);
+    border-color: rgba(22, 163, 74, 0.7);
+    color: #a8ffd4;
+  }
+}
+
+/* Feedback dentro del summary-card */
+.summary-exito {
+  margin-top: 0.6rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(22, 163, 74, 0.18);
+  border: 1px solid rgba(22, 163, 74, 0.4);
+  color: #a8ffd4;
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: fadeIn 300ms ease;
+}
+
+.summary-error {
+  margin-top: 0.6rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

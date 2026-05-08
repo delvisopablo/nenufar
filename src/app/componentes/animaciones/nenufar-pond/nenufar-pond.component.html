@@ -1,0 +1,15 @@
+<div class="pond-wrap">
+  <canvas #canvas class="pond-canvas"></canvas>
+
+  @if (hoverLabel()) {
+    <div
+      class="pond-label"
+      [style.left.px]="labelPos().x"
+      [style.top.px]="labelPos().y"
+    >
+      {{ hoverLabel() }}
+    </div>
+  }
+
+  <div class="pond-hint">Haz clic en un nenúfar</div>
+</div>

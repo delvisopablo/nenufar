@@ -1,250 +1,143 @@
-<div class="negocio-root">
+<div class="profile-pond-shell">
+  <app-estanque-background class="profile-pond-bg" />
 
-  <!-- Topbar -->
-  <nav class="negocio-topbar">
-    <button class="back-btn" type="button" (click)="volver()">← Volver</button>
+  <div class="profile-page">
+    <nav class="negocio-topbar">
+      <button class="back-btn" type="button" (click)="volver()">← Volver</button>
+    </nav>
 
-    @if (esDueno) {
-      <div class="owner-actions">
-        <button class="owner-btn" type="button" (click)="irADashboardNegocio()">Dashboard</button>
-        <a class="owner-btn" routerLink="/mis-logros">Mis logros</a>
-        <button
-          class="owner-btn"
-          type="button"
-          [class.owner-btn--disabled]="!puedeGestionarReservas"
-          [disabled]="!puedeGestionarReservas"
-          (click)="irAReservasNegocio()"
-        >Reservas</button>
-        <button class="owner-btn owner-btn--primary" type="button" (click)="irAEditarNegocio()">
-          Configurar
-        </button>
-      </div>
+    @if (errorMensaje) {
+      <div class="alert-error" role="alert">{{ errorMensaje }}</div>
     }
-  </nav>
 
-  <!-- Error -->
-  @if (errorMensaje) {
-    <div class="alert-error" role="alert">{{ errorMensaje }}</div>
-  }
-
-  <!-- Hero: portada + identidad -->
-  <div class="negocio-hero">
-    <div class="cover-wrap">
-      <img
-        class="cover-img"
-        [src]="getBusinessCoverImage()"
-        alt="Portada del negocio"
-      >
-      <div class="cover-overlay"></div>
-    </div>
-
-    <div class="identity-strip">
-      <div class="identity-main">
-        <div class="identity-avatar-wrap">
+    <section class="profile-head-grid">
+      <article class="business-card">
+        <div class="business-card__media">
           <img
-            class="identity-avatar"
-            [src]="getBusinessAvatarImage()"
-            alt="Imagen del negocio"
+            class="business-avatar"
+            [src]="getNenufarAsset()"
+            alt="Nenúfar del negocio"
           >
         </div>
 
-        <div class="identity-body">
-          <div class="identity-heading">
-            <div class="identity-name-stack">
-              <div class="identity-name-row">
-                <h1 class="business-name">{{ negocio?.nombre || 'Cargando…' }}</h1>
-                @if (negocio?.verificado) {
-                  <span class="verified-badge">✓ Verificado</span>
-                }
-              </div>
-
-              <p class="business-nickname">{{ getBusinessNickname() }}</p>
-              <p class="business-cat">
-                {{ negocio?.categoria?.nombre || negocio?.categoria || 'Sin categoría' }}
-                @if (negocio?.subcategoria?.nombre) {
-                  · {{ negocio.subcategoria.nombre }}
-                }
-              </p>
-            </div>
-
-            <div class="identity-side-top">
-              <p class="business-address-label">Dirección</p>
-              <p class="business-address">
-                {{ getBusinessAddressSummary() || 'Dirección pendiente de completar' }}
-              </p>
-            </div>
-          </div>
+        <div class="business-card__body">
+          <h1 class="business-name">{{ negocio?.nombre || 'Cargando…' }}</h1>
+          <p class="business-handle">{{ getBusinessNickname() }}</p>
+          <p class="business-meta-line">{{ getBusinessCategoryLabel() }}</p>
 
           @if (mediaPuntuacion > 0) {
             <div class="rating-row">
               <span class="rating-stars">{{ getStars(mediaPuntuacion) }}</span>
               <span class="rating-num">{{ mediaPuntuacion }}/5</span>
-              <span class="rating-count">({{ resenas.length }} reseñas)</span>
+              <span class="rating-count">{{ resenas.length }} reseña{{ resenas.length !== 1 ? 's' : '' }}</span>
             </div>
           }
 
-          <div class="hero-metrics">
-            <div class="hero-metric">
-              <span class="hero-metric__num">{{ seguidoresTotal }}</span>
-              <span class="hero-metric__label">Seguidores</span>
+          @if (negocio?.descripcionCorta || negocio?.historia) {
+            <div class="business-bio">
+              @if (negocio?.descripcionCorta) {
+                <p class="business-bio__lead">{{ negocio.descripcionCorta }}</p>
+              }
+              @if (negocio?.historia) {
+                <p class="business-bio__text">{{ negocio.historia }}</p>
+              }
             </div>
+          }
 
-            @if (esDueno) {
-              <div class="hero-metric">
-                <span class="hero-metric__num">{{ seguidosTotal }}</span>
-                <span class="hero-metric__label">Seguidos</span>
-              </div>
-            } @else {
-              <button class="follow-btn" type="button" (click)="alternarSeguimiento()">
-                {{ siguiendoNegocio ? 'Siguiendo' : 'Seguir' }}
-              </button>
-            }
+          @if (getBusinessLocationLine()) {
+            <p class="business-location">📍 {{ getBusinessLocationLine() }}</p>
+          }
+
+          @if (negocio?.telefono || negocio?.emailContacto || negocio?.web || negocio?.instagram) {
+            <div class="business-links">
+              @if (negocio?.telefono) {
+                <a [href]="'tel:' + negocio.telefono">Llamar</a>
+              }
+              @if (negocio?.emailContacto) {
+                <a [href]="'mailto:' + negocio.emailContacto">Email</a>
+              }
+              @if (negocio?.web) {
+                <a [href]="negocio.web" target="_blank" rel="noopener">Web</a>
+              }
+              @if (negocio?.instagram) {
+                <a [href]="negocio.instagram" target="_blank" rel="noopener">Instagram</a>
+              }
+            </div>
+          }
+
+          <div class="business-stats">
+            <div class="business-stat">
+              <strong>{{ seguidoresTotal }}</strong>
+              <span>Seguidores</span>
+            </div>
+            <div class="business-stat">
+              <strong>{{ seguidosTotal }}</strong>
+              <span>Seguidos</span>
+            </div>
           </div>
         </div>
-      </div>
+      </article>
 
-      <div class="identity-side">
-        <button class="nenufar-panel" type="button" (click)="irALogosNenufar()">
-          <span class="nenufar-panel__label">Nenúfar activo</span>
+      <aside class="profile-side-rail">
+        <div class="action-rail">
+          <button class="action-btn action-btn--primary" type="button" (click)="irAEditarNegocio()">
+            Nenúditar
+          </button>
+          <button class="action-btn" type="button" (click)="irADashboardNegocio()">Dashboard</button>
+          <a class="action-btn" routerLink="/mis-logros">Logros</a>
+          <button class="action-btn" type="button" (click)="abrirReservas()">Reservas</button>
+          <button class="action-btn" type="button" (click)="abrirPromociones()">Promociones</button>
+        </div>
+
+        <button class="nenufar-active-card" type="button" (click)="abrirSelectorNenufar()">
+          <span class="nenufar-active-card__label">Nenúfar activo</span>
           <img
-            class="nenufar-panel__img"
+            class="nenufar-active-card__image"
             [src]="getNenufarAsset()"
             alt="Nenúfar activo del negocio"
           >
-          <span class="nenufar-panel__hint">Abrir menú de logos</span>
+          <span class="nenufar-active-card__name">{{ getNenufarLabel() }}</span>
+          <span class="nenufar-active-card__cta">Cambiar</span>
         </button>
-      </div>
-    </div>
-  </div>
+      </aside>
+    </section>
 
-  <!-- Grid de contenido: columna principal + sidebar -->
-  <div class="negocio-grid">
-
-    <!-- Columna principal -->
-    <div class="main-col">
-
-      <!-- Descripción -->
-      @if (negocio?.descripcionCorta || negocio?.historia) {
-        <section class="n-section">
-          <h2 class="n-section-title">Sobre nosotros</h2>
-
-          @if (negocio?.descripcionCorta) {
-            <p class="descripcion-corta">{{ negocio.descripcionCorta }}</p>
-          }
-
-          @if (negocio?.historia) {
-            <p class="historia">{{ negocio.historia }}</p>
-          }
-
-          @if (negocio?.fechaFundacion) {
-            <p class="fundacion">
-              Fundado en {{ negocio.fechaFundacion | date:'yyyy' }}
-            </p>
-          }
-        </section>
-      }
-
-      @if (negocio?.id) {
-        <section class="n-section ticket-section">
-          <div class="ticket-section__head">
-            <div>
-              <h2 class="n-section-title">Escanea tu ticket</h2>
-              <p class="ticket-section__lead">
-                Sube una foto del ticket para revisar productos, ajustar cantidades y guardar la compra vinculada a tu cuenta.
-              </p>
-            </div>
-            <button class="ticket-section__toggle" type="button" (click)="alternarTicketScanner()">
-              {{ ticketScannerAbierto ? 'Cerrar escáner' : 'Abrir escáner' }}
-            </button>
-          </div>
-
-          @if (!usuarioActual?.id) {
-            <p class="helper-note">
-              Puedes revisar el ticket ahora mismo, pero para crear la compra necesitas iniciar sesión.
-            </p>
-          }
-
-          @if (!esDueno) {
-            <p class="ticket-section__hint">
-              Si el ticket trae productos que todavía no existen en el catálogo del negocio, tendrás que ajustarlos o pedir a la cuenta propietaria que los cree primero.
-            </p>
-          }
-
-          @if (ticketScannerMensaje) {
-            <div class="ticket-section__success" role="status">{{ ticketScannerMensaje }}</div>
-          }
-
-          @if (ticketScannerAbierto) {
-            <app-ticket-scanner
-              [negocioId]="negocio?.id ?? null"
-              [negocioNombre]="negocio?.nombre ?? null"
-              [puedeCrearProductos]="esDueno"
-              (saved)="onTicketScannerSaved($event)"
-            />
-          }
-        </section>
-      }
-
-      <!-- Disponibilidad / Reservas -->
-      <section class="n-section">
-        <div class="section-headline">
-          <h2 class="n-section-title">Horario</h2>
-          @if (esDueno) {
-            <button class="inline-owner-btn" type="button" (click)="irAEditarNegocio()">Editar horario</button>
-          }
-        </div>
-
+    <section class="info-strip">
+      <article class="info-card">
+        <h2 class="section-title">Horario</h2>
         @if (tieneHorarioConfigurado()) {
-          <div class="horario-display horario-display--main">
+          <div class="schedule-list">
             @for (linea of getHorarioLineas(); track $index) {
-              <p class="horario-linea">{{ linea }}</p>
+              <p class="schedule-line">{{ linea }}</p>
             }
           </div>
         } @else {
-          <p class="empty-state">Este negocio todavía no ha configurado su horario.</p>
+          <p class="empty-state">Configúralo desde Nenúditar.</p>
         }
-      </section>
+      </article>
+    </section>
 
-      <section class="n-section">
-        <app-reservas
-          modo="negocio"
-          [negocioId]="negocioId"
-          [negocio]="negocio"
-          [embebido]="true"
-          [permitirMisReservas]="false"
-        />
-      </section>
+    <section class="reviews-section">
+      <div class="section-head">
+        <h2 class="section-title">Reseñas</h2>
+        @if (resenas.length > 0) {
+          <span class="section-count">{{ resenas.length }}</span>
+        }
+      </div>
 
-      @if (negocio?.id && esDueno) {
-        <section class="n-section promo-section">
-          <app-promocion [negocioId]="negocioId" />
-        </section>
+      @if (resenas.length === 0) {
+        <p class="empty-state">Este negocio aún no tiene reseñas.</p>
       }
 
-      <!-- Reseñas -->
-      <section class="n-section">
-        <h2 class="n-section-title">Reseñas de clientes</h2>
-
-        @if (resenas.length === 0) {
-          <p class="empty-state">Este negocio aún no tiene reseñas. ¡Sé el primero!</p>
-        }
-
+      <div class="reviews-list">
         @for (resena of resenas; track resena.id) {
           <article class="review-item">
-            <img
-              class="review-avatar"
-              [src]="resena.usuario?.foto || 'assets/imagenes/rana1_profile_foto.png'"
-              alt="Avatar"
-            >
-
+            <img class="review-avatar" [src]="resena.usuario?.foto || 'assets/imagenes/rana1_profile_foto.png'" alt="Avatar">
             <div class="review-body">
               <div class="review-head">
                 @if (resena.usuario) {
                   @if (getUsuarioRoute(resena.usuario); as usuarioRoute) {
-                    <a
-                      class="review-author"
-                      [routerLink]="usuarioRoute"
-                    >{{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}</a>
+                    <a class="review-author" [routerLink]="usuarioRoute">{{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}</a>
                   } @else {
                     <p class="review-author">{{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}</p>
                   }
@@ -253,110 +146,109 @@
                 }
                 <span class="review-stars">{{ getStars(resena.puntuacion) }}</span>
               </div>
-
               @if (resena.creadoEn || resena.fecha) {
-                <time class="review-date">
-                  {{ (resena.creadoEn || resena.fecha) | date:'d MMM yyyy' }}
-                </time>
+                <time class="review-date">{{ (resena.creadoEn || resena.fecha) | date:'d MMM yyyy' }}</time>
               }
-
+              @if (getReviewProductLabel(resena); as productoNombre) {
+                <span class="review-product-chip">{{ productoNombre }}</span>
+              }
               <p class="review-text">{{ resena.contenido }}</p>
-
               @if (resena.selloNenufar) {
                 <span class="nenufar-seal">Sello Nenúfar</span>
               }
             </div>
           </article>
         }
-      </section>
-    </div>
+      </div>
+    </section>
 
-    <!-- Sidebar -->
-    <aside class="side-col">
+    @if (negocio?.id) {
+      <div class="ticket-inline">
+        <button class="ticket-inline__toggle" type="button" (click)="alternarTicketScanner()">
+          Escanear ticket{{ ticketScannerAbierto ? '' : ' (en desarrollo)' }}
+          <span>{{ ticketScannerAbierto ? '▲' : '▼' }}</span>
+        </button>
+        @if (ticketScannerMensaje) {
+          <p class="ticket-inline__message" role="status">{{ ticketScannerMensaje }}</p>
+        }
+        @if (ticketScannerAbierto) {
+          <div class="ticket-inline__body">
+            <app-ticket-scanner
+              [negocioId]="negocio?.id ?? null"
+              [negocioNombre]="negocio?.nombre ?? null"
+              [puedeCrearProductos]="esDueno"
+              (saved)="onTicketScannerSaved($event)"
+            />
+          </div>
+        }
+      </div>
+    }
 
-      <!-- Calificación destacada -->
-      @if (mediaPuntuacion > 0) {
-        <section class="n-section rating-card">
-          <p class="rating-big">{{ mediaPuntuacion }}</p>
-          <p class="rating-max">sobre 5 ⭐</p>
-          <p class="rating-sub">Basado en {{ resenas.length }} reseña{{ resenas.length !== 1 ? 's' : '' }}</p>
-        </section>
-      }
+    @if (modalActiva()) {
+      <div class="profile-modal-backdrop" (click)="cerrarModal()">
+        <section class="profile-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+          <button type="button" class="profile-modal__close" (click)="cerrarModal()" aria-label="Cerrar">
+            ×
+          </button>
 
-      <!-- Contacto -->
-      @if (negocio?.telefono || negocio?.emailContacto || negocio?.web || negocio?.instagram) {
-        <section class="n-section">
-          <h3 class="n-side-title">Contacto</h3>
-          <ul class="contact-list">
-            @if (negocio?.telefono) {
-              <li class="contact-item">
-                <span class="contact-icon">📞</span>
-                <a [href]="'tel:' + negocio.telefono">{{ negocio.telefono }}</a>
-              </li>
-            }
-            @if (negocio?.emailContacto) {
-              <li class="contact-item">
-                <span class="contact-icon">✉️</span>
-                <a [href]="'mailto:' + negocio.emailContacto">{{ negocio.emailContacto }}</a>
-              </li>
-            }
-            @if (negocio?.web) {
-              <li class="contact-item">
-                <span class="contact-icon">🌐</span>
-                <a [href]="negocio.web" target="_blank" rel="noopener">Web oficial</a>
-              </li>
-            }
-            @if (negocio?.instagram) {
-              <li class="contact-item">
-                <span class="contact-icon">📸</span>
-                <a [href]="negocio.instagram" target="_blank" rel="noopener">Instagram</a>
-              </li>
-            }
-          </ul>
-        </section>
-      }
+          @if (modalActiva() === 'nenufar') {
+            <div class="profile-modal__head">
+              <h2>Cambiar nenúfar</h2>
+              <p>Elige el nenúfar que mejor representa a tu negocio.</p>
+            </div>
 
-      <!-- Ubicación -->
-      @if (negocio?.direccion || negocio?.ciudad) {
-        <section class="n-section">
-          <h3 class="n-side-title">Ubicación</h3>
-          <address class="address-block">
-            @if (negocio?.direccion) { <span>{{ negocio.direccion }}</span> }
-            @if (negocio?.ciudad) {
-              <span>{{ negocio.ciudad }}{{ negocio?.codigoPostal ? ' ' + negocio.codigoPostal : '' }}</span>
+            <app-nenufar-selector
+              [value]="getSavedNenufarAsset()"
+              [title]="'Elige tu nenúfar'"
+              (valueChange)="guardarNenufarDesdePerfil($event)"
+            />
+
+            @if (nenufarError) {
+              <p class="alert-inline" role="alert">{{ nenufarError }}</p>
             }
-            @if (negocio?.provincia) { <span>{{ negocio.provincia }}</span> }
-          </address>
-          @if (negocio?.latitud && negocio?.longitud) {
-            <a class="maps-link" [href]="getMapsUrl()" target="_blank" rel="noopener">
-              Ver en Google Maps →
-            </a>
+          }
+
+          @if (modalActiva() === 'reservas') {
+            <div class="profile-modal__head">
+              <h2>Reservas</h2>
+              <p>Gestiona la disponibilidad y las reservas recibidas desde un panel compacto.</p>
+            </div>
+
+            <app-reservas
+              modo="negocio"
+              [negocioId]="negocioId"
+              [negocio]="negocio"
+              [embebido]="true"
+              [permitirMisReservas]="false"
+            />
+          }
+
+          @if (modalActiva() === 'promociones') {
+            <div class="profile-modal__head">
+              <h2>Promociones</h2>
+              <p>Crea y gestiona promociones sin salir del perfil.</p>
+            </div>
+
+            <app-promocion [negocioId]="negocioId" />
           }
         </section>
-      }
+      </div>
+    }
 
-    </aside>
+    <app-crear-resena-modal
+      [visible]="modalAbierto"
+      [negocioId]="negocioId"
+      [resenas]="resenas"
+      [negocio]="negocio"
+      (cerrarModal)="modalAbierto = false"
+      (resenaCreada)="refrescarResenas()"
+    ></app-crear-resena-modal>
+
+    <app-access-required-modal
+      [open]="accessModalAbierto"
+      [message]="accessModalMensaje"
+      (closed)="accessModalAbierto = false"
+      (loginRequested)="irALogin()"
+    />
   </div>
-
-  <!-- Botón flotante nueva reseña -->
-  <button class="btn-flotante" type="button" (click)="abrirModalResena()" aria-label="Nueva reseña">
-    ＋
-  </button>
-
-  <app-crear-resena-modal
-    [visible]="modalAbierto"
-    [negocioId]="negocioId"
-    [resenas]="resenas"
-    [negocio]="negocio"
-    (cerrarModal)="modalAbierto = false"
-    (resenaCreada)="refrescarResenas()"
-  ></app-crear-resena-modal>
-
-  <app-access-required-modal
-    [open]="accessModalAbierto"
-    [message]="accessModalMensaje"
-    (closed)="accessModalAbierto = false"
-    (loginRequested)="irALogin()"
-  />
-
 </div>

@@ -1,44 +1,39 @@
-<div class="perfil-root">
-  <nav class="perfil-topbar">
-    <a class="back-link" routerLink="/inicio">← Inicio</a>
-  </nav>
+<div class="user-pond-shell">
+  <app-estanque-background class="user-pond-bg" />
 
-  @if (cargando()) {
-    <section class="profile-section">
-      <h2 class="section-title">Cargando perfil</h2>
-      <p class="empty-state">Estamos preparando la informacion de este usuario.</p>
-    </section>
-  } @else if (error()) {
-    <section class="profile-section">
-      <h2 class="section-title">Perfil no disponible</h2>
-      <p class="empty-state">{{ error() }}</p>
-    </section>
-  } @else if (usuario()) {
-    <section class="hero-card">
-      <div class="hero-cover">
-        @if (getCoverImage(); as coverImage) {
-          <img class="hero-cover__img" [src]="coverImage" alt="Portada del perfil">
-        }
-        <div class="hero-cover__overlay"></div>
-      </div>
+  <div class="user-page">
+    <nav class="perfil-topbar">
+      <a class="back-link" routerLink="/inicio">← Inicio</a>
+    </nav>
 
-      <div class="hero-content">
-        <div class="avatar-ring">
+    @if (cargando()) {
+      <section class="user-section">
+        <h2 class="section-title">Cargando perfil</h2>
+        <p class="empty-state">Estamos preparando la información de este usuario.</p>
+      </section>
+    } @else if (error()) {
+      <section class="user-section">
+        <h2 class="section-title">Perfil no disponible</h2>
+        <p class="empty-state">{{ error() }}</p>
+      </section>
+    } @else if (usuario()) {
+      <section class="user-card">
+        <div class="user-card__media">
           <img
-            class="hero-avatar"
+            class="user-avatar"
             [src]="usuario()?.foto_perfil || usuario()?.foto || 'assets/imagenes/rana1_profile_foto.png'"
             alt="Foto de perfil"
           >
         </div>
 
-        <div class="hero-body">
-          <div class="name-row">
-            <div class="hero-name-stack">
+        <div class="user-card__body">
+          <div class="user-card__head">
+            <div class="user-card__title">
               <h1 class="hero-name">{{ usuario()?.nombre || 'Nombre no disponible' }}</h1>
-              <span class="hero-nick">&#64;{{ usuario()?.nickname || 'sin_nickname' }}</span>
+              <p class="hero-nick">&#64;{{ usuario()?.nickname || 'sin_nickname' }}</p>
             </div>
 
-            <div class="profile-actions">
+            <div class="hero-actions">
               @if (logros().length || usuario()?.petalosSaldo != null) {
                 <a class="follow-btn" href="#perfil-logros">
                   {{ esPerfilPropio() ? 'Mis logros' : 'Logros' }}
@@ -54,112 +49,106 @@
           </div>
 
           <p class="hero-bio">
-            {{ usuario()?.biografia || 'Este usuario aun no ha escrito una biografia.' }}
+            {{ usuario()?.biografia || 'Este usuario aún no ha escrito una biografía.' }}
           </p>
 
           <div class="hero-meta">
             @if (usuario()?.petalosSaldo != null) {
-              <span class="meta-chip meta-chip--gold">
-                🌸 {{ usuario()?.petalosSaldo }} petalos
-              </span>
+              <span class="meta-chip meta-chip--gold">🌸 {{ usuario()?.petalosSaldo }} pétalos</span>
             }
             @if (usuario()?.creadoEn) {
-              <span class="meta-chip">
-                Miembro desde {{ usuario()?.creadoEn | date:'yyyy' }}
-              </span>
+              <span class="meta-chip">Miembro desde {{ usuario()?.creadoEn | date:'yyyy' }}</span>
             }
             @if (usuario()?.rolGlobal && usuario()?.rolGlobal !== 'USUARIO') {
               <span class="meta-chip meta-chip--role">{{ usuario()?.rolGlobal }}</span>
             }
           </div>
+
+          <div class="stats-row">
+            <div class="stat-pill">
+              <strong>{{ seguidoresTotal() }}</strong>
+              <span>Seguidores</span>
+            </div>
+            <div class="stat-pill">
+              <strong>{{ siguiendoTotal() }}</strong>
+              <span>Seguidos</span>
+            </div>
+            <div class="stat-pill">
+              <strong>{{ resenas().length }}</strong>
+              <span>Reseñas</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <div class="stats-band">
-      <div class="stat-item">
-        <span class="stat-num">{{ seguidoresTotal() }}</span>
-        <span class="stat-label">Seguidores</span>
-      </div>
-      <div class="stat-divider" aria-hidden="true"></div>
-      <div class="stat-item">
-        <span class="stat-num">{{ siguiendoTotal() }}</span>
-        <span class="stat-label">Seguidos</span>
-      </div>
-      <div class="stat-divider" aria-hidden="true"></div>
-      <div class="stat-item">
-        <span class="stat-num">{{ resenas().length }}</span>
-        <span class="stat-label">Reseñas</span>
-      </div>
-    </div>
+      <section class="user-section">
+        <div class="section-head">
+          <h2 class="section-title">Reseñas públicas</h2>
+        </div>
 
-    <section class="profile-section">
-      <h2 class="section-title">
-        <span class="section-icon">🌿</span>
-        Reseñas públicas
-      </h2>
+        @if (resenas().length === 0) {
+          <p class="empty-state">Todavía no hay reseñas públicas para mostrar.</p>
+        }
 
-      @if (resenas().length === 0) {
-        <p class="empty-state">Todavia no hay resenas publicas para mostrar.</p>
-      }
+        <div class="reviews-list">
+          @for (resena of resenas(); track resena.id) {
+            <article class="review-card">
+              <header class="review-card-header">
+                <div class="review-stars">{{ getStars(resena.puntuacion || 0) }}</div>
+                <time class="review-date">{{ (resena.fecha || resena.creadoEn) | date:'d MMM yyyy' }}</time>
+              </header>
 
-      @for (resena of resenas(); track resena.id) {
-        <article class="review-card">
-          <header class="review-card-header">
-            <div class="review-stars">{{ getStars(resena.puntuacion || 0) }}</div>
-            <time class="review-date">{{ (resena.fecha || resena.creadoEn) | date:'d MMM yyyy' }}</time>
-          </header>
+              <p class="review-text">{{ resena.comentario || resena.contenido || 'Sin comentario' }}</p>
 
-          <p class="review-text">{{ resena.comentario || resena.contenido || 'Sin comentario' }}</p>
+              <footer class="review-card-foot">
+                @if (getBusinessRoute(resena.negocio); as negocioRoute) {
+                  <a class="review-negocio" [routerLink]="negocioRoute">
+                    En <strong>{{ resena.negocio?.nombre || 'Negocio' }}</strong>
+                  </a>
+                } @else {
+                  <span class="review-negocio">
+                    En <strong>{{ resena.negocio?.nombre || 'Negocio' }}</strong>
+                  </span>
+                }
 
-          <footer class="review-card-foot">
-            @if (getBusinessRoute(resena.negocio); as negocioRoute) {
-              <a class="review-negocio" [routerLink]="negocioRoute">
-                En <strong>{{ resena.negocio?.nombre || 'Negocio' }}</strong>
-              </a>
-            } @else {
-              <span class="review-negocio">
-                En <strong>{{ resena.negocio?.nombre || 'Negocio' }}</strong>
-              </span>
-            }
-
-            @if (resena.selloNenufar) {
-              <span class="nenufar-seal">Sello Nenufar</span>
-            }
-          </footer>
-        </article>
-      }
-    </section>
-
-    <section class="profile-section" id="perfil-logros">
-      <h2 class="section-title">
-        <span class="section-icon">🏅</span>
-        Logros y petalos
-      </h2>
-
-      @if (logros().length === 0 && usuario()?.petalosSaldo == null) {
-        <p class="empty-state">Todavia no hay logros ni petalos visibles en este perfil.</p>
-      }
-
-      @if (usuario()?.petalosSaldo != null) {
-        <article class="metric-card">
-          <strong>{{ usuario()?.petalosSaldo }}</strong>
-          <span>Petalos acumulados</span>
-        </article>
-      }
-
-      @if (logros().length) {
-        <div class="achievement-grid">
-          @for (logro of logros(); track logro.id) {
-            <article class="achievement-card">
-              <strong>{{ logro.titulo }}</strong>
-              <span>{{ logro.descripcion || 'Logro desbloqueado en Nenufar.' }}</span>
+                @if (resena.selloNenufar) {
+                  <span class="nenufar-seal">Sello Nenúfar</span>
+                }
+              </footer>
             </article>
           }
         </div>
-      }
-    </section>
-  }
+      </section>
+
+      <section class="user-section" id="perfil-logros">
+        <div class="section-head">
+          <h2 class="section-title">Logros y pétalos</h2>
+        </div>
+
+        @if (logros().length === 0 && usuario()?.petalosSaldo == null) {
+          <p class="empty-state">Todavía no hay logros ni pétalos visibles en este perfil.</p>
+        }
+
+        @if (usuario()?.petalosSaldo != null) {
+          <article class="metric-card">
+            <strong>{{ usuario()?.petalosSaldo }}</strong>
+            <span>Pétalos acumulados</span>
+          </article>
+        }
+
+        @if (logros().length) {
+          <div class="achievement-grid">
+            @for (logro of logros(); track logro.id) {
+              <article class="achievement-card">
+                <strong>{{ logro.titulo }}</strong>
+                <span>{{ logro.descripcion || 'Logro desbloqueado en Nenúfar.' }}</span>
+              </article>
+            }
+          </div>
+        }
+      </section>
+    }
+  </div>
 </div>
 
 <app-access-required-modal

@@ -30,6 +30,9 @@ export interface Promocion {
   negocio?: {
     id: number;
     nombre: string;
+    slug?: string | null;
+    nickname?: string | null;
+    duenoId?: number | null;
     categoria?: { id?: number; nombre?: string } | string | null;
     fotoPerfil?: string | null;
     imagenNenufar?: string | null;

@@ -16,7 +16,11 @@ import {
   tap
 } from 'rxjs';
 import { normalizeSearchText } from '../../../core/search/trie';
-import { getNenufarNegocio as getNenufarNegocioAsset } from '../../../core/negocio/negocio-visuals';
+import {
+  getNenufarNegocio as getNenufarNegocioAsset,
+  addUnsplashParams,
+  buildUnsplashSrcset,
+} from '../../../core/negocio/negocio-visuals';
 import { AccessRequiredModalComponent } from '../../../components/shared/access-required-modal/access-required-modal.component';
 import { NenunInfoComponent } from '../../nenun-info/nenun-info.component';
 import {
@@ -24,7 +28,10 @@ import {
   AuthUser,
   resolvePrivateProfileRoute,
 } from '../../../servicios/authService/auth.service';
-import { NegocioService } from '../../../servicios/negocioService/negocio.service';
+import {
+  NegocioService,
+  resolveNegocioRouteKey,
+} from '../../../servicios/negocioService/negocio.service';
 import { NegocioLite, NegocioSearchService } from '../../../servicios/buscador/negocio-search.service';
 
 type SearchStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
@@ -52,6 +59,10 @@ export class HeaderComponent implements OnDestroy {
   readonly accessModalAbierto = signal(false);
   readonly accessModalMessage = signal('Necesitas iniciar sesion para seguir negocios y guardar tus favoritos.');
   readonly usuarioActual = signal<AuthUser | null>(this.authService.obtenerUsuario());
+  readonly mostrarMiPerfil = computed(() => this.authService.isAuthenticated());
+  readonly mostrarAccesoAdmin = computed(
+    () => this.usuarioActual()?.rolGlobal === 'ADMIN',
+  );
   readonly sinResultadosBusqueda = computed(
     () =>
       normalizeSearchText(this.currentQuery()).length >= 2 &&
@@ -141,7 +152,7 @@ export class HeaderComponent implements OnDestroy {
     this.searchControl.setValue(negocio.nombre, { emitEvent: false });
     this.currentQuery.set(negocio.nombre);
     this.resetearBusqueda(false);
-    void this.router.navigate(['/negocio', negocio.id]);
+    void this.router.navigate(this.getNegocioRoute(negocio));
   }
 
   irAInicio(): void {
@@ -168,9 +179,9 @@ export class HeaderComponent implements OnDestroy {
   }
 
   getSearchMeta(negocio: NegocioLite): string {
+    const publicHandle = resolveNegocioRouteKey(negocio);
     const parts = [
-      `/negocio/${negocio.id}`,
-      negocio.nickname ? `@${negocio.nickname}` : '',
+      publicHandle ? `@${publicHandle}` : '',
       this.getCategoriaNombre(negocio),
       negocio.ciudad || negocio.provincia || '',
     ].filter(Boolean);
@@ -178,8 +189,17 @@ export class HeaderComponent implements OnDestroy {
     return parts.join(' · ');
   }
 
+  private getNegocioRoute(negocio: NegocioLite): (string | number)[] {
+    const routeKey = resolveNegocioRouteKey(negocio);
+    return routeKey ? ['/', routeKey] : ['/negocio', negocio.id];
+  }
+
   getNenufarNegocio(negocio: NegocioLite): string {
-    return getNenufarNegocioAsset(negocio);
+    return addUnsplashParams(getNenufarNegocioAsset(negocio), 96);
+  }
+
+  getNenufarNegocioSrcset(negocio: NegocioLite): string {
+    return buildUnsplashSrcset(getNenufarNegocioAsset(negocio), [48, 96, 144]);
   }
 
   getReviewSummary(negocio: NegocioLite): string {
@@ -233,15 +253,19 @@ export class HeaderComponent implements OnDestroy {
     void this.router.navigate(['/estanque']);
   }
 
-  irAPerfilPrivado(): void {
+  async irAPerfilPrivado(): Promise<void> {
     this.resetearBusqueda();
-    void this.router.navigate(resolvePrivateProfileRoute(this.usuarioActual()));
+    const shouldHydrate = !this.usuarioActual() && this.authService.hasSessionHint();
+    const usuario = shouldHydrate
+      ? await firstValueFrom(this.authService.hydrateSession({ forceRemote: true }))
+      : this.usuarioActual();
+
+    void this.router.navigate(resolvePrivateProfileRoute(usuario ?? this.usuarioActual()));
   }
 
-  getPerfilPrivadoLabel(): string {
-    return resolvePrivateProfileRoute(this.usuarioActual())[0] === '/mi-negocio'
-      ? 'Mi negocio'
-      : 'Mi perfil';
+  irAAdmin(): void {
+    this.resetearBusqueda();
+    void this.router.navigate(['/admin']);
   }
 
   private searchWithState(value: string) {

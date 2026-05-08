@@ -238,7 +238,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   private pondBackground?: PondBackgroundRenderer;
 
   readonly loginForm = this.fb.nonNullable.group({
-    identifier: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required]
   });
   readonly loginError = signal('');
@@ -281,24 +281,23 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const identifier = this.loginForm.controls.identifier.value.trim();
+    const email = this.loginForm.controls.email.value.trim().toLowerCase();
     const password = this.loginForm.controls.password.value;
 
-    if (!identifier || !password) {
+    if (!email || !password) {
       this.loginForm.markAllAsTouched();
-      return;
-    }
-
-    if (!identifier.includes('@')) {
-      this.loginError.set('De momento inicia sesión con tu correo');
       return;
     }
 
     this.loginSubmitting.set(true);
 
-    this.authService.login(identifier, password).subscribe({
+    this.authService.login(email, password).subscribe({
       next: () => {
         this.persistirSesion();
+        console.info(
+          '[auth][login] access token disponible tras login:',
+          this.authService.hasAccessToken(),
+        );
         this.loginSubmitting.set(false);
         void this.redirigirTrasLogin();
       },
@@ -312,6 +311,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   continuarComoInvitado(): void {
     localStorage.setItem('accesoPermitido', 'true');
     localStorage.setItem('guestMode', 'true');
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('token');
     localStorage.removeItem('access_token');
     localStorage.removeItem('usuarioLogueado');
@@ -322,7 +322,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     void this.router.navigate(['/registro-opciones']);
   }
 
-  campoInvalido(nombreCampo: 'identifier' | 'password'): boolean {
+  campoInvalido(nombreCampo: 'email' | 'password'): boolean {
     const control = this.loginForm.controls[nombreCampo];
     return control.invalid && (control.touched || control.dirty);
   }

@@ -265,17 +265,6 @@
     @if ((pestanaCliente === 'reservar' && mostrarTabReservar) || (mostrarTabReservar && !mostrarTabsCliente)) {
       <div class="client-layout">
         <section class="client-main">
-          <div class="steps-row">
-            <div class="step-chip" [class.is-done]="slotSeleccionadoIso || nota || numPersonas > 0">
-              <span>1</span>Detalles
-            </div>
-            <div class="step-chip" [class.is-done]="fechaSeleccionada">
-              <span>2</span>Día
-            </div>
-            <div class="step-chip" [class.is-active]="true">
-              <span>3</span>Hora
-            </div>
-          </div>
 
           @if (!tieneHorarioConfigurado) {
             <section class="feedback-card">
@@ -283,127 +272,116 @@
               <span>Este negocio todavía no ha configurado su horario.</span>
             </section>
           } @else {
-            <section class="panel-card">
-              <div class="panel-head">
-                <div>
-                  <p class="eyebrow">Paso 1</p>
-                  <h2>Detalles de la reserva</h2>
-                </div>
-              </div>
 
-              <div class="details-grid">
-                <label class="field-card">
-                  <span>Personas</span>
-                  <select [ngModel]="numPersonas" (ngModelChange)="setNumPersonas($event)">
-                    @for (option of personasOptions; track option) {
-                      <option [ngValue]="option">{{ option }}</option>
-                    }
-                  </select>
-                </label>
+            <!-- Detalles compactos inline -->
+            <div class="details-inline">
+              <label class="detail-field">
+                <span>Personas</span>
+                <select [ngModel]="numPersonas" (ngModelChange)="setNumPersonas($event)">
+                  @for (option of personasOptions; track option) {
+                    <option [ngValue]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
 
-                <label class="field-card">
-                  <span>Duración</span>
-                  <select [ngModel]="duracionMinutos" (ngModelChange)="setDuracion($event)">
-                    @for (option of duracionOptions; track option) {
-                      <option [ngValue]="option">{{ option }} min</option>
-                    }
-                  </select>
-                </label>
-              </div>
+              <label class="detail-field">
+                <span>Duración</span>
+                <select [ngModel]="duracionMinutos" (ngModelChange)="setDuracion($event)">
+                  @for (option of duracionOptions; track option) {
+                    <option [ngValue]="option">{{ option }} min</option>
+                  }
+                </select>
+              </label>
 
-              <label class="notes-field">
-                <span>Nota opcional</span>
-                <textarea
-                  rows="3"
+              <label class="detail-field detail-field--grow">
+                <span>Nota (opcional)</span>
+                <input
+                  type="text"
                   [ngModel]="nota"
                   (ngModelChange)="nota = $event"
-                  placeholder="Alergias, preferencia de mesa o cualquier detalle útil."
-                ></textarea>
+                  placeholder="Alergias, preferencia de mesa…"
+                >
               </label>
-            </section>
+            </div>
 
-            <section class="panel-card">
-              <div class="panel-head">
-                <div>
-                  <p class="eyebrow">Paso 2</p>
-                  <h2>Elige el día</h2>
-                </div>
+            <!-- Calendario compacto + horas en mismo panel -->
+            <section class="panel-card panel-card--calendar">
+              <div class="cal-header">
+                <button
+                  type="button"
+                  class="cal-arrow"
+                  [disabled]="ventanaDiasOffset === 0"
+                  (click)="moverVentanaDias(-1)"
+                  aria-label="Semana anterior"
+                >‹</button>
 
-                <div class="window-actions">
-                  <button type="button" class="ghost-btn" [disabled]="ventanaDiasOffset === 0" (click)="moverVentanaDias(-1)">
-                    ←
-                  </button>
-                  <button type="button" class="ghost-btn" (click)="moverVentanaDias(1)">
-                    →
-                  </button>
-                </div>
+                <span class="cal-month-label">{{ etiquetaVentanaDias }}</span>
+
+                <button
+                  type="button"
+                  class="cal-arrow"
+                  (click)="moverVentanaDias(1)"
+                  aria-label="Semana siguiente"
+                >›</button>
               </div>
 
-              <p class="month-label">{{ etiquetaVentanaDias }}</p>
-
-              <div class="days-stack">
+              <!-- Mini cuadrícula de días (2 semanas visibles) -->
+              <div class="mini-calendar">
                 @for (fila of filasDias; track $index) {
-                  <div class="day-row">
+                  <div class="mini-cal-row">
                     @for (dia of fila; track dia.iso) {
                       <button
                         type="button"
-                        class="day-chip"
-                        [class.is-active]="dia.activa"
-                        [class.is-closed]="!dia.abierta"
+                        class="day-mini"
+                        [class.day-mini--active]="dia.activa"
+                        [class.day-mini--closed]="!dia.abierta"
+                        [class.day-mini--hoy]="dia.hoy"
                         [disabled]="!dia.abierta"
                         (click)="seleccionarDia(dia.iso)"
                       >
-                        <span>{{ dia.nombre }}</span>
-                        <strong>{{ dia.dia }}</strong>
-                        <small>{{ dia.abierta ? 'Abierto' : 'Cerrado' }}</small>
+                        <span class="day-mini__name">{{ dia.nombre.slice(0, 2) }}</span>
+                        <strong class="day-mini__num">{{ dia.dia }}</strong>
                       </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Horas del día seleccionado (inmediatamente debajo) -->
+              <div class="hours-panel">
+                <p class="hours-panel__label">{{ longDateLabel(fechaSeleccionada) }}</p>
+
+                @if (cargandoDisponibilidad) {
+                  <p class="empty-state">Cargando horas…</p>
+                } @else if (!slotsAgrupados.length) {
+                  <p class="empty-state">Sin horas disponibles para este día.</p>
+                } @else {
+                  <div class="time-groups-compact">
+                    @for (grupo of slotsAgrupados; track grupo.label) {
+                      <div class="time-group-compact">
+                        <span class="time-group-compact__label">{{ grupo.label }}</span>
+                        <div class="slots-compact">
+                          @for (slot of grupo.slots; track slot.iso) {
+                            <button
+                              type="button"
+                              class="slot-mini"
+                              [class.slot-mini--selected]="slotSeleccionadoIso === slot.iso"
+                              (click)="seleccionarSlot(slot.iso)"
+                            >{{ slot.hora }}</button>
+                          }
+                        </div>
+                      </div>
                     }
                   </div>
                 }
               </div>
             </section>
 
-            <section class="panel-card">
-              <div class="panel-head">
-                <div>
-                  <p class="eyebrow">Paso 3</p>
-                  <h2>Selecciona la hora</h2>
-                </div>
-
-                <span class="helper-copy">{{ longDateLabel(fechaSeleccionada) }}</span>
-              </div>
-
-              @if (cargandoDisponibilidad) {
-                <p class="empty-state">Cargando franjas disponibles...</p>
-              } @else if (!slotsAgrupados.length) {
-                <p class="empty-state">No quedan huecos disponibles para el día elegido.</p>
-              } @else {
-                <div class="time-groups">
-                  @for (grupo of slotsAgrupados; track grupo.label) {
-                    <div class="time-group">
-                      <div class="group-label">{{ grupo.label }}</div>
-                      <div class="slots-grid">
-                        @for (slot of grupo.slots; track slot.iso) {
-                          <button
-                            type="button"
-                            class="slot-card slot-card--action"
-                            [class.is-selected]="slotSeleccionadoIso === slot.iso"
-                            (click)="seleccionarSlot(slot.iso)"
-                          >
-                            {{ slot.hora }}
-                          </button>
-                        }
-                      </div>
-                    </div>
-                  }
-                </div>
-              }
-            </section>
           }
         </section>
 
         <aside class="summary-card">
-          <p class="eyebrow">Resumen</p>
+          <p class="eyebrow">Tu reserva</p>
           <h3>{{ negocioActual?.nombre || 'Reserva' }}</h3>
 
           <div class="summary-row">
@@ -412,7 +390,7 @@
           </div>
           <div class="summary-row">
             <span>Hora</span>
-            <strong>{{ slotSeleccionadoIso ? timeLabel(slotSeleccionadoIso) : 'Pendiente' }}</strong>
+            <strong>{{ slotSeleccionadoIso ? timeLabel(slotSeleccionadoIso) : '–' }}</strong>
           </div>
           <div class="summary-row">
             <span>Personas</span>
@@ -436,8 +414,21 @@
             [disabled]="!slotSeleccionadoIso || accionEnCurso"
             (click)="crearReserva()"
           >
-            Confirmar reserva
+            {{ accionEnCurso ? 'Confirmando…' : 'Confirmar reserva' }}
           </button>
+
+          <!-- Confirmación visible dentro del panel -->
+          @if (exito) {
+            <div class="summary-exito" role="status">
+              {{ exito }}
+            </div>
+          }
+
+          @if (error) {
+            <div class="summary-error" role="alert">
+              {{ error }}
+            </div>
+          }
 
           @if (mostrarTabMis) {
             <button type="button" class="ghost-btn ghost-btn--full" (click)="seleccionarPestanaCliente('mis')">

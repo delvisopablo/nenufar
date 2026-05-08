@@ -57,7 +57,7 @@ describe('LoginComponent', () => {
 
   it('muestra un error visible cuando el login devuelve 401', () => {
     component.loginForm.setValue({
-      identifier: 'demo@example.com',
+      email: 'demo@example.com',
       password: 'wrong-password',
     });
 

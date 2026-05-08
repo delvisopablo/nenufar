@@ -1,0 +1,120 @@
+<div class="logro-card">
+
+  <div class="logro-header">
+    <svg class="logro-nenufar" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+      <path d="M28,28 L51.18,34.21 A24,24 0 1,0 25.91,51.91 Z" fill="#2d8a52"/>
+      <path d="M51.18,34.21 A24,24 0 1,0 25.91,51.91" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+      <g transform="translate(25,23)">
+        <g transform="rotate(0)">    <ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+        <g transform="rotate(51.4)"> <ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+        <g transform="rotate(102.9)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+        <g transform="rotate(154.3)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+        <g transform="rotate(205.7)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+        <g transform="rotate(257.1)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+        <g transform="rotate(308.6)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+        <circle r="5" fill="#e91e8c" stroke="white" stroke-width="1.5"/>
+      </g>
+    </svg>
+
+    <div class="logro-info">
+      <span class="logro-nombre">Reseñador Experto</span>
+      <span class="logro-desc">Publica {{ meta }} reseñas para conseguirlo</span>
+    </div>
+  </div>
+
+  <div class="progreso-wrap">
+    <div class="progreso-bar">
+      <div
+        class="progreso-fill"
+        [style.width.%]="porcentaje"
+        [class.completo]="progreso() >= meta"
+      ></div>
+    </div>
+    <span class="progreso-label">{{ progreso() }} / {{ meta }}</span>
+  </div>
+
+  <div class="pasos">
+    @for (n of pasos; track n) {
+      <div class="paso" [class.paso-hecho]="n <= progreso()">
+        <svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14,14 L25.6,17.1 A12,12 0 1,0 12.95,25.95 Z" [attr.fill]="n <= progreso() ? '#2d8a52' : '#e5e7eb'"/>
+          <g transform="translate(12.5,11)">
+            <g transform="rotate(0)">    <ellipse cx="0" cy="-4.5" rx="2" ry="3.8" [attr.fill]="n <= progreso() ? '#e91e8c' : '#d1d5db'" stroke="white" stroke-width="0.8"/></g>
+            <g transform="rotate(51.4)"> <ellipse cx="0" cy="-4.5" rx="2" ry="3.8" [attr.fill]="n <= progreso() ? '#e91e8c' : '#d1d5db'" stroke="white" stroke-width="0.8"/></g>
+            <g transform="rotate(102.9)"><ellipse cx="0" cy="-4.5" rx="2" ry="3.8" [attr.fill]="n <= progreso() ? '#e91e8c' : '#d1d5db'" stroke="white" stroke-width="0.8"/></g>
+            <g transform="rotate(154.3)"><ellipse cx="0" cy="-4.5" rx="2" ry="3.8" [attr.fill]="n <= progreso() ? '#e91e8c' : '#d1d5db'" stroke="white" stroke-width="0.8"/></g>
+            <g transform="rotate(205.7)"><ellipse cx="0" cy="-4.5" rx="2" ry="3.8" [attr.fill]="n <= progreso() ? '#e91e8c' : '#d1d5db'" stroke="white" stroke-width="0.8"/></g>
+            <g transform="rotate(257.1)"><ellipse cx="0" cy="-4.5" rx="2" ry="3.8" [attr.fill]="n <= progreso() ? '#e91e8c' : '#d1d5db'" stroke="white" stroke-width="0.8"/></g>
+            <g transform="rotate(308.6)"><ellipse cx="0" cy="-4.5" rx="2" ry="3.8" [attr.fill]="n <= progreso() ? '#e91e8c' : '#d1d5db'" stroke="white" stroke-width="0.8"/></g>
+            <circle r="2.5" [attr.fill]="n <= progreso() ? '#e91e8c' : '#d1d5db'" stroke="white" stroke-width="0.8"/>
+          </g>
+        </svg>
+      </div>
+    }
+  </div>
+
+  @if (estado() === 'progresando') {
+    <div class="accion-area">
+      <p class="accion-hint">Faltan <strong>{{ meta - progreso() }}</strong> reseña(s)</p>
+      <button class="btn-publicar" (click)="publicar()">Publicar reseña</button>
+    </div>
+  }
+
+  @if (estado() === 'consiguiendo') {
+    <div class="explosion-area">
+      <div class="explosion-centro">
+        <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+          <path d="M28,28 L51.18,34.21 A24,24 0 1,0 25.91,51.91 Z" fill="#2d8a52"/>
+          <g transform="translate(25,23)">
+            <g transform="rotate(0)">    <ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+            <g transform="rotate(102.9)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+            <g transform="rotate(205.7)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+            <circle r="5" fill="#e91e8c" stroke="white" stroke-width="1.5"/>
+          </g>
+        </svg>
+      </div>
+      @for (f of flores(); track $index) {
+        <div
+          class="flor-particula"
+          [style.--tx]="f.tx"
+          [style.--ty]="f.ty"
+          [style.animation-delay]="f.delay"
+          [style.--scale]="f.scale"
+          [style.--rotate]="f.rotate"
+        >
+          <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+            <path d="M28,28 L51.18,34.21 A24,24 0 1,0 25.91,51.91 Z" fill="#2d8a52"/>
+            <g transform="translate(25,23)">
+              <g transform="rotate(0)">    <ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+              <g transform="rotate(102.9)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+              <g transform="rotate(205.7)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+              <circle r="5" fill="#e91e8c" stroke="white" stroke-width="1.5"/>
+            </g>
+          </svg>
+        </div>
+      }
+    </div>
+  }
+
+  @if (estado() === 'conseguido') {
+    <div class="conseguido-area">
+      <svg class="trofeo-nenufar" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+        <path d="M28,28 L51.18,34.21 A24,24 0 1,0 25.91,51.91 Z" fill="#2d8a52"/>
+        <g transform="translate(25,23)">
+          <g transform="rotate(0)">    <ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+          <g transform="rotate(51.4)"> <ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+          <g transform="rotate(102.9)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+          <g transform="rotate(154.3)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+          <g transform="rotate(205.7)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+          <g transform="rotate(257.1)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+          <g transform="rotate(308.6)"><ellipse cx="0" cy="-9" rx="4" ry="7.5" fill="#e91e8c" stroke="white" stroke-width="1.5"/></g>
+          <circle r="5" fill="#e91e8c" stroke="white" stroke-width="1.5"/>
+        </g>
+      </svg>
+      <p class="conseguido-titulo">¡Logro conseguido!</p>
+      <p class="conseguido-sub">Reseñador Experto</p>
+      <button class="btn-reiniciar" (click)="reiniciar()">Volver a intentarlo</button>
+    </div>
+  }
+
+</div>

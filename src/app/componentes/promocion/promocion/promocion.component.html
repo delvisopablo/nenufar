@@ -119,11 +119,70 @@
           <input type="text" formControlName="codigo" placeholder="NENUFAR10" />
         </label>
 
-        <label class="field">
-          <span>Producto ID</span>
-          <input type="number" formControlName="productoId" min="1" step="1" />
+        <label class="field field--full">
+          <span>Producto asociado</span>
+          <select formControlName="productoId">
+            <option value="">Promoción general</option>
+            @for (producto of productos(); track producto.id) {
+              <option [value]="producto.id">
+                {{ producto.nombre }} · {{ producto.precio | number:'1.2-2' }} €
+              </option>
+            }
+          </select>
+          @if (cargandoProductos()) {
+            <small class="field-hint">Cargando productos...</small>
+          } @else if (!productos().length) {
+            <small class="field-hint">Todavía no hay productos cargados para este negocio.</small>
+          }
         </label>
       </div>
+
+      <div class="promo-form__actions promo-form__actions--secondary">
+        <button type="button" class="promo-secondary-btn" (click)="abrirCrearProducto()">
+          Crear producto básico
+        </button>
+      </div>
+
+      @if (editorProductoAbierto()) {
+        <div class="promo-producto-rapido">
+          <div class="promo-form__head">
+            <h3>Producto básico</h3>
+            <p>Úsalo si quieres asociar la promoción a un producto sin salir del popup.</p>
+          </div>
+
+          <div class="promo-grid">
+            <label class="field">
+              <span>Nombre del producto</span>
+              <input type="text" [formControl]="productoForm.controls.nombre" placeholder="Corte de pelo" />
+              @if (productoForm.controls.nombre.invalid && (productoForm.controls.nombre.touched || productoForm.controls.nombre.dirty)) {
+                <small class="field-error">El nombre es obligatorio.</small>
+              }
+            </label>
+
+            <label class="field">
+              <span>Precio</span>
+              <input type="number" [formControl]="productoForm.controls.precio" min="0" step="0.01" />
+              @if (productoForm.controls.precio.invalid && (productoForm.controls.precio.touched || productoForm.controls.precio.dirty)) {
+                <small class="field-error">El precio debe ser válido.</small>
+              }
+            </label>
+
+            <label class="field field--full">
+              <span>Descripción opcional</span>
+              <textarea [formControl]="productoForm.controls.descripcion" rows="2" placeholder="Describe brevemente el producto."></textarea>
+            </label>
+          </div>
+
+          <div class="promo-form__actions">
+            <button type="button" class="promo-primary-btn" [disabled]="guardandoProducto()" (click)="crearProductoRapido()">
+              {{ guardandoProducto() ? 'Creando...' : 'Crear producto' }}
+            </button>
+            <button type="button" class="promo-secondary-btn" (click)="cancelarCrearProducto()">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      }
 
       @if (form.hasError('fechaRangoInvalido') && (form.dirty || form.touched)) {
         <p class="promo-feedback promo-feedback--warning">

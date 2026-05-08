@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   Component,
+  computed,
   ElementRef,
   NgZone,
   OnDestroy,
@@ -22,6 +23,7 @@ import {
   NenufarRightClickEvent,
   NenufarTone
 } from '../../nenufar/nenufar.types';
+import { OnboardingComponent, OnboardingModo } from '../../onboarding/onboarding.component';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
 
 type LilyId = 'acompanante' | 'negocio' | 'usuario';
@@ -41,6 +43,8 @@ type LilyBody = NenufarEntity<LilyId> & {
   linearDamping: number;
   maxSpeed: number;
   maxSpin: number;
+  motionPhase: number;
+  motionStrength: number;
   route: string | null;
   subtitle?: string;
   tone: NenufarTone;
@@ -69,7 +73,7 @@ type RectBounds = {
 @Component({
   selector: 'app-eleccion-registro',
   standalone: true,
-  imports: [CommonModule, EstanqueBackgroundComponent, NenufarComponent],
+  imports: [CommonModule, EstanqueBackgroundComponent, NenufarComponent, OnboardingComponent],
   templateUrl: './eleccion-registro.component.html',
   styleUrls: ['./eleccion-registro.component.css']
 })
@@ -93,18 +97,30 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
   });
 
   readonly lilies = signal<LilyView[]>([]);
-  readonly contextHint = signal('Clic izquierdo empuja y entra. Clic derecho muestra información rápida.');
+  readonly popupInfoUsuario = signal(false);
+  readonly popupInfoNegocio = signal(false);
+  readonly contextHint = signal(
+    'Elige el nenúfar que mejor te encaja. Al tocarlo te enseñamos primero qué podrás hacer dentro de Nenúfar.',
+  );
+  readonly actionableLilies = computed(() =>
+    this.lilies().filter((lily) => lily.id === 'usuario' || lily.id === 'negocio'),
+  );
+  readonly onboardingVisible = computed(() => this.popupInfoUsuario() || this.popupInfoNegocio());
+  readonly onboardingModo = computed<OnboardingModo>(() =>
+    this.popupInfoNegocio() ? 'negocio' : 'usuario'
+  );
 
   private viewport = { width: 0, height: 0 };
   private safeRect: RectBounds | null = null;
   private lilyBodies: LilyBody[] = [];
   private resizeObserver?: ResizeObserver;
   private animationFrameId = 0;
+  private animationTime = 0;
   private lastFrameTime = 0;
   private lastUiCommit = 0;
 
   ngOnInit(): void {
-    this.title.setTitle('Regístrate');
+    this.title.setTitle('Elige tu nenúfar');
   }
 
   ngAfterViewInit(): void {
@@ -138,6 +154,43 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
     void this.router.navigate([route]);
   }
 
+  seleccionarTipoRegistro(tipo: LilyId): void {
+    if (tipo === 'usuario') {
+      this.popupInfoNegocio.set(false);
+      this.popupInfoUsuario.set(true);
+      return;
+    }
+
+    if (tipo === 'negocio') {
+      this.popupInfoUsuario.set(false);
+      this.popupInfoNegocio.set(true);
+    }
+  }
+
+  cerrarPopupInfo(): void {
+    this.popupInfoUsuario.set(false);
+    this.popupInfoNegocio.set(false);
+  }
+
+  continuarRegistroUsuario(): void {
+    this.cerrarPopupInfo();
+    this.irARuta('/registro');
+  }
+
+  continuarRegistroNegocio(): void {
+    this.cerrarPopupInfo();
+    this.irARuta('/registro-negocio');
+  }
+
+  continuarOnboarding(modo: OnboardingModo): void {
+    if (modo === 'negocio') {
+      this.continuarRegistroNegocio();
+      return;
+    }
+
+    this.continuarRegistroUsuario();
+  }
+
   volverAlEstanque(): void {
     void this.router.navigate(['/estanque']);
   }
@@ -160,6 +213,10 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
       spinJitterMin: 0.002,
       timestamp: performance.now() * 0.001
     });
+
+    if (body.id === 'usuario' || body.id === 'negocio') {
+      this.zone.run(() => this.seleccionarTipoRegistro(body.id));
+    }
   }
 
   onLilyRightClick(event: NenufarRightClickEvent<LilyView>): void {
@@ -174,6 +231,7 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
   private animate = (timestamp: number): void => {
     const dt = this.lastFrameTime ? Math.min((timestamp - this.lastFrameTime) / 1000, 0.032) : 0.016;
     this.lastFrameTime = timestamp;
+    this.animationTime = timestamp / 1000;
 
     this.stepPhysics(dt, timestamp / 1000);
 
@@ -193,12 +251,21 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
     this.lilyEngine.setBounds(this.sceneBounds());
 
     this.lilyBodies.forEach((lily, index) => {
-      const drift = elapsed * 0.28 + index * Math.PI * 0.72;
-      lily.vel.x += Math.cos(drift) * 4.2 * dt;
-      lily.vel.y += Math.sin(drift * 0.92) * 3.8 * dt;
-      lily.angVel += Math.sin(elapsed * 0.18 + index) * 0.0008;
+      const orbit = elapsed * (0.28 + lily.motionStrength * 0.02) + lily.motionPhase;
+      const sway = elapsed * (0.36 + lily.motionStrength * 0.024) - lily.motionPhase * 0.62;
+      const cross = elapsed * (0.24 + lily.motionStrength * 0.018) + index * 0.7;
 
-      this.keepMinimumMotion(lily, drift);
+      lily.vel.x += (
+        Math.cos(orbit) * (4 + lily.motionStrength * 0.42) +
+        Math.sin(cross) * (2.4 + lily.motionStrength * 0.18)
+      ) * dt;
+      lily.vel.y += (
+        Math.sin(sway) * (3.7 + lily.motionStrength * 0.38) +
+        Math.cos(cross * 1.1) * (2.6 + lily.motionStrength * 0.15)
+      ) * dt;
+      lily.angVel += Math.sin(elapsed * 0.18 + index + lily.motionPhase) * 0.0008;
+
+      this.keepMinimumMotion(lily, orbit);
     });
 
     this.lilyEngine.step(dt);
@@ -273,14 +340,19 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
         collisionEnabled: true,
         contextText: 'Ruta pensada para guardar reseñas, reservar y seguir tu actividad.',
         id: 'usuario',
-        imageSrc: 'assets/imagenes/nenufar.jpeg',
+        imageSrc: 'assets/imagenes/nenufar.png',
         kind: 'menu',
         label: 'Usuario',
         lastTouchedAt: -10,
         linearDamping: 1,
         maxSpeed: 34,
         maxSpin: 0.018,
-        pos: { x: width * 0.18, y: height * 0.24 },
+        motionPhase: 0.6,
+        motionStrength: 1.22,
+        pos: {
+          x: width < 720 ? width * 0.28 : width * 0.24,
+          y: height < 720 ? height * 0.6 : height * 0.68
+        },
         radius,
         route: '/registro',
         subtitle: 'Reseñas, reservas y pétalos',
@@ -296,14 +368,19 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
         collisionEnabled: true,
         contextText: 'Ruta para perfilar tu negocio, horarios y promociones dentro de Nenúfar.',
         id: 'negocio',
-        imageSrc: 'assets/imagenes/nenufar.jpeg',
+        imageSrc: 'assets/imagenes/nenufar.png',
         kind: 'menu',
         label: 'Negocio',
         lastTouchedAt: -10,
         linearDamping: 1,
         maxSpeed: 34,
         maxSpin: 0.018,
-        pos: { x: width * 0.82, y: height * 0.72 },
+        motionPhase: 2.2,
+        motionStrength: 1.28,
+        pos: {
+          x: width < 720 ? width * 0.72 : width * 0.78,
+          y: height < 720 ? height * 0.8 : height * 0.7
+        },
         radius,
         route: '/registro-negocio',
         subtitle: 'Perfil, horarios y promos',
@@ -324,7 +401,12 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
         linearDamping: 1,
         maxSpeed: 34,
         maxSpin: 0.018,
-        pos: { x: width * 0.18, y: height * 0.78 },
+        motionPhase: 4.1,
+        motionStrength: 0.94,
+        pos: {
+          x: width < 720 ? width * 0.82 : width * 0.86,
+          y: height < 720 ? height * 0.27 : height * 0.24
+        },
         radius,
         route: null,
         tone: 'mustio',
@@ -338,8 +420,8 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
     });
 
     if (this.lilyBodies.length >= 3) {
-      this.lilyBodies[2].pos.x = width * 0.84;
-      this.lilyBodies[2].pos.y = height * 0.26;
+      this.lilyBodies[2].pos.x = width < 720 ? width * 0.82 : width * 0.86;
+      this.lilyBodies[2].pos.y = height < 720 ? height * 0.27 : height * 0.24;
       this.resolveWallBounce(this.lilyBodies[2]);
       this.resolveCardAvoidance(this.lilyBodies[2]);
     }
@@ -372,10 +454,10 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
   private computeRadius(): number {
     const minSide = Math.min(this.viewport.width, this.viewport.height);
     if (this.viewport.width < 720) {
-      return this.clamp(minSide * 0.16, 80, 110);
+      return this.clamp(minSide * 0.19, 104, 132);
     }
 
-    return this.clamp(minSide * 0.17, 110, 160);
+    return this.clamp(minSide * 0.22, 150, 210);
   }
 
   private resolveWallBounce(lily: LilyBody): void {
@@ -490,7 +572,7 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   private commitLilies(): void {
-    const nextLilies: LilyView[] = this.lilyBodies.map((lily) => ({
+    const nextLilies: LilyView[] = this.lilyBodies.map((lily, index) => ({
       badge: lily.badge,
       contextText: lily.contextText,
       id: lily.id,
@@ -501,6 +583,7 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
       route: lily.route,
       state: {
         rotationDeg: lily.angle,
+        scale: 1 + Math.sin(this.animationTime * (0.86 + index * 0.05) + lily.motionPhase) * 0.018,
         tone: lily.tone,
         visible: true,
         x: lily.pos.x,

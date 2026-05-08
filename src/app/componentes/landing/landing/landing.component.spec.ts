@@ -22,6 +22,7 @@ describe('LandingComponent', () => {
     authServiceSpy.isAuthenticated.and.returnValue(false);
 
     localStorage.removeItem('accesoPermitido');
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('token');
     localStorage.removeItem('access_token');
     localStorage.removeItem('usuarioLogueado');
@@ -43,6 +44,7 @@ describe('LandingComponent', () => {
   afterEach(() => {
     fixture.destroy();
     localStorage.removeItem('accesoPermitido');
+    localStorage.removeItem('accessToken');
     localStorage.removeItem('token');
     localStorage.removeItem('access_token');
     localStorage.removeItem('usuarioLogueado');

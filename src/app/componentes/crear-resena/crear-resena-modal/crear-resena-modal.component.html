@@ -1,10 +1,10 @@
 @if (visible) {
   <div class="modal-backdrop">
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Crear reseña">
       <div class="modal-head">
         <p class="modal-eyebrow">Nueva reseña</p>
-        <h2>Compartir una reseña</h2>
-        <p>Cuéntale a la comunidad cómo ha sido tu experiencia.</p>
+        <h2>Comparte tu reseña</h2>
+        <p>Cuéntale a la comunidad cómo ha sido tu experiencia con ese negocio.</p>
       </div>
 
       <form [formGroup]="form" (ngSubmit)="enviar()" class="modal-form">
@@ -35,31 +35,90 @@
         }
 
         <label class="field">
+          <span>¿Qué probaste o hiciste?</span>
+          <input
+            type="text"
+            placeholder="Ej: Corte de pelo, café con leche, menú del día…"
+            formControlName="producto"
+            (input)="onProductoInput()"
+            (focus)="mostrarListaProductos.set(true)"
+            (blur)="ocultarListaProductosConRetraso()"
+          />
+          <small class="field-hint">{{ getProductoHint() }}</small>
+        </label>
+
+        @if (mostrarListaProductos() && sugerenciasProducto().length) {
+          <ul class="sugerencias">
+            @for (producto of sugerenciasProducto(); track producto.id) {
+              <li (click)="seleccionarProducto(producto)">
+                <span class="sugerencia-copy">
+                  <strong>{{ producto.nombre }}</strong>
+                  @if (producto.precio != null) {
+                    <small>{{ producto.precio | number:'1.2-2' }} €</small>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
+
+        <label class="field">
+          <span>Precio aproximado</span>
+          <input
+            type="number"
+            inputmode="decimal"
+            min="0"
+            step="0.01"
+            placeholder="Opcional"
+            formControlName="precioAproximado"
+          />
+          <small class="field-hint">Opcional. No tiene por qué mostrarse públicamente.</small>
+        </label>
+
+        <label class="field">
           <span>Comentario</span>
           <textarea placeholder="Tu comentario..." formControlName="comentario"></textarea>
         </label>
 
         <div class="field">
-          <span>Valoracion</span>
+          <span>Valoración</span>
           <div class="estrellas">
             @for (estrella of [1, 2, 3, 4, 5]; track estrella) {
-              <span
+              <button
+                type="button"
+                class="estrella-btn"
                 (click)="form.controls['valoracion'].setValue(estrella)"
                 [class.activa]="estrella <= form.controls['valoracion'].value"
               >
                 ★
-              </span>
+              </button>
             }
           </div>
         </div>
 
         <div
-          class="sello-switch"
-          [class.activo]="form.controls['selloNenufar'].value"
-          (click)="form.controls['selloNenufar'].setValue(!form.controls['selloNenufar'].value)"
-          title="El Sello Nenúfar destaca esta reseña como especialmente útil o relevante."
+          class="sello-wrap"
+          (mouseenter)="mostrarInfoSello()"
+          (mouseleave)="ocultarInfoSello()"
+          (focusin)="mostrarInfoSello()"
+          (focusout)="ocultarInfoSello()"
         >
-          🌿 Sello Nenúfar
+          <button
+            type="button"
+            class="sello-switch"
+            [class.activo]="form.controls['selloNenufar'].value"
+            (click)="toggleSello()"
+            [attr.aria-describedby]="mostrarTooltipSello() ? 'sello-tooltip' : null"
+          >
+            <span class="sello-switch__icon" aria-hidden="true">🌿</span>
+            <span>Sello Nenúfar</span>
+          </button>
+
+          @if (mostrarTooltipSello()) {
+            <span id="sello-tooltip" class="sello-tooltip" role="tooltip">
+              Cuesta 5 pétalos
+            </span>
+          }
         </div>
 
         @if (errorMensaje()) {

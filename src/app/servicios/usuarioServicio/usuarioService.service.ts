@@ -36,12 +36,22 @@ export interface PerfilUsuarioResponse {
     contenido?: string;
     comentario?: string;
     puntuacion: number;
+    selloNenufar?: boolean;
     creadoEn?: string;
     fecha?: string;
+    productoId?: number | null;
+    productoNombre?: string | null;
+    precioProducto?: number | null;
+    producto?: {
+      id?: number;
+      nombre?: string;
+      precio?: number | null;
+    } | null;
     negocio?: {
       id: number;
       nombre: string;
       slug?: string | null;
+      nickname?: string | null;
     };
   }>;
 }

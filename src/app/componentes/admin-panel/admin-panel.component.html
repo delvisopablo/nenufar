@@ -1,0 +1,421 @@
+<section class="admin-shell">
+  <div class="admin-hero">
+    <div>
+      <p class="admin-kicker">Panel de administración</p>
+      <h1>Moderación y gestión de Nenúfar</h1>
+      <p class="admin-copy">
+        Controla usuarios, negocios, reseñas, promociones, reservas y revisa el log mínimo de auditoría.
+      </p>
+    </div>
+
+    <div class="admin-badge">
+      <span>Rol activo</span>
+      <strong>{{ usuarioActual()?.rolGlobal || 'SIN ROL' }}</strong>
+    </div>
+  </div>
+
+  @if (mensaje()) {
+    <div class="admin-feedback admin-feedback--success">
+      {{ mensaje() }}
+    </div>
+  }
+
+  @if (error()) {
+    <div class="admin-feedback admin-feedback--error">
+      {{ error() }}
+    </div>
+  }
+
+  @if (accesoDenegado()) {
+    <div class="admin-empty">
+      <h2>No tienes permisos</h2>
+      <p>Este espacio solo está disponible para administradores globales.</p>
+      <a routerLink="/mi-perfil" class="admin-link">Ir a mi perfil</a>
+    </div>
+  } @else if (!esAdmin()) {
+    <div class="admin-empty">
+      <h2>Comprobando permisos</h2>
+      <p>Estamos validando tu sesión de administración.</p>
+    </div>
+  } @else {
+    <nav class="admin-tabs" aria-label="Secciones del panel de administración">
+      @for (tab of tabs; track tab.id) {
+        <button
+          type="button"
+          class="admin-tab"
+          [class.admin-tab--active]="tabActiva() === tab.id"
+          (click)="seleccionarPestana(tab.id)"
+        >
+          {{ tab.label }}
+        </button>
+      }
+    </nav>
+
+    @if (cargando()) {
+      <div class="admin-empty">
+        <h2>Cargando</h2>
+        <p>Recuperando datos del panel.</p>
+      </div>
+    } @else if (tabActiva() === 'usuarios') {
+      <section class="admin-grid">
+        @if (usuarios().length) {
+          @for (usuario of usuarios(); track usuario.id) {
+            <article class="admin-card">
+              <div class="admin-card__head">
+                <div>
+                  <h2>{{ usuario.nombre }}</h2>
+                  <p>&#64;{{ usuario.nickname }} · {{ usuario.email }}</p>
+                </div>
+
+                <div class="admin-card__chips">
+                  <span class="chip">{{ usuario.rolGlobal }}</span>
+                  <span class="chip chip--muted">{{ formatEstado(usuario.estadoCuenta) }}</span>
+                </div>
+              </div>
+
+              <p class="admin-meta">
+                {{ getUsuarioStats(usuario) }}
+              </p>
+              <p class="admin-meta">
+                Último acceso: {{ formatFecha(usuario.ultimoLoginEn) }}
+              </p>
+
+              <div class="admin-actions">
+                @if (irAVerUsuario(usuario.id); as route) {
+                  <a class="btn btn--ghost" [routerLink]="route">Ver</a>
+                }
+
+                @if (usuario.estadoCuenta === 'SUSPENDIDA' || usuario.estadoCuenta === 'ELIMINADA') {
+                  <button
+                    type="button"
+                    class="btn btn--soft"
+                    [disabled]="estaAccionActiva('usuarios:' + usuario.id + ':activar')"
+                    (click)="activarUsuario(usuario)"
+                  >
+                    Activar
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn btn--soft"
+                    [disabled]="estaAccionActiva('usuarios:' + usuario.id + ':suspender')"
+                    (click)="suspenderUsuario(usuario)"
+                  >
+                    Suspender
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="btn btn--danger"
+                  [disabled]="estaAccionActiva('usuarios:' + usuario.id + ':borrar')"
+                  (click)="borrarUsuario(usuario)"
+                >
+                  Borrar
+                </button>
+              </div>
+            </article>
+          }
+        } @else {
+          <div class="admin-empty">
+            <h2>Sin usuarios</h2>
+            <p>No hay usuarios para mostrar.</p>
+          </div>
+        }
+      </section>
+    } @else if (tabActiva() === 'negocios') {
+      <section class="admin-grid">
+        @if (negocios().length) {
+          @for (negocio of negocios(); track negocio.id) {
+            <article class="admin-card">
+              <div class="admin-card__head">
+                <div>
+                  <h2>{{ negocio.nombre }}</h2>
+                  <p>{{ negocio.slug || 'Sin slug' }}</p>
+                </div>
+
+                <div class="admin-card__chips">
+                  <span class="chip">{{ negocio.activo ? 'ACTIVO' : 'INACTIVO' }}</span>
+                  @if (negocio.verificado) {
+                    <span class="chip chip--accent">Verificado</span>
+                  }
+                </div>
+              </div>
+
+              <p class="admin-meta">
+                Dueño: {{ negocio.dueno?.nombre || 'Sin dueño' }} · {{ negocio.categoria?.nombre || 'Sin categoría' }}
+              </p>
+              <p class="admin-meta">
+                {{ getNegocioStats(negocio) }}
+              </p>
+
+              <div class="admin-actions">
+                @if (irAVerNegocio(negocio.id); as route) {
+                  <a class="btn btn--ghost" [routerLink]="route">Ver</a>
+                }
+
+                @if (negocio.activo) {
+                  <button
+                    type="button"
+                    class="btn btn--soft"
+                    [disabled]="estaAccionActiva('negocios:' + negocio.id + ':desactivar')"
+                    (click)="desactivarNegocio(negocio)"
+                  >
+                    Desactivar
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn btn--soft"
+                    [disabled]="estaAccionActiva('negocios:' + negocio.id + ':activar')"
+                    (click)="activarNegocio(negocio)"
+                  >
+                    Activar
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="btn btn--danger"
+                  [disabled]="estaAccionActiva('negocios:' + negocio.id + ':borrar')"
+                  (click)="borrarNegocio(negocio)"
+                >
+                  Borrar
+                </button>
+              </div>
+            </article>
+          }
+        } @else {
+          <div class="admin-empty">
+            <h2>Sin negocios</h2>
+            <p>No hay negocios para mostrar.</p>
+          </div>
+        }
+      </section>
+    } @else if (tabActiva() === 'resenas') {
+      <section class="admin-grid">
+        @if (resenas().length) {
+          @for (resena of resenas(); track resena.id) {
+            <article class="admin-card">
+              <div class="admin-card__head">
+                <div>
+                  <h2>Reseña #{{ resena.id }}</h2>
+                  <p>{{ resena.negocio?.nombre || 'Negocio sin nombre' }}</p>
+                </div>
+
+                <div class="admin-card__chips">
+                  <span class="chip">{{ formatEstado(resena.estado) }}</span>
+                  <span class="chip chip--muted">{{ resena.puntuacion }}/5</span>
+                </div>
+              </div>
+
+              <p class="admin-copy admin-copy--small">{{ resena.contenido }}</p>
+              <p class="admin-meta">
+                Autor: {{ resena.usuario?.nombre || 'Sin autor' }} · {{ formatFecha(resena.creadoEn) }}
+              </p>
+
+              <div class="admin-actions">
+                @if (irAVerNegocio(resena.negocio?.id); as route) {
+                  <a class="btn btn--ghost" [routerLink]="route">Ver</a>
+                }
+
+                @if (resena.estado === 'PUBLICADO') {
+                  <button
+                    type="button"
+                    class="btn btn--soft"
+                    [disabled]="estaAccionActiva('resenas:' + resena.id + ':ocultar')"
+                    (click)="ocultarResena(resena)"
+                  >
+                    Ocultar
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn btn--soft"
+                    [disabled]="estaAccionActiva('resenas:' + resena.id + ':publicar')"
+                    (click)="publicarResena(resena)"
+                  >
+                    Publicar
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="btn btn--danger"
+                  [disabled]="estaAccionActiva('resenas:' + resena.id + ':borrar')"
+                  (click)="borrarResena(resena)"
+                >
+                  Borrar
+                </button>
+              </div>
+            </article>
+          }
+        } @else {
+          <div class="admin-empty">
+            <h2>Sin reseñas</h2>
+            <p>No hay reseñas para mostrar.</p>
+          </div>
+        }
+      </section>
+    } @else if (tabActiva() === 'promociones') {
+      <section class="admin-grid">
+        @if (promociones().length) {
+          @for (promocion of promociones(); track promocion.id) {
+            <article class="admin-card">
+              <div class="admin-card__head">
+                <div>
+                  <h2>{{ promocion.titulo }}</h2>
+                  <p>{{ promocion.negocio?.nombre || 'Negocio sin nombre' }}</p>
+                </div>
+
+                <div class="admin-card__chips">
+                  <span class="chip">{{ formatEstado(promocion.estado) }}</span>
+                  <span class="chip chip--muted">{{ promocion.activa ? 'Activa' : 'Inactiva' }}</span>
+                </div>
+              </div>
+
+              <p class="admin-meta">
+                Descuento: {{ getPromocionDescuento(promocion) }}
+              </p>
+              <p class="admin-meta">
+                Caduca: {{ formatFecha(promocion.fechaCaducidad) }}
+              </p>
+
+              <div class="admin-actions">
+                @if (irAVerNegocio(promocion.negocio?.id); as route) {
+                  <a class="btn btn--ghost" [routerLink]="route">Ver</a>
+                }
+
+                @if (promocion.estado === 'PUBLICADO' && promocion.activa) {
+                  <button
+                    type="button"
+                    class="btn btn--soft"
+                    [disabled]="estaAccionActiva('promociones:' + promocion.id + ':ocultar')"
+                    (click)="ocultarPromocion(promocion)"
+                  >
+                    Ocultar
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn btn--soft"
+                    [disabled]="estaAccionActiva('promociones:' + promocion.id + ':publicar')"
+                    (click)="publicarPromocion(promocion)"
+                  >
+                    Publicar
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="btn btn--danger"
+                  [disabled]="estaAccionActiva('promociones:' + promocion.id + ':borrar')"
+                  (click)="borrarPromocion(promocion)"
+                >
+                  Borrar
+                </button>
+              </div>
+            </article>
+          }
+        } @else {
+          <div class="admin-empty">
+            <h2>Sin promociones</h2>
+            <p>No hay promociones para mostrar.</p>
+          </div>
+        }
+      </section>
+    } @else if (tabActiva() === 'reservas') {
+      <section class="admin-grid">
+        @if (reservas().length) {
+          @for (reserva of reservas(); track reserva.id) {
+            <article class="admin-card">
+              <div class="admin-card__head">
+                <div>
+                  <h2>Reserva #{{ reserva.id }}</h2>
+                  <p>{{ reserva.negocio?.nombre || 'Negocio sin nombre' }}</p>
+                </div>
+
+                <div class="admin-card__chips">
+                  <span class="chip">{{ formatEstado(reserva.estado) }}</span>
+                  <span class="chip chip--muted">{{ reserva.numPersonas || 0 }} personas</span>
+                </div>
+              </div>
+
+              <p class="admin-meta">
+                Usuario: {{ reserva.usuario?.nombre || 'Sin usuario' }}
+              </p>
+              <p class="admin-meta">
+                Fecha: {{ formatFecha(reserva.fecha) }}
+              </p>
+              @if (reserva.motivoCancelacion) {
+                <p class="admin-copy admin-copy--small">{{ reserva.motivoCancelacion }}</p>
+              }
+
+              <div class="admin-actions">
+                @if (irAVerNegocio(reserva.negocio?.id); as route) {
+                  <a class="btn btn--ghost" [routerLink]="route">Ver</a>
+                }
+
+                @if (reserva.estado !== 'CANCELADA') {
+                  <button
+                    type="button"
+                    class="btn btn--soft"
+                    [disabled]="estaAccionActiva('reservas:' + reserva.id + ':cancelar')"
+                    (click)="cancelarReserva(reserva)"
+                  >
+                    Cancelar
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="btn btn--danger"
+                  [disabled]="estaAccionActiva('reservas:' + reserva.id + ':borrar')"
+                  (click)="borrarReserva(reserva)"
+                >
+                  Borrar
+                </button>
+              </div>
+            </article>
+          }
+        } @else {
+          <div class="admin-empty">
+            <h2>Sin reservas</h2>
+            <p>No hay reservas para mostrar.</p>
+          </div>
+        }
+      </section>
+    } @else if (tabActiva() === 'logs') {
+      <section class="admin-grid">
+        @if (logs().length) {
+          @for (log of logs(); track log.id) {
+            <article class="admin-card admin-card--compact">
+              <div class="admin-card__head">
+                <div>
+                  <h2>{{ log.accion }} · {{ log.entidad }}</h2>
+                  <p>
+                    Admin: {{ log.admin?.nickname || log.admin?.email || 'Sin admin' }}
+                  </p>
+                </div>
+
+                <span class="chip chip--accent">
+                  {{ log.entidadId ? '#' + log.entidadId : 'Sin ID' }}
+                </span>
+              </div>
+
+              <p class="admin-meta">{{ formatFecha(log.creadoEn) }}</p>
+              <p class="admin-copy admin-copy--small">
+                {{ log.motivo || 'Sin motivo adicional registrado.' }}
+              </p>
+            </article>
+          }
+        } @else {
+          <div class="admin-empty">
+            <h2>Sin logs</h2>
+            <p>Todavía no hay eventos de auditoría para mostrar.</p>
+          </div>
+        }
+      </section>
+    }
+  }
+</section>

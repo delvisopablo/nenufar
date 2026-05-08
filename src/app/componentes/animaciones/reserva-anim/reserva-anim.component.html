@@ -1,0 +1,61 @@
+<div class="reserva-card">
+  <div class="reserva-header">
+    <span class="reserva-icono">📅</span>
+    <span class="reserva-titulo">Elige tu horario</span>
+  </div>
+
+  <div class="leyenda">
+    <span class="leyenda-item"><span class="dot libre"></span> Libre</span>
+    <span class="leyenda-item"><span class="dot ocupado"></span> Ocupado</span>
+    <span class="leyenda-item"><span class="dot seleccionado"></span> Tu reserva</span>
+  </div>
+
+  <div class="grid-wrap">
+    <div class="grid-header">
+      <div class="hora-col"></div>
+      @for (d of dias; track d) {
+        <div class="dia-label">{{ d }}</div>
+      }
+    </div>
+
+    <div class="grid-body">
+      @for (h of horas; track h) {
+        <div class="grid-row">
+          <div class="hora-label">{{ h }}</div>
+          @for (d of dias; track d) {
+            <button
+              class="slot"
+              [class]="'slot-' + getEstado(d, h)"
+              [disabled]="getEstado(d, h) === 'ocupado' || confirmando()"
+              (click)="clickSlot(d, h)"
+            >
+              @if (getEstado(d, h) === 'seleccionado') { <span>✓</span> }
+              @if (getEstado(d, h) === 'confirmado') { <span class="check-anim">✓</span> }
+              @if (getEstado(d, h) === 'ocupado') { <span>×</span> }
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="reserva-footer">
+    @if (!slotSeleccionado() && !confirmado()) {
+      <div class="hint">Toca un slot libre para reservarlo</div>
+    }
+    @if (slotSeleccionado() && !confirmado()) {
+      <div class="confirm-row">
+        <span class="slot-elegido">{{ slotSeleccionado() }}</span>
+        <button class="btn-confirmar" [class.cargando]="confirmando()" (click)="confirmar()">
+          {{ confirmando() ? '...' : 'Confirmar' }}
+        </button>
+      </div>
+    }
+    @if (confirmado()) {
+      <div class="ok-row">
+        <span class="ok-badge">✓ ¡Reserva confirmada!</span>
+        <button class="btn-reiniciar" (click)="reiniciar()">Reiniciar</button>
+      </div>
+    }
+  </div>
+</div>

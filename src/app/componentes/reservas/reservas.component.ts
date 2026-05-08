@@ -380,7 +380,7 @@ export class ReservasComponent implements OnInit, OnChanges {
       return;
     }
 
-    if (!this.authService.isAuthenticated()) {
+    if (!this.authService.hasAccessToken()) {
       this.mensajeAcceso = 'Necesitas iniciar sesion para crear una reserva.';
       this.modalAccesoAbierto = true;
       return;
@@ -610,7 +610,7 @@ export class ReservasComponent implements OnInit, OnChanges {
     const negocio$ = targetBusinessId
       ? this.getBusinessContext(targetBusinessId).pipe(catchError(() => of(null)))
       : of(null);
-    const misReservas$ = this.authService.isAuthenticated() || this.usuarioActual?.id
+    const misReservas$ = this.authService.hasAccessToken()
       ? this.reservaService.getMisReservas({ limit: 50 }).pipe(catchError(() => of([])))
       : of([]);
 
@@ -639,13 +639,15 @@ export class ReservasComponent implements OnInit, OnChanges {
 
   private loadBusinessDayData(negocioId: number): void {
     forkJoin({
-      reservas: this.reservaService
-        .getReservasPorNegocio(negocioId, {
-          from: this.startOfDayIso(this.fechaSeleccionada),
-          to: this.endOfDayIso(this.fechaSeleccionada),
-          limit: 100,
-        })
-        .pipe(catchError(() => of([]))),
+      reservas: this.authService.hasAccessToken()
+        ? this.reservaService
+            .getReservasPorNegocio(negocioId, {
+              from: this.startOfDayIso(this.fechaSeleccionada),
+              to: this.endOfDayIso(this.fechaSeleccionada),
+              limit: 100,
+            })
+            .pipe(catchError(() => of([])))
+        : of([]),
       disponibilidad: this.tieneHorarioConfigurado
         ? this.reservaService
             .availability(negocioId, this.fechaSeleccionada)
@@ -665,7 +667,7 @@ export class ReservasComponent implements OnInit, OnChanges {
   }
 
   private loadMyReservations(): void {
-    if (!(this.authService.isAuthenticated() || this.usuarioActual?.id)) {
+    if (!this.authService.hasAccessToken()) {
       this.misReservas = [];
       return;
     }

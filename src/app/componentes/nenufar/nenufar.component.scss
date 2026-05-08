@@ -60,20 +60,39 @@
 .nenufar-sprite img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-  box-shadow:
-    0 20px 30px rgba(0, 0, 0, 0.22),
-    0 10px 18px rgba(0, 0, 0, 0.12);
+  object-fit: contain;
   display: block;
+  background: transparent;
 }
 
 .tone-fresh .nenufar-sprite img {
-  filter: saturate(1.06) contrast(1.03) brightness(1.01);
+  filter:
+    saturate(1.06)
+    contrast(1.03)
+    brightness(1.01)
+    drop-shadow(0 18px 24px rgba(0, 0, 0, 0.24))
+    drop-shadow(0 8px 14px rgba(0, 0, 0, 0.12));
 }
 
 .tone-mustio .nenufar-sprite img {
-  filter: saturate(0.88) brightness(0.96) contrast(1.02);
+  filter:
+    saturate(0.88)
+    brightness(0.98)
+    contrast(1.02)
+    drop-shadow(0 12px 18px rgba(0, 0, 0, 0.12));
+}
+
+.kind-empty.tone-mustio .nenufar-sprite::before {
+  display: none;
+}
+
+.kind-empty.tone-mustio .nenufar-sprite img {
+  mix-blend-mode: screen;
+  filter:
+    saturate(0.84)
+    brightness(1.08)
+    contrast(1.06);
+  opacity: 0.94;
 }
 
 .kind-promo .nenufar-sprite::before {

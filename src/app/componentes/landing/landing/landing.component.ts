@@ -32,7 +32,7 @@ type Ripple = {
 export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('pond') pondCanvas?: ElementRef<HTMLCanvasElement>;
 
-  usuario = '';
+  email = '';
   password = '';
 
   modalOpen = signal(false);
@@ -106,18 +106,23 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onLogin(): void {
-    const usuario = this.usuario.trim();
+    const email = this.email.trim().toLowerCase();
     const password = this.password.trim();
 
-    if (!usuario || !password) {
-      this.loginError.set('Completa usuario y contraseña para continuar.');
+    if (!email || !password) {
+      this.loginError.set('Completa correo y contraseña para continuar.');
+      return;
+    }
+
+    if (!email.includes('@')) {
+      this.loginError.set('Inicia sesión con tu correo electrónico.');
       return;
     }
 
     this.loginPending.set(true);
     this.loginError.set('');
 
-    this.authService.login(usuario, password).subscribe({
+    this.authService.login(email, password).subscribe({
       next: () => {
         localStorage.setItem('accesoPermitido', 'true');
         localStorage.removeItem('guestMode');

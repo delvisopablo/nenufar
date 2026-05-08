@@ -1,0 +1,164 @@
+.dash-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.25rem;
+  width: 100%;
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dash-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border-radius: 10px;
+  padding: 0.55rem 0.85rem;
+
+  .dash-icono  { font-size: 1.1rem; }
+  .dash-titulo { font-weight: 700; font-size: 0.88rem; color: #0c4a6e; flex: 1; }
+  .dash-periodo {
+    font-size: 0.68rem;
+    background: #0284c7;
+    color: #fff;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+}
+
+.metricas-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+
+.metrica {
+  border-radius: 12px;
+  border: 1.5px solid;
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  animation: aparece 0.4s ease both;
+
+  @for $i from 1 through 4 {
+    &:nth-child(#{$i}) { animation-delay: #{($i - 1) * 100}ms; }
+  }
+
+  .m-icono { font-size: 1rem; }
+  .m-valor {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .m-label {
+    font-size: 0.68rem;
+    color: #9ca3af;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+@keyframes aparece {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.chart-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .chart-titulo {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.3rem;
+  height: 64px;
+}
+
+.bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  height: 100%;
+}
+
+.bar-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bar {
+  width: 100%;
+  background: linear-gradient(to top, #1d4ed8, #60a5fa);
+  border-radius: 4px 4px 2px 2px;
+  transition: height 0.7s cubic-bezier(0.34, 1.2, 0.64, 1);
+  min-height: 4px;
+
+  &.bar-max { background: linear-gradient(to top, #0f766e, #34d399); }
+}
+
+.bar-dia {
+  font-size: 0.62rem;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.reservas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  .reservas-titulo {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
+.reserva-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  animation: aparece 0.4s ease both;
+
+  @for $i from 1 through 3 {
+    &:nth-child(#{$i + 1}) { animation-delay: #{$i * 120 + 400}ms; }
+  }
+
+  .r-hora    { font-size: 0.78rem; font-weight: 700; color: #1d4ed8; min-width: 36px; }
+  .r-nombre  { font-size: 0.78rem; color: #374151; flex: 1; }
+  .r-personas{ font-size: 0.7rem; color: #9ca3af; }
+  .r-estado  {
+    font-size: 0.65rem;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 0.12rem 0.45rem;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+}

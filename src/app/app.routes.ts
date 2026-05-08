@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { AjustesComponent } from './componentes/ajustes/ajustes/ajustes.component';
+import { AdminPanelComponent } from './componentes/admin-panel/admin-panel.component';
 import { CompraComponent } from './componentes/compras/compra/compra/compra.component';
 import { DetalleCompraComponent } from './componentes/compras/detalleCompra/detalle-compra/detalle-compra.component';
 import { CategoriaComponent } from './componentes/categoria/categoria/categoria.component';
@@ -22,11 +23,13 @@ import { ReservasComponent } from './componentes/reservas/reservas.component';
 import { HacerReviewComponent } from './componentes/review/review/hacer-review/hacer-review/hacer-review.component';
 import { ReviewComponent } from './componentes/review/review/review.component';
 import { RutaLocalComponent } from './componentes/ruta-local/ruta-local.component';
+import { adminGuard } from './guards/admin.guard';
 import { authToEstanqueGuard } from './guards/auth-to-estanque.guard';
 
 export const routes: Routes = [
   { path: '', component: EstanqueComponent },
   { path: 'estanque', component: EstanqueComponent },
+  { path: 'admin', component: AdminPanelComponent, canActivate: [adminGuard] },
   { path: 'login', redirectTo: 'estanque', pathMatch: 'full' },
   { path: 'inicio', component: PrincipalComponent },
   { path: 'logos-nenufar', component: LogosNenufarComponent, canActivate: [authToEstanqueGuard] },
@@ -38,6 +41,7 @@ export const routes: Routes = [
   { path: 'registro-opciones', component: EleccionRegistroComponent },
   { path: 'registro', component: RegistroComponent },
   { path: 'registro-negocio', component: RegistroNegocioComponent },
+  { path: 'admin', component: AdminPanelComponent, canActivate: [adminGuard] },
   { path: 'perfil', redirectTo: 'mi-perfil', pathMatch: 'full' },
   { path: 'mi-perfil', component: PerfilComponent, canActivate: [authToEstanqueGuard] },
   { path: 'reservas', component: ReservasComponent, canActivate: [authToEstanqueGuard] },
@@ -54,5 +58,8 @@ export const routes: Routes = [
   { path: 'compras', component: CompraComponent },
   { path: 'compras/:id', component: DetalleCompraComponent },
   { path: 'categorias', component: CategoriaComponent },
+  // Ruta pública de negocio por nickname/slug. Debe quedar al final de las rutas
+  // concretas para no interceptar pantallas como /review, /ajustes o /compras.
+  { path: ':slug', component: PerfilPublicoNegocioComponent },
   { path: '**', redirectTo: '', pathMatch: 'full' }
 ];

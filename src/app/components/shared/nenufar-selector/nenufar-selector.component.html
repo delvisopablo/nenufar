@@ -1,20 +1,14 @@
 <section class="selector-shell" aria-label="Selector de nenufar">
-  <div class="selector-head">
-    <div>
-      <p class="selector-kicker">Identidad visual</p>
-      <h3>Elige el nenufar activo del negocio</h3>
+  @if (title) {
+    <div class="selector-head">
+      <h3>{{ title }}</h3>
     </div>
+  }
 
-    @if (hasPendingChanges()) {
-      <span class="selector-badge">Pendiente de guardar</span>
-    }
-  </div>
-
-  <!-- Carrusel de 3: visto · seleccionado · por ver -->
   <div class="carousel" role="group" aria-label="Carrusel de nenufares">
     <button
       type="button"
-      class="carousel-arrow carousel-arrow--prev"
+      class="carousel-arrow"
       (click)="goPrev()"
       [disabled]="!canGoPrev"
       [attr.aria-label]="'Anterior nenufar'"
@@ -22,70 +16,35 @@
       ‹
     </button>
 
-    <div class="carousel-track">
-      <!-- Nenufar visto (izquierda) -->
-      <div class="carousel-slot carousel-slot--prev">
-        @if (prevOption) {
-          <button
-            type="button"
-            class="nenu-card nenu-card--seen"
-            (click)="selectOption(prevOption)"
-            [attr.aria-label]="'Volver a ' + prevOption.label"
-          >
-            <span class="nenu-tag nenu-tag--seen">Visto</span>
-            <span class="nenu-media">
-              <img [src]="prevOption.asset" [alt]="prevOption.label" />
-            </span>
-            <span class="nenu-label">{{ prevOption.label }}</span>
-          </button>
-        } @else {
-          <div class="nenu-card nenu-card--empty" aria-hidden="true">
-            <span class="nenu-empty-text">— inicio —</span>
-          </div>
-        }
-      </div>
-
-      <!-- Nenufar seleccionado (centro) -->
-      <div class="carousel-slot carousel-slot--current">
-        @if (currentOption) {
-          <div class="nenu-card nenu-card--current" [attr.aria-current]="'true'">
-            <span class="nenu-tag nenu-tag--selected">Seleccionado</span>
-            <span class="nenu-media nenu-media--lg">
-              <img [src]="currentOption.asset" [alt]="currentOption.label" />
-              <span class="nenu-check" aria-hidden="true">✓</span>
-            </span>
-            <strong class="nenu-label nenu-label--lg">{{ currentOption.label }}</strong>
-            <p class="nenu-desc">{{ currentOption.description }}</p>
-          </div>
-        }
-      </div>
-
-      <!-- Nenufar por ver (derecha) -->
-      <div class="carousel-slot carousel-slot--next">
-        @if (nextOption) {
-          <button
-            type="button"
-            class="nenu-card nenu-card--upcoming"
-            (click)="selectOption(nextOption)"
-            [attr.aria-label]="'Ir a ' + nextOption.label"
-          >
-            <span class="nenu-tag nenu-tag--upcoming">Por ver</span>
-            <span class="nenu-media">
-              <img [src]="nextOption.asset" [alt]="nextOption.label" />
-            </span>
-            <span class="nenu-label">{{ nextOption.label }}</span>
-          </button>
-        } @else {
-          <div class="nenu-card nenu-card--empty" aria-hidden="true">
-            <span class="nenu-empty-text">— fin —</span>
-          </div>
-        }
-      </div>
+    <div
+      #carouselTrack
+      class="carousel-track"
+      (scroll)="onTrackScroll()"
+      aria-label="Lista horizontal de nenufares"
+    >
+      @for (option of options; track option.id; let i = $index) {
+        <button
+          #optionCard
+          type="button"
+          class="nenu-card"
+          [class.nenu-card--focused]="isFocused(i)"
+          [class.nenu-card--selected]="isSelected(option)"
+          [attr.aria-current]="isFocused(i) ? 'true' : null"
+          [attr.aria-pressed]="isSelected(option)"
+          [attr.aria-label]="'Seleccionar ' + formatOptionLabel(option.label)"
+          (click)="selectOption(option)"
+        >
+          <span class="nenu-media">
+            <img [src]="option.asset" [alt]="formatOptionLabel(option.label)" />
+          </span>
+          <strong class="nenu-label">{{ formatOptionLabel(option.label) }}</strong>
+        </button>
+      }
     </div>
 
     <button
       type="button"
-      class="carousel-arrow carousel-arrow--next"
+      class="carousel-arrow"
       (click)="goNext()"
       [disabled]="!canGoNext"
       [attr.aria-label]="'Siguiente nenufar'"
@@ -94,8 +53,9 @@
     </button>
   </div>
 
-  <!-- Indicador de progreso -->
-  <p class="carousel-progress">
-    {{ selectedIndex + 1 }} / {{ options.length }}
-  </p>
+  @if (selectedOption) {
+    <p class="selector-choice">{{ formatOptionLabel(selectedOption.label) }}</p>
+  } @else {
+    <p class="selector-choice selector-choice--muted">Elige tu nenúfar</p>
+  }
 </section>

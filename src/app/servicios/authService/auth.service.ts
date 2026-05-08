@@ -10,6 +10,12 @@ import {
   tap,
 } from 'rxjs';
 import { buildApiUrl } from '../../config/api.config';
+import {
+  clearAccessToken,
+  hasAccessToken as hasStoredAccessToken,
+  readAccessToken,
+  writeAccessToken,
+} from './auth.storage';
 
 export interface AuthBusiness {
   id?: number;
@@ -20,11 +26,14 @@ export interface AuthBusiness {
   nenufarAsset?: string | null;
 }
 
+export type GlobalRole = 'USUARIO' | 'MODERADOR' | 'ADMIN';
+
 export interface AuthUser {
   id?: number;
   nombre?: string;
   nickname?: string;
   email?: string;
+  rolGlobal?: GlobalRole | string;
   rol?: string;
   biografia?: string;
   foto?: string | null;
@@ -79,10 +88,13 @@ export interface RegisterPayload {
   nombreNegocio?: string;
   direccion?: string;
   fechaFundacion?: string | null;
+  descripcion?: string;
   historia?: string;
+  codigoNenufarizacion?: string;
   categoriaNombre?: string;
   categoriaId?: number;
   subcategoriaId?: number;
+  nenufarActivo?: string | null;
   intervaloReserva?: number;
   horario?: unknown;
   duenoId?: number;
@@ -159,7 +171,9 @@ export class AuthService {
   private sessionHydrated = false;
   private hydrationRequest$: Observable<AuthUser | null> | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    readAccessToken();
+  }
 
   usuarioExiste(usuario: string, email: string): boolean {
     const registrados = readStorageJson<Array<{ nickname?: string; email?: string }>>(
@@ -201,24 +215,51 @@ export class AuthService {
   }
 
   registerNegocio(data: RegisterPayload): Observable<AuthResponse> {
+    const categoriaId = Number(data.categoriaId);
+    const subcategoriaId = Number(data.subcategoriaId);
+    const direccion =
+      typeof data.direccion === 'string' ? data.direccion.trim() : '';
+    const fechaFundacion =
+      typeof data.fechaFundacion === 'string' ? data.fechaFundacion.trim() : '';
+    const historia =
+      data.historia?.trim() ||
+      data.descripcion?.trim() ||
+      data.biografia?.trim() ||
+      '';
+    const codigoNenufarizacion =
+      typeof data.codigoNenufarizacion === 'string'
+        ? data.codigoNenufarizacion.trim().toUpperCase()
+        : '';
+    const nenufarActivo =
+      typeof data.nenufarActivo === 'string' ? data.nenufarActivo.trim() : '';
+
+    const payload = {
+      nombreDueno:
+        data.nombreDueno?.trim() ||
+        data.nombreDueño?.trim() ||
+        data.nombre?.trim() ||
+        '',
+      nickname: data.nickname?.trim() || '',
+      email: data.email?.trim().toLowerCase() || '',
+      password: data.password || '',
+      nombreNegocio: data.nombreNegocio?.trim() || '',
+      categoriaId,
+      ...(Number.isFinite(subcategoriaId) && subcategoriaId > 0
+        ? { subcategoriaId }
+        : {}),
+      ...(direccion ? { direccion } : {}),
+      ...(fechaFundacion ? { fechaFundacion } : {}),
+      ...(historia ? { historia } : {}),
+      ...(codigoNenufarizacion ? { codigoNenufarizacion } : {}),
+      nenufarActivo: nenufarActivo || null,
+    };
+
+    console.log('Payload registro negocio:', payload);
+
     return this.http
       .post<AuthResponse>(
         buildApiUrl('/auth/registro-negocio'),
-        {
-          nombreDueno:
-            data.nombreDueno?.trim() ||
-            data.nombreDueño?.trim() ||
-            data.nombre?.trim() ||
-            '',
-          nickname: data.nickname?.trim() || '',
-          email: data.email?.trim() || '',
-          password: data.password || '',
-          nombreNegocio: data.nombreNegocio?.trim() || '',
-          direccion: data.direccion?.trim() || '',
-          fechaFundacion: data.fechaFundacion ?? null,
-          historia: data.historia?.trim() || '',
-          categoriaNombre: data.categoriaNombre?.trim() || ''
-        }
+        payload
       )
       .pipe(
         tap((response) => this.persistirUsuarioDesdeRespuesta(response))
@@ -258,22 +299,15 @@ export class AuthService {
   }
 
   hasSessionHint(): boolean {
-    if (this.obtenerUsuario()) {
-      return true;
-    }
-
-    if (typeof localStorage === 'undefined') {
-      return false;
-    }
-
-    return Boolean(
-      localStorage.getItem('token') ||
-      localStorage.getItem('access_token'),
-    );
+    return this.hasAccessToken();
   }
 
   isAuthenticated(): boolean {
-    return Boolean(this.obtenerUsuario());
+    return Boolean(this.obtenerUsuario() || this.hasAccessToken());
+  }
+
+  esAdmin(usuario: AuthUser | null | undefined = this.obtenerUsuario()): boolean {
+    return usuario?.rolGlobal === 'ADMIN';
   }
 
   me(): Observable<AuthUser | null> {
@@ -293,7 +327,7 @@ export class AuthService {
         this.sessionHydrated = true;
 
         if (error instanceof HttpErrorResponse && error.status === 401) {
-          this.clearStoredUser();
+          this.clearStoredAuth();
           return of(null);
         }
 
@@ -303,6 +337,11 @@ export class AuthService {
   }
 
   persistirUsuarioDesdeRespuesta(response: unknown): void {
+    const accessToken = this.extraerAccessToken(response);
+    if (accessToken) {
+      writeAccessToken(accessToken);
+    }
+
     const usuario = this.normalizarUsuario(response);
 
     if (usuario) {
@@ -314,9 +353,13 @@ export class AuthService {
     removeStorageKey('usuarioLogueado');
   }
 
+  clearStoredAuth(): void {
+    clearAccessToken();
+    this.clearStoredUser();
+  }
+
   clearSession(): void {
-    removeStorageKey('token');
-    removeStorageKey('access_token');
+    clearAccessToken();
     removeStorageKey('usuarioLogueado');
     removeStorageKey('accesoPermitido');
     removeStorageKey('guestMode');
@@ -334,6 +377,14 @@ export class AuthService {
   guardarUsuario(usuario: AuthUser): void {
     writeStorageJson('usuarioLogueado', usuario);
     this.sessionHydrated = true;
+  }
+
+  obtenerAccessToken(): string | null {
+    return readAccessToken();
+  }
+
+  hasAccessToken(): boolean {
+    return hasStoredAccessToken();
   }
 
   obtenerUsuario(): AuthUser | null {
@@ -404,14 +455,48 @@ export class AuthService {
           }
         : undefined) ??
       negocios?.[0];
+    const rolGlobal =
+      typeof usuarioRaw.rolGlobal === 'string' && usuarioRaw.rolGlobal.trim()
+        ? usuarioRaw.rolGlobal.trim().toUpperCase()
+        : undefined;
 
     return {
       ...usuario,
+      ...(rolGlobal ? { rolGlobal } : {}),
       foto_perfil:
         usuario.foto_perfil ??
         (typeof usuario.foto === 'string' ? usuario.foto : undefined),
       ...(negocios ? { negocios } : {}),
       ...(negocio ? { negocio } : {}),
     };
+  }
+
+  private extraerAccessToken(response: unknown): string | null {
+    if (!response || typeof response !== 'object') {
+      return null;
+    }
+
+    const wrapper = response as {
+      access_token?: unknown;
+      accessToken?: unknown;
+      token?: unknown;
+      data?: {
+        access_token?: unknown;
+        accessToken?: unknown;
+        token?: unknown;
+      };
+    };
+
+    const tokenCandidate =
+      wrapper.accessToken ??
+      wrapper.access_token ??
+      wrapper.token ??
+      wrapper.data?.accessToken ??
+      wrapper.data?.access_token ??
+      wrapper.data?.token;
+
+    return typeof tokenCandidate === 'string' && tokenCandidate.trim()
+      ? tokenCandidate.trim()
+      : null;
   }
 }

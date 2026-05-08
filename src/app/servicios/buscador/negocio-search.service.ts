@@ -25,6 +25,8 @@ export type NegocioReviewSnippet = {
   fechaISO: string;
   puntuacion: number;
   selloNenufar: boolean;
+  productoNombre?: string;
+  precioProducto?: number;
   usuarioNickname?: string;
   usuarioFoto?: string;
 };
@@ -34,6 +36,7 @@ export type NegocioLite = {
   nombre: string;
   slug?: string;
   nickname?: string;
+  duenoId?: number;
   categoria?: { nombre: string };
   ciudad?: string;
   provincia?: string;
@@ -164,6 +167,8 @@ export class NegocioSearchService {
         fechaISO: review.fechaISO,
         puntuacion: review.puntuacion,
         selloNenufar: review.selloNenufar,
+        ...(review.productoNombre ? { productoNombre: review.productoNombre } : {}),
+        ...(typeof review.precioProducto === 'number' ? { precioProducto: review.precioProducto } : {}),
         ...(review.usuarioNickname ? { usuarioNickname: review.usuarioNickname } : {}),
         ...(review.usuarioFoto ? { usuarioFoto: review.usuarioFoto } : {}),
       });
@@ -195,6 +200,23 @@ export class NegocioSearchService {
       'Cliente de Nenúfar';
     const fechaISO =
       String(review.creadoEn ?? review['fecha'] ?? new Date(0).toISOString()) || new Date(0).toISOString();
+    const producto = (review['producto'] ?? null) as
+      | {
+          nombre?: string;
+          precio?: number | string | null;
+        }
+      | null;
+    const productoNombre =
+      producto?.nombre?.trim() ||
+      String(
+        review['productoNombre'] ??
+          review['nombreProducto'] ??
+          review['servicioNombre'] ??
+          '',
+      ).trim();
+    const precioProductoRaw = Number(
+      review['precioProducto'] ?? producto?.precio ?? NaN,
+    );
 
     return {
       negocioId,
@@ -205,6 +227,8 @@ export class NegocioSearchService {
       fechaISO,
       puntuacion: Number(review.puntuacion ?? 0) || 0,
       selloNenufar: Boolean(review.selloNenufar),
+      ...(productoNombre ? { productoNombre } : {}),
+      ...(Number.isFinite(precioProductoRaw) ? { precioProducto: precioProductoRaw } : {}),
       ...(usuario?.nickname?.trim() ? { usuarioNickname: usuario.nickname.trim() } : {}),
       ...(usuario?.foto?.trim() ? { usuarioFoto: usuario.foto.trim() } : {}),
     };
@@ -264,6 +288,7 @@ export class NegocioSearchService {
       ...(item.nickname?.trim() ? { nickname: item.nickname.trim() } : {}),
       ...(item.ciudad?.trim() ? { ciudad: item.ciudad.trim() } : {}),
       ...(item.provincia?.trim() ? { provincia: item.provincia.trim() } : {}),
+      ...(Number.isFinite(Number(item.duenoId)) ? { duenoId: Number(item.duenoId) } : {}),
       ...(categoriaNombre?.trim() ? { categoria: { nombre: categoriaNombre.trim() } } : {}),
       ...(item.descripcionCorta?.trim()
         ? { descripcion: item.descripcionCorta.trim() }

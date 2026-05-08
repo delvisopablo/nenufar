@@ -1,15 +1,25 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
 import { ReservasComponent } from '../reservas/reservas.component';
+import { PromocionComponent } from '../promocion/promocion/promocion.component';
+import {
+  NenufarSelectorComponent,
+} from '../../components/shared/nenufar-selector/nenufar-selector.component';
+import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 import {
   DEFAULT_NENUFAR_FALLBACK_ASSET,
+  NENUFAR_OPTIONS,
   resolveBusinessImage,
   resolveBusinessNenufarAsset,
+  addUnsplashParams,
+  buildUnsplashSrcset,
+  resolveNenufarAsset,
+  resolveNenufarKey,
 } from '../../core/negocio/negocio-visuals';
 import {
   AuthService,
@@ -33,6 +43,9 @@ type AvailabilityResponse = {
     CrearResenaModalComponent,
     RouterLink,
     ReservasComponent,
+    PromocionComponent,
+    NenufarSelectorComponent,
+    EstanqueBackgroundComponent,
     AccessRequiredModalComponent,
   ],
   templateUrl: './perfil-publico-negocio.component.html',
@@ -44,6 +57,9 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   private readonly reservaService = inject(ReservaService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+
+  @ViewChild(NenufarSelectorComponent)
+  private readonly nenufarSelector?: NenufarSelectorComponent;
 
   negocio: any = null;
   esDueno = false;
@@ -58,11 +74,28 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   seguidoresTotal = 0;
   accessModalAbierto = false;
   accessModalMensaje = 'Necesitas iniciar sesion para seguir este negocio o reservar una franja.';
+  guardandoNenufar = false;
+  nenufarError = '';
+  readonly nenufarOptions = NENUFAR_OPTIONS;
 
   diasSemana: string[] = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   horasGeneradas: string[] = [];
   reservasOcupadas: { [dia: string]: string[] } = {};
   private fechasSemana: Record<string, string> = {};
+
+  // Acordeones del perfil
+  readonly seccionHorario  = signal(false);
+  readonly seccionReservar = signal(false);
+  readonly seccionResenas  = signal(false);
+  readonly seccionPromos   = signal(false);
+  readonly modalActiva = signal<'nenufar' | 'reservas' | 'promociones' | null>(null);
+
+  toggleSeccion(seccion: 'horario' | 'reservar' | 'resenas' | 'promos'): void {
+    if (seccion === 'horario')  this.seccionHorario.update(v => !v);
+    if (seccion === 'reservar') this.seccionReservar.update(v => !v);
+    if (seccion === 'resenas')  this.seccionResenas.update(v => !v);
+    if (seccion === 'promos')   this.seccionPromos.update(v => !v);
+  }
 
   ngOnInit(): void {
     this.inicializarSemanaActual();
@@ -74,18 +107,37 @@ export class PerfilPublicoNegocioComponent implements OnInit {
       },
     });
 
-    const negocioId = Number(this.route.snapshot.paramMap.get('id'));
-    if (!Number.isFinite(negocioId) || negocioId <= 0) {
-      this.errorMensaje = 'No hemos podido identificar el negocio.';
-      return;
-    }
+    // Soporta tanto /negocio/:id (legacy) como /:slug (ruta pública por nickname)
+    const idParam = this.route.snapshot.paramMap.get('id');
+    const slugParam = this.route.snapshot.paramMap.get('slug');
+    const rawParam = idParam ?? slugParam ?? '';
 
-    this.negocioId = negocioId;
-    this.cargarNegocio();
+    const numericId = Number(rawParam);
+    if (Number.isFinite(numericId) && numericId > 0) {
+      // Ruta legacy con ID numérico
+      this.negocioId = numericId;
+      this.cargarNegocio();
+    } else if (rawParam) {
+      // Ruta por slug/nickname
+      this.cargarNegocioPorSlug(rawParam);
+    } else {
+      this.errorMensaje = 'No hemos podido identificar el negocio.';
+    }
   }
 
   getStars(n: number): string {
-    return '⭐'.repeat(Math.max(0, Math.min(5, Math.round(n))));
+    return '★'.repeat(Math.max(0, Math.min(5, Math.round(n))));
+  }
+
+  getReviewProductLabel(review: any): string | null {
+    const productoNombre =
+      review?.producto?.nombre ??
+      review?.productoNombre ??
+      review?.nombreProducto ??
+      review?.servicioNombre;
+
+    const normalized = String(productoNombre ?? '').trim();
+    return normalized || null;
   }
 
   getHorarioLineas(): string[] {
@@ -151,10 +203,26 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     });
   }
 
+  getBusinessCoverSrc(): string {
+    return addUnsplashParams(this.getBusinessCoverImage(), 1200);
+  }
+
+  getBusinessCoverSrcset(): string {
+    return buildUnsplashSrcset(this.getBusinessCoverImage(), [600, 900, 1200, 1400]);
+  }
+
   getBusinessAvatarImage(): string {
     return resolveBusinessImage(this.negocio, {
       fallback: DEFAULT_NENUFAR_FALLBACK_ASSET,
     });
+  }
+
+  getBusinessAvatarSrc(): string {
+    return addUnsplashParams(this.getBusinessAvatarImage(), 224);
+  }
+
+  getBusinessAvatarSrcset(): string {
+    return buildUnsplashSrcset(this.getBusinessAvatarImage(), [112, 224]);
   }
 
   getBusinessNickname(): string {
@@ -177,8 +245,101 @@ export class PerfilPublicoNegocioComponent implements OnInit {
       .join(' · ');
   }
 
+  getBusinessCategoryLabel(): string {
+    const categoria = this.negocio?.categoria?.nombre || this.negocio?.categoria || 'Sin categoría';
+    const subcategoria = this.negocio?.subcategoria?.nombre;
+    return subcategoria ? `${categoria} · ${subcategoria}` : categoria;
+  }
+
+  getBusinessLocationLine(): string {
+    return [
+      this.negocio?.direccion,
+      this.negocio?.ciudad,
+      this.negocio?.provincia,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  }
+
+  getSavedNenufarAsset(): string | null {
+    return (
+      resolveNenufarAsset(
+        this.negocio?.nenufarAsset ??
+          this.negocio?.nenufarActivo ??
+          this.negocio?.assetNenufar ??
+          this.negocio?.imagenNenufar,
+        this.nenufarOptions,
+      ) ??
+      resolveNenufarAsset(
+        this.negocio?.nenufarKey ?? this.negocio?.nenufarColor,
+        this.nenufarOptions,
+      )
+    );
+  }
+
+  getNenufarLabel(): string {
+    const asset = this.getSavedNenufarAsset() ?? this.getNenufarAsset();
+    const option = this.nenufarOptions.find((candidate) => candidate.asset === asset);
+    return this.prettifyNenufarLabel(option?.label ?? 'Nenufar del negocio');
+  }
+
   shouldShowFollowButton(): boolean {
     return !this.esDueno;
+  }
+
+  guardarNenufarDesdePerfil(value: string | null): void {
+    const nenufarAsset = resolveNenufarAsset(value, this.nenufarOptions);
+    if (!this.negocioId || !nenufarAsset || !this.esDueno) {
+      return;
+    }
+
+    const previoAsset = this.getSavedNenufarAsset();
+    const previoKey = resolveNenufarKey(previoAsset, this.nenufarOptions);
+    const nenufarKey = resolveNenufarKey(nenufarAsset, this.nenufarOptions);
+
+    this.guardandoNenufar = true;
+    this.nenufarError = '';
+
+    this.negocioService.update(this.negocioId, {
+      nenufarAsset,
+      nenufarKey,
+    }).subscribe({
+      next: (negocioActualizado) => {
+        this.guardandoNenufar = false;
+        this.negocio = {
+          ...this.negocio,
+          ...negocioActualizado,
+          nenufarAsset,
+          nenufarKey,
+        };
+      },
+      error: (error: unknown) => {
+        this.guardandoNenufar = false;
+        this.nenufarError = getUserErrorMessage(error, 'No hemos podido actualizar el nenufar.');
+        this.nenufarSelector?.markAsSaved(previoAsset);
+        this.negocio = {
+          ...this.negocio,
+          nenufarAsset: previoAsset,
+          nenufarKey: previoKey,
+        };
+      },
+    });
+  }
+
+  abrirPromociones(): void {
+    this.modalActiva.set('promociones');
+  }
+
+  abrirReservas(): void {
+    this.modalActiva.set('reservas');
+  }
+
+  abrirSelectorNenufar(): void {
+    this.modalActiva.set('nenufar');
+  }
+
+  cerrarModal(): void {
+    this.modalActiva.set(null);
   }
 
   private inicializarSemanaActual(): void {
@@ -274,6 +435,28 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   getUsuarioRoute(usuario: { id?: number | null } | null | undefined): (string | number)[] | null {
     const usuarioId = Number(usuario?.id);
     return Number.isFinite(usuarioId) && usuarioId > 0 ? ['/usuario', usuarioId] : null;
+  }
+
+  private cargarNegocioPorSlug(slug: string): void {
+    this.negocioService.resolveNegocioFromRouteParam(slug).subscribe({
+      next: (data: any) => {
+        if (!data?.id) {
+          this.errorMensaje = 'No hemos encontrado ningún negocio con esa dirección.';
+          return;
+        }
+        this.negocio = data;
+        this.negocioId = data.id;
+        this.errorMensaje = '';
+        this.actualizarRelacionConNegocio();
+        this.refrescarResenas();
+        this.cargarSeguimiento();
+        this.generarHorasDisponibles();
+        this.recargarReservas();
+      },
+      error: (error: unknown) => {
+        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
+      },
+    });
   }
 
   private cargarNegocio(): void {
@@ -404,6 +587,18 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     void this.router.navigate(['/estanque']);
   }
 
+  irAEditarNegocio(): void {
+    void this.router.navigate(['/mi-negocio/editar']);
+  }
+
+  irADashboardNegocio(): void {
+    void this.router.navigate(['/mi-negocio/dashboard']);
+  }
+
+  irAReservasNegocio(): void {
+    void this.router.navigate(['/mi-negocio/reservas']);
+  }
+
   private actualizarRelacionConNegocio(): void {
     const negocioPropioId = resolveOwnedBusinessId(this.usuarioActual);
     const duenoId = Number(this.negocio?.dueno?.id ?? this.negocio?.duenoId ?? 0);
@@ -412,5 +607,20 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     this.esDueno =
       (Number.isFinite(negocioPropioId) && negocioPropioId === this.negocioId) ||
       (Number.isFinite(duenoId) && duenoId > 0 && duenoId === usuarioId);
+  }
+
+  private scrollToSection(sectionId: string): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    document.getElementById(sectionId)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }
+
+  private prettifyNenufarLabel(label: string): string {
+    return label.replace(/^Nenufar\b/, 'Nenúfar');
   }
 }
