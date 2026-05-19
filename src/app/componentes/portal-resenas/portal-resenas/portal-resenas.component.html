@@ -6,8 +6,17 @@
         <small>{{ r.fecha | date:'d MMM yyyy' }}</small>
       </div>
 
-      @if (getReviewProductLabel(r); as productoNombre) {
-        <span class="producto-chip">{{ productoNombre }}</span>
+      @if (getReviewProductLabels(r); as productosResena) {
+        @if (productosResena.length || getReviewPendingProductLabels(r).length) {
+          <div class="producto-chip-list">
+            @for (productoNombre of productosResena; track productoNombre + '-' + $index) {
+              <span class="producto-chip">{{ productoNombre }}</span>
+            }
+            @for (productoPendiente of getReviewPendingProductLabels(r); track productoPendiente + '-' + $index) {
+              <span class="producto-chip producto-chip--pending">{{ productoPendiente }}</span>
+            }
+          </div>
+        }
       }
 
       <p>{{ r.contenido }}</p>

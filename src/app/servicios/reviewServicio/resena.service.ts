@@ -6,6 +6,10 @@ import {
   buildApiUrl,
   extractItems,
 } from '../../config/api.config';
+import {
+  ReviewProductChip,
+  SuggestedReviewProduct,
+} from '../../core/reviews/review-products';
 
 export interface Resena {
   id: number;
@@ -16,6 +20,10 @@ export interface Resena {
   selloNenufar?: boolean;
   creadoEn?: string;
   productoId?: number | null;
+  postId?: number | null;
+  likesCount?: number;
+  likedByMe?: boolean;
+  comentariosCount?: number;
   productoNombre?: string | null;
   precioProducto?: number | null;
   producto?: {
@@ -23,6 +31,37 @@ export interface Resena {
     nombre?: string;
     precio?: number | null;
   } | null;
+  productos?: ReviewProductChip[];
+  productoIds?: number[];
+  productosSugeridos?: SuggestedReviewProduct[];
+  [key: string]: unknown;
+}
+
+export interface ComentarioResena {
+  id: number;
+  resenaId?: number;
+  postId?: number;
+  usuarioId?: number;
+  contenido: string;
+  creadoEn?: string;
+  actualizadoEn?: string;
+  usuario?: {
+    id?: number;
+    nombre?: string;
+    nickname?: string;
+    foto?: string | null;
+  } | null;
+  [key: string]: unknown;
+}
+
+export interface ResenaLikeResponse {
+  ok?: boolean;
+  resenaId?: number;
+  usuarioId?: number;
+  liked?: boolean;
+  likedByMe?: boolean;
+  likesCount?: number;
+  count?: number;
   [key: string]: unknown;
 }
 
@@ -31,18 +70,14 @@ export interface CreateResenaPayload {
   puntuacion: number;
   contenido?: string;
   selloNenufar?: boolean;
-  productoId?: number;
-  productoNombre?: string;
-  precioProducto?: number;
+  productoIds?: number[];
+  productosSugeridos?: SuggestedReviewProduct[];
 }
 
 export interface UpdateResenaPayload {
   puntuacion?: number;
   contenido?: string;
   selloNenufar?: boolean;
-  productoId?: number | null;
-  productoNombre?: string | null;
-  precioProducto?: number | null;
 }
 
 @Injectable({
@@ -102,5 +137,32 @@ export class ResenaService {
   /** DELETE /api/resena/:id — eliminar reseña (solo autor) */
   eliminar(id: number): Observable<unknown> {
     return this.http.delete<unknown>(`${this.baseUrl}/${id}`);
+  }
+
+  /** GET /api/resena/:id/comentarios */
+  listComentarios(id: number): Observable<ComentarioResena[]> {
+    return this.http
+      .get<ComentarioResena[] | ApiListResponse<ComentarioResena>>(
+        `${this.baseUrl}/${id}/comentarios`,
+      )
+      .pipe(map((response) => extractItems(response)));
+  }
+
+  /** POST /api/resena/:id/comentarios — body: { contenido } */
+  crearComentario(id: number, contenido: string): Observable<ComentarioResena> {
+    return this.http.post<ComentarioResena>(
+      `${this.baseUrl}/${id}/comentarios`,
+      { contenido },
+    );
+  }
+
+  /** POST /api/resena/:id/like */
+  like(id: number): Observable<ResenaLikeResponse> {
+    return this.http.post<ResenaLikeResponse>(`${this.baseUrl}/${id}/like`, {});
+  }
+
+  /** DELETE /api/resena/:id/like */
+  unlike(id: number): Observable<ResenaLikeResponse> {
+    return this.http.delete<ResenaLikeResponse>(`${this.baseUrl}/${id}/like`);
   }
 }

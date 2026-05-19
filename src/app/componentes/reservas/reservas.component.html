@@ -29,11 +29,7 @@
         <h2>{{ tituloPrincipal }}</h2>
       </div>
 
-      @if (modoResuelto === 'negocio') {
-        <button type="button" class="ghost-btn" (click)="irAGestionNegocio()">
-          Abrir gestor completo
-        </button>
-      } @else if (mostrarTabMis) {
+      @if (modoResuelto !== 'negocio' && mostrarTabMis) {
         <button type="button" class="ghost-btn" (click)="irAReservasPrivadas()">
           Abrir mis reservas
         </button>

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { resolveBusinessImage, addUnsplashParams, buildUnsplashSrcset } from '../../core/negocio/negocio-visuals';
+import { buildHorarioSummaryLines } from '../../core/negocio/negocio-horario';
 import {
   AuthService,
   resolveOwnedBusinessId,
@@ -46,6 +47,13 @@ export class DashboardComponent implements OnInit {
       .slice(0, 6)
   );
 
+  readonly horarioResumen = computed(() =>
+    buildHorarioSummaryLines(
+      this.negocio()?.horario ?? null,
+      this.negocio()?.intervaloReserva ?? null,
+    )
+  );
+
   readonly resumenEstado = computed(() => {
     const data = this.resumen();
     if (!data) {
@@ -80,8 +88,7 @@ export class DashboardComponent implements OnInit {
         }
 
         this.negocioId.set(negocio.id);
-        this.aplicarNegocio(negocio);
-        this.cargarDashboard();
+        this.cargarNegocioBase(negocio.id);
       },
       error: () => {
         this.error.set('No hemos podido identificar el negocio de este dashboard.');
@@ -131,10 +138,12 @@ export class DashboardComponent implements OnInit {
       nenufarAsset: negocio.nenufarAsset ?? undefined,
       nenufarKey: negocio.nenufarKey ?? undefined,
       aceptaReservas: Boolean(negocio.aceptaReservas),
+      intervaloReserva: Number(negocio.intervaloReserva ?? negocio.horario?.intervalo ?? 0) || null,
       categoria:
         typeof negocio.categoria === 'string'
           ? { nombre: negocio.categoria }
           : negocio.categoria,
+      horario: negocio.horario ?? undefined,
     });
   }
 

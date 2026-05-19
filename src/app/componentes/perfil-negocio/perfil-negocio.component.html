@@ -18,75 +18,89 @@
             [src]="getNenufarAsset()"
             alt="Nenúfar del negocio"
           >
+          <span class="petalos-chip">{{ getPetalosPerfil() }} pétalos</span>
         </div>
 
-        <div class="business-card__body">
-          <h1 class="business-name">{{ negocio?.nombre || 'Cargando…' }}</h1>
-          <p class="business-handle">{{ getBusinessNickname() }}</p>
-          <p class="business-meta-line">{{ getBusinessCategoryLabel() }}</p>
+        <div class="business-card__content" [class.business-card__content--with-summary]="tieneHorarioConfigurado()">
+          <div class="business-card__body">
+            <h1 class="business-name">{{ negocio?.nombre || 'Cargando…' }}</h1>
+            <p class="business-handle">{{ getBusinessNickname() }}</p>
+            <p class="business-meta-line">{{ getBusinessCategoryLabel() }}</p>
 
-          @if (mediaPuntuacion > 0) {
-            <div class="rating-row">
-              <span class="rating-stars">{{ getStars(mediaPuntuacion) }}</span>
-              <span class="rating-num">{{ mediaPuntuacion }}/5</span>
-              <span class="rating-count">{{ resenas.length }} reseña{{ resenas.length !== 1 ? 's' : '' }}</span>
-            </div>
-          }
+            @if (mediaPuntuacion > 0) {
+              <div class="rating-row">
+                <span class="rating-stars">{{ getStars(mediaPuntuacion) }}</span>
+                <span class="rating-num">{{ mediaPuntuacion }}/5</span>
+                <span class="rating-count">{{ resenas.length }} reseña{{ resenas.length !== 1 ? 's' : '' }}</span>
+              </div>
+            }
 
-          @if (negocio?.descripcionCorta || negocio?.historia) {
-            <div class="business-bio">
-              @if (negocio?.descripcionCorta) {
-                <p class="business-bio__lead">{{ negocio.descripcionCorta }}</p>
-              }
-              @if (negocio?.historia) {
-                <p class="business-bio__text">{{ negocio.historia }}</p>
-              }
-            </div>
-          }
+            @if (negocio?.descripcionCorta || negocio?.historia) {
+              <div class="business-bio">
+                @if (negocio?.descripcionCorta) {
+                  <p class="business-bio__lead">{{ negocio.descripcionCorta }}</p>
+                }
+                @if (negocio?.historia) {
+                  <p class="business-bio__text">{{ negocio.historia }}</p>
+                }
+              </div>
+            }
 
-          @if (getBusinessLocationLine()) {
-            <p class="business-location">📍 {{ getBusinessLocationLine() }}</p>
-          }
+            @if (getBusinessLocationLine()) {
+              <p class="business-location">📍 {{ getBusinessLocationLine() }}</p>
+            }
 
-          @if (negocio?.telefono || negocio?.emailContacto || negocio?.web || negocio?.instagram) {
-            <div class="business-links">
-              @if (negocio?.telefono) {
-                <a [href]="'tel:' + negocio.telefono">Llamar</a>
-              }
-              @if (negocio?.emailContacto) {
-                <a [href]="'mailto:' + negocio.emailContacto">Email</a>
-              }
-              @if (negocio?.web) {
-                <a [href]="negocio.web" target="_blank" rel="noopener">Web</a>
-              }
-              @if (negocio?.instagram) {
-                <a [href]="negocio.instagram" target="_blank" rel="noopener">Instagram</a>
-              }
-            </div>
-          }
+            @if (negocio?.telefono || negocio?.emailContacto || negocio?.web || negocio?.instagram) {
+              <div class="business-links">
+                @if (negocio?.telefono) {
+                  <a [href]="'tel:' + negocio.telefono">Llamar</a>
+                }
+                @if (negocio?.emailContacto) {
+                  <a [href]="'mailto:' + negocio.emailContacto">Email</a>
+                }
+                @if (negocio?.web) {
+                  <a [href]="negocio.web" target="_blank" rel="noopener">Web</a>
+                }
+                @if (negocio?.instagram) {
+                  <a [href]="negocio.instagram" target="_blank" rel="noopener">Instagram</a>
+                }
+              </div>
+            }
 
-          <div class="business-stats">
-            <div class="business-stat">
-              <strong>{{ seguidoresTotal }}</strong>
-              <span>Seguidores</span>
-            </div>
-            <div class="business-stat">
-              <strong>{{ seguidosTotal }}</strong>
-              <span>Seguidos</span>
+            <div class="business-stats">
+              <div class="business-stat">
+                <strong>{{ seguidoresTotal }}</strong>
+                <span>Seguidores</span>
+              </div>
+              <div class="business-stat">
+                <strong>{{ seguidosTotal }}</strong>
+                <span>Seguidos</span>
+              </div>
             </div>
           </div>
+
+          @if (tieneHorarioConfigurado()) {
+            <aside class="business-card__summary">
+              <app-business-horario-resumen
+                [horario]="negocio?.horario"
+                [reservasActivas]="negocio?.aceptaReservas"
+                [intervaloReserva]="negocio?.intervaloReserva"
+              />
+            </aside>
+          }
         </div>
       </article>
 
       <aside class="profile-side-rail">
         <div class="action-rail">
           <button class="action-btn action-btn--primary" type="button" (click)="irAEditarNegocio()">
-            Nenúditar
+            NENUditar
           </button>
           <button class="action-btn" type="button" (click)="irADashboardNegocio()">Dashboard</button>
-          <a class="action-btn" routerLink="/mis-logros">Logros</a>
-          <button class="action-btn" type="button" (click)="abrirReservas()">Reservas</button>
+          <button class="action-btn" type="button" (click)="abrirHorario()">Horario</button>
+          <button class="action-btn" type="button" (click)="abrirCatalogo()">Catálogo</button>
           <button class="action-btn" type="button" (click)="abrirPromociones()">Promociones</button>
+          <a class="action-btn" routerLink="/mis-logros">Logros</a>
         </div>
 
         <button class="nenufar-active-card" type="button" (click)="abrirSelectorNenufar()">
@@ -100,21 +114,6 @@
           <span class="nenufar-active-card__cta">Cambiar</span>
         </button>
       </aside>
-    </section>
-
-    <section class="info-strip">
-      <article class="info-card">
-        <h2 class="section-title">Horario</h2>
-        @if (tieneHorarioConfigurado()) {
-          <div class="schedule-list">
-            @for (linea of getHorarioLineas(); track $index) {
-              <p class="schedule-line">{{ linea }}</p>
-            }
-          </div>
-        } @else {
-          <p class="empty-state">Configúralo desde Nenúditar.</p>
-        }
-      </article>
     </section>
 
     <section class="reviews-section">
@@ -131,13 +130,21 @@
 
       <div class="reviews-list">
         @for (resena of resenas; track resena.id) {
-          <article class="review-item">
+          <article
+            class="review-item review-item--clickable"
+            tabindex="0"
+            role="button"
+            aria-label="Abrir detalle de reseña"
+            (click)="abrirDetalleResena(resena)"
+            (keydown.enter)="abrirDetalleResena(resena)"
+            (keydown.space)="abrirDetalleResena(resena); $event.preventDefault()"
+          >
             <img class="review-avatar" [src]="resena.usuario?.foto || 'assets/imagenes/rana1_profile_foto.png'" alt="Avatar">
             <div class="review-body">
               <div class="review-head">
                 @if (resena.usuario) {
                   @if (getUsuarioRoute(resena.usuario); as usuarioRoute) {
-                    <a class="review-author" [routerLink]="usuarioRoute">{{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}</a>
+                    <a class="review-author" [routerLink]="usuarioRoute" (click)="$event.stopPropagation()">{{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}</a>
                   } @else {
                     <p class="review-author">{{ resena.usuario.autorNombre || resena.usuario.nombre || 'Cliente de Nenúfar' }}</p>
                   }
@@ -149,8 +156,17 @@
               @if (resena.creadoEn || resena.fecha) {
                 <time class="review-date">{{ (resena.creadoEn || resena.fecha) | date:'d MMM yyyy' }}</time>
               }
-              @if (getReviewProductLabel(resena); as productoNombre) {
-                <span class="review-product-chip">{{ productoNombre }}</span>
+              @if (getReviewProductLabels(resena); as productosResena) {
+                @if (productosResena.length || getReviewPendingProductLabels(resena).length) {
+                  <div class="review-product-list">
+                    @for (productoNombre of productosResena; track productoNombre + '-' + $index) {
+                      <span class="review-product-chip">{{ productoNombre }}</span>
+                    }
+                    @for (productoPendiente of getReviewPendingProductLabels(resena); track productoPendiente + '-' + $index) {
+                      <span class="review-product-chip review-product-chip--pending">{{ productoPendiente }}</span>
+                    }
+                  </div>
+                }
               }
               <p class="review-text">{{ resena.contenido }}</p>
               @if (resena.selloNenufar) {
@@ -186,7 +202,14 @@
 
     @if (modalActiva()) {
       <div class="profile-modal-backdrop" (click)="cerrarModal()">
-        <section class="profile-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <section
+          class="profile-modal"
+          [class.profile-modal--compact]="modalActiva() === 'horario' || modalActiva() === 'reservas'"
+          [class.profile-modal--wide]="modalActiva() === 'promociones' || modalActiva() === 'catalogo'"
+          role="dialog"
+          aria-modal="true"
+          (click)="$event.stopPropagation()"
+        >
           <button type="button" class="profile-modal__close" (click)="cerrarModal()" aria-label="Cerrar">
             ×
           </button>
@@ -208,10 +231,23 @@
             }
           }
 
+          @if (modalActiva() === 'horario') {
+            <div class="profile-modal__head">
+              <h2>Horario</h2>
+              <p>Configura reservas, franjas y ritmo del negocio desde un panel compacto.</p>
+            </div>
+
+            <app-horario-negocio-modal
+              [negocioId]="negocioId"
+              [negocio]="negocio"
+              (guardado)="manejarHorarioGuardado($event)"
+            />
+          }
+
           @if (modalActiva() === 'reservas') {
             <div class="profile-modal__head">
               <h2>Reservas</h2>
-              <p>Gestiona la disponibilidad y las reservas recibidas desde un panel compacto.</p>
+              <p>Gestiona el día, los estados y la disponibilidad sin salir del perfil.</p>
             </div>
 
             <app-reservas
@@ -229,7 +265,23 @@
               <p>Crea y gestiona promociones sin salir del perfil.</p>
             </div>
 
-            <app-promocion [negocioId]="negocioId" />
+            <app-promocion
+              [negocioId]="negocioId"
+              [negocio]="negocio"
+              (promocionGuardada)="manejarPromocionGuardada($event)"
+            />
+          }
+
+          @if (modalActiva() === 'catalogo') {
+            <div class="profile-modal__head">
+              <h2>Catálogo</h2>
+              <p>Gestiona tus productos y revisa sugerencias de clientes desde un panel compacto.</p>
+            </div>
+
+            <app-catalogo-negocio-modal
+              [negocioId]="negocioId"
+              [negocio]="negocio"
+            />
           }
         </section>
       </div>
@@ -241,8 +293,19 @@
       [resenas]="resenas"
       [negocio]="negocio"
       (cerrarModal)="modalAbierto = false"
-      (resenaCreada)="refrescarResenas()"
+      (resenaCreada)="manejarResenaCreada($event)"
     ></app-crear-resena-modal>
+
+    @if (resenaDetalleAbierta) {
+      <app-resena-detalle-modal
+        [resena]="resenaDetalleAbierta"
+        [negocio]="negocio"
+        [usuarioActual]="usuarioActual"
+        (cerrar)="cerrarDetalleResena()"
+        (comentarioCreado)="manejarComentarioResenaCreado()"
+        (likeCambiado)="manejarLikeResenaCambiado($event)"
+      />
+    }
 
     <app-access-required-modal
       [open]="accessModalAbierto"

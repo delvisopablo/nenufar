@@ -1,5 +1,6 @@
 .dash-card {
-  background: #fff;
+  background: linear-gradient(180deg, rgba(17, 61, 49, 0.98), rgba(9, 34, 28, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 1.25rem;
   width: 100%;
@@ -7,21 +8,28 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow: hidden;
 }
 
 .dash-header {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   padding: 0.55rem 0.85rem;
 
-  .dash-icono  { font-size: 1.1rem; }
-  .dash-titulo { font-weight: 700; font-size: 0.88rem; color: #0c4a6e; flex: 1; }
+  .dash-titulo {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: #ffd4e8;
+    flex: 1;
+  }
+
   .dash-periodo {
     font-size: 0.68rem;
-    background: #0284c7;
+    background: linear-gradient(135deg, #f45c9c, #ee8d54);
     color: #fff;
     padding: 0.15rem 0.5rem;
     border-radius: 999px;
@@ -48,16 +56,16 @@
     &:nth-child(#{$i}) { animation-delay: #{($i - 1) * 100}ms; }
   }
 
-  .m-icono { font-size: 1rem; }
   .m-valor {
     font-size: 1.3rem;
     font-weight: 800;
     letter-spacing: -0.03em;
     line-height: 1.1;
   }
+
   .m-label {
     font-size: 0.68rem;
-    color: #9ca3af;
+    color: rgba(255, 255, 255, 0.42);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -77,7 +85,7 @@
   .chart-titulo {
     font-size: 0.72rem;
     font-weight: 700;
-    color: #6b7280;
+    color: rgba(255, 255, 255, 0.38);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
@@ -108,17 +116,20 @@
 
 .bar {
   width: 100%;
-  background: linear-gradient(to top, #1d4ed8, #60a5fa);
+  background: linear-gradient(to top, rgba(244, 92, 156, 0.7), rgba(238, 141, 84, 0.5));
   border-radius: 4px 4px 2px 2px;
   transition: height 0.7s cubic-bezier(0.34, 1.2, 0.64, 1);
   min-height: 4px;
 
-  &.bar-max { background: linear-gradient(to top, #0f766e, #34d399); }
+  &.bar-max {
+    background: linear-gradient(to top, #f45c9c, #ee8d54);
+    box-shadow: 0 0 8px rgba(244, 92, 156, 0.4);
+  }
 }
 
 .bar-dia {
   font-size: 0.62rem;
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.32);
   font-weight: 600;
 }
 
@@ -130,7 +141,7 @@
   .reservas-titulo {
     font-size: 0.72rem;
     font-weight: 700;
-    color: #6b7280;
+    color: rgba(255, 255, 255, 0.38);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
@@ -141,22 +152,23 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0.65rem;
-  border-radius: 8px;
-  background: #f9fafb;
-  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   animation: aparece 0.4s ease both;
 
   @for $i from 1 through 3 {
     &:nth-child(#{$i + 1}) { animation-delay: #{$i * 120 + 400}ms; }
   }
 
-  .r-hora    { font-size: 0.78rem; font-weight: 700; color: #1d4ed8; min-width: 36px; }
-  .r-nombre  { font-size: 0.78rem; color: #374151; flex: 1; }
-  .r-personas{ font-size: 0.7rem; color: #9ca3af; }
-  .r-estado  {
+  .r-hora    { font-size: 0.78rem; font-weight: 700; color: #f45c9c; min-width: 36px; }
+  .r-nombre  { font-size: 0.78rem; color: rgba(255, 255, 255, 0.75); flex: 1; }
+  .r-personas{ font-size: 0.7rem; color: rgba(255, 255, 255, 0.36); }
+
+  .r-estado {
     font-size: 0.65rem;
-    background: #fef3c7;
-    color: #92400e;
+    background: rgba(244, 92, 156, 0.14);
+    color: #ffd4e8;
     padding: 0.12rem 0.45rem;
     border-radius: 5px;
     font-weight: 600;

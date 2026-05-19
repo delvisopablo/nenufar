@@ -5,7 +5,7 @@ import {
   HttpErrorResponse,
   HttpParams,
 } from '@angular/common/http';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Observable, catchError, map, of, switchMap } from 'rxjs';
 import {
   ApiListResponse,
   buildApiUrl,
@@ -27,13 +27,13 @@ const RESERVED_NEGOCIO_ROUTE_PARAMS = new Set([
   'categorias',
   'compras',
   'dashboard',
-  'editar',
   'estanque',
   'inicio',
   'likes',
   'login',
   'negocio',
   'negocios',
+  'nenuditar',
   'nenuninfo',
   'mis-logros',
   'notificaciones',
@@ -72,31 +72,41 @@ export function normalizeNegocioRouteParam(
   const raw = String(value ?? '').trim();
   const normalized = slugifyPublicSegment(raw);
 
-  if (!raw || !normalized || isReservedNegocioRouteParam(raw)) {
+  if (!raw || !normalized || RESERVED_NEGOCIO_ROUTE_PARAMS.has(normalized)) {
     return null;
   }
 
-  return raw;
+  return normalized;
 }
 
 export function resolveNegocioRouteKey(
   negocio: NegocioRouteTarget | null | undefined,
 ): string | null {
-  // TODO(backend): guardar un nickname o slug unico de negocio.
-  // Si no llega ninguno, generamos una ruta publica provisional a partir del nombre.
-  const nickname =
-    typeof negocio?.nickname === 'string' ? negocio.nickname.trim() : '';
-  if (nickname && !isReservedNegocioRouteParam(nickname)) {
-    return nickname;
-  }
-
-  const slug = typeof negocio?.slug === 'string' ? negocio.slug.trim() : '';
-  if (slug && !isReservedNegocioRouteParam(slug)) {
+  const slug = normalizeNegocioRouteParam(negocio?.slug);
+  if (slug) {
     return slug;
   }
 
-  const generated = slugifyPublicSegment(negocio?.nombre);
-  return generated && !isReservedNegocioRouteParam(generated) ? generated : null;
+  const nickname = normalizeNegocioRouteParam(negocio?.nickname);
+  if (nickname) {
+    return nickname;
+  }
+
+  return null;
+}
+
+export function resolveNegocioRouteCommands(
+  negocio: NegocioRouteTarget | null | undefined,
+): (string | number)[] | null {
+  const routeKey = resolveNegocioRouteKey(negocio);
+  if (routeKey) {
+    return ['/', routeKey];
+  }
+
+  const negocioId = Number(negocio?.id ?? 0);
+  return Number.isFinite(negocioId) && negocioId > 0
+    ? ['/negocio', negocioId]
+    : null;
 }
 
 export interface NegocioSummary {
@@ -113,6 +123,7 @@ export interface NegocioSummary {
   descripcionCorta?: string;
   direccion?: string;
   aceptaReservas?: boolean;
+  intervaloReserva?: number | null;
   foto?: string | null;
   fotoPerfil?: string | null;
   fotoPortada?: string | null;
@@ -122,6 +133,7 @@ export interface NegocioSummary {
   nenufarColor?: string | null;
   nenufarKey?: string | null;
   nenufarAsset?: string | null;
+  horario?: NegocioHorario;
   verificado?: boolean;
   followersCount?: number;
   resenasCount?: number;
@@ -295,30 +307,30 @@ export class NegocioService {
   }
 
   getBySlug(slug: string): Observable<NegocioSummary> {
+    const publicKey =
+      normalizeNegocioRouteParam(slug) ||
+      slugifyPublicSegment(slug) ||
+      String(slug ?? '').trim();
+
     return this.http
-      .get<unknown>(buildApiUrl(`/negocios/slug/${slug}`), {
+      .get<unknown>(buildApiUrl(`/negocios/slug/${encodeURIComponent(publicKey)}`), {
         context: this.silentLookupContext,
       })
-      .pipe(map((response) => this.requireNegocioSummary(response, slug)));
+      .pipe(map((response) => this.requireNegocioSummary(response, publicKey)));
   }
 
   getByNickname(nickname: string): Observable<NegocioSummary> {
-    // TODO(backend): consolidar este lookup publico en GET /negocios/nickname/:nickname.
-    // Por compatibilidad usamos primero ese contrato, luego /negocios/slug/:slug
-    // y como ultimo recurso resolvemos el negocio dentro de GET /negocios.
+    const publicKey =
+      normalizeNegocioRouteParam(nickname) ||
+      slugifyPublicSegment(nickname) ||
+      String(nickname ?? '').trim();
+
     return this.http
-      .get<unknown>(buildApiUrl(`/negocios/nickname/${nickname}`), {
+      .get<unknown>(buildApiUrl(`/negocios/nickname/${encodeURIComponent(publicKey)}`), {
         context: this.silentLookupContext,
       })
       .pipe(
-        map((response) => this.requireNegocioSummary(response, nickname)),
-        catchError((error) => {
-          if (!this.isControlledLookup404(error)) {
-            throw error;
-          }
-
-          return this.getBySlug(nickname);
-        }),
+        map((response) => this.requireNegocioSummary(response, publicKey)),
         catchError((error) => {
           if (!this.isControlledLookup404(error)) {
             throw error;
@@ -327,14 +339,14 @@ export class NegocioService {
           return this.getNegocios().pipe(
             map((negocios) => {
               const match = negocios.find((negocio) =>
-                this.matchesPublicRouteKey(negocio, nickname)
+                normalizeNegocioRouteParam(negocio.nickname) === publicKey
               );
 
               if (match) {
                 return match;
               }
 
-              throw new Error(`Negocio no encontrado para ${nickname}`);
+              throw new Error(`Negocio no encontrado para ${publicKey}`);
             }),
           );
         }),
@@ -364,10 +376,7 @@ export class NegocioService {
   }
 
   getNegocios(): Observable<NegocioSummary[]> {
-    return this.list().pipe(
-      map((items) => items.slice(0, 250)),
-      catchError(() => of([])),
-    );
+    return this.list({ limit: 500 }).pipe(catchError(() => of([])));
   }
 
   searchNegocios(query: string): Observable<NegocioSummary[]> {
@@ -397,17 +406,23 @@ export class NegocioService {
       return of(null);
     }
 
-    return this.getByNickname(normalizedParam).pipe(
-      catchError((error) => {
-        if (
-          this.isControlledLookup404(error) ||
-          this.isNotFoundLookupError(error)
-        ) {
+    return this.getNegocios().pipe(
+      map((negocios) =>
+        negocios.find((negocio) => this.matchesPublicRouteKey(negocio, normalizedParam)) ?? null,
+      ),
+      switchMap((match) => {
+        if (!match) {
           return of(null);
         }
 
-        throw error;
+        const negocioId = Number(match.id ?? 0);
+        if (!Number.isFinite(negocioId) || negocioId <= 0) {
+          return of(match);
+        }
+
+        return this.getById(negocioId).pipe(catchError(() => of(match)));
       }),
+      catchError(() => of(null)),
     );
   }
 
@@ -518,17 +533,7 @@ export class NegocioService {
       id,
       nombre: negocio.nombre?.trim() || `Negocio ${id}`,
       ...(negocio.slug?.trim() ? { slug: negocio.slug.trim() } : {}),
-      ...(
-        negocio.nickname?.trim() || negocio.dueno?.nickname?.trim() || negocio.owner?.nickname?.trim()
-          ? {
-              nickname:
-                negocio.nickname?.trim() ||
-                negocio.dueno?.nickname?.trim() ||
-                negocio.owner?.nickname?.trim() ||
-                null,
-            }
-          : {}
-      ),
+      ...(negocio.nickname?.trim() ? { nickname: negocio.nickname.trim() } : {}),
       categoria,
       descripcion:
         negocio.descripcionCorta?.trim() ||
@@ -763,17 +768,7 @@ export class NegocioService {
       id: Number.isFinite(id) ? id : 0,
       nombre: nombre || `Negocio ${id || ''}`.trim(),
       ...(negocio.slug?.trim() ? { slug: negocio.slug.trim() } : {}),
-      ...(
-        negocio.nickname?.trim() || negocio.dueno?.nickname?.trim() || negocio.owner?.nickname?.trim()
-          ? {
-              nickname:
-                negocio.nickname?.trim() ||
-                negocio.dueno?.nickname?.trim() ||
-                negocio.owner?.nickname?.trim() ||
-                null,
-            }
-          : {}
-      ),
+      ...(negocio.nickname?.trim() ? { nickname: negocio.nickname.trim() } : {}),
       ...(negocio.categoria ? { categoria: negocio.categoria } : {}),
       ...(negocio.subcategoria ? { subcategoria: negocio.subcategoria } : {}),
       ...(negocio.historia?.trim() ? { historia: negocio.historia.trim() } : {}),
@@ -818,20 +813,16 @@ export class NegocioService {
     negocio: NegocioRouteTarget | null | undefined,
     routeKey: string,
   ): boolean {
-    const normalizedCandidate = normalizeSearchText(routeKey);
+    const normalizedCandidate = normalizeNegocioRouteParam(routeKey);
     if (!normalizedCandidate) {
       return false;
     }
 
     return [
-      resolveNegocioRouteKey(negocio),
-      negocio?.slug ?? null,
-      negocio?.nickname ?? null,
-      negocio?.nombre ?? null,
-      slugifyPublicSegment(negocio?.nombre),
+      normalizeNegocioRouteParam(negocio?.slug),
+      normalizeNegocioRouteParam(negocio?.nickname),
     ]
-      .map((value) => normalizeSearchText(value ?? ''))
-      .filter(Boolean)
+      .filter((value): value is string => Boolean(value))
       .includes(normalizedCandidate);
   }
 
@@ -858,10 +849,6 @@ export class NegocioService {
 
   private isControlledLookup404(error: unknown): boolean {
     return error instanceof HttpErrorResponse && error.status === 404;
-  }
-
-  private isNotFoundLookupError(error: unknown): boolean {
-    return error instanceof Error && /negocio no encontrado/i.test(error.message);
   }
 
 }

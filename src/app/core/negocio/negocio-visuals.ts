@@ -44,6 +44,29 @@ export const DEFAULT_NENUFAR_ASSET = NENUFAR_OPTIONS[0].asset;
 export const DEFAULT_NENUFAR_SMALL_ASSET = 'assets/imagenes/nenufar_small.png';
 export const DEFAULT_NENUFAR_FALLBACK_ASSET = 'assets/imagenes/nenufar.png';
 
+const LEGACY_NENUFAR_ALIASES: Record<string, string> = {
+  'loto-rosa': 'nenufar_var1',
+  'nenufar-loto-rosa': 'nenufar_var1',
+  'nenufar-rosa-01': 'nenufar_var1',
+  rosa: 'nenufar_var1',
+  gris: 'nenufar_var2',
+  azul: 'nenufar_var3',
+  naranja: 'nenufar_var4',
+  verde: 'nenufar_var5',
+  rojo: 'nenufar_var6',
+  dorado: 'nenufar_var7',
+  celeste: 'nenufar_var8',
+  rosado: 'nenufar_var9',
+  brillante: 'nenufar_var10',
+  menta: 'nenufar_var11',
+  violeta: 'nenufar_var12',
+  coral: 'nenufar_var13',
+  amarillo: 'nenufar_var14',
+  melocoton: 'nenufar_var15',
+  atardecer: 'nenufar_var16',
+  negro: 'nenufar_var17',
+};
+
 function normalizeVisualValue(value: unknown): string | null {
   if (typeof value !== 'string') {
     return null;
@@ -63,6 +86,15 @@ function isResolvableAsset(value: string): boolean {
   );
 }
 
+function normalizeNenufarAlias(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/_/g, '-')
+    .trim();
+}
+
 export function resolveNenufarAsset(
   value: string | number | null | undefined,
   options: NenufarOption[] = NENUFAR_OPTIONS,
@@ -76,9 +108,13 @@ export function resolveNenufarAsset(
     return null;
   }
 
+  const valueToResolve =
+    LEGACY_NENUFAR_ALIASES[normalizeNenufarAlias(normalizedValue)] ?? normalizedValue;
   const option = options.find(
     (candidate) =>
-      String(candidate.id) === normalizedValue || candidate.asset === normalizedValue,
+      String(candidate.id) === valueToResolve ||
+      candidate.asset === valueToResolve ||
+      normalizeNenufarAlias(String(candidate.id)) === normalizeNenufarAlias(valueToResolve),
   );
 
   if (option) {
@@ -113,20 +149,24 @@ function resolveNegocioNenufarAsset(
   negocio: NegocioVisualData | null | undefined,
   fallback: string,
 ): string {
-  return (
-    resolveNenufarAsset(
-      normalizeVisualValue(negocio?.nenufarActivo) ??
-        normalizeVisualValue(negocio?.assetNenufar) ??
-        normalizeVisualValue(negocio?.nenufarAsset) ??
-        normalizeVisualValue(negocio?.imagenNenufar),
-    ) ??
-    resolveNenufarAsset(
-      normalizeVisualValue(negocio?.nenufarKey) ??
-        normalizeVisualValue(negocio?.nenufarColor),
-    ) ??
-    resolveNenufarAsset(normalizeVisualValue(negocio?.fotoPerfil)) ??
-    fallback
-  );
+  const candidates = [
+    negocio?.nenufarActivo,
+    negocio?.assetNenufar,
+    negocio?.nenufarAsset,
+    negocio?.imagenNenufar,
+    negocio?.nenufarKey,
+    negocio?.nenufarColor,
+    negocio?.fotoPerfil,
+  ];
+
+  for (const candidate of candidates) {
+    const resolved = resolveNenufarAsset(normalizeVisualValue(candidate));
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return fallback;
 }
 
 export function resolveBusinessNenufarAsset(

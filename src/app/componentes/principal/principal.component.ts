@@ -19,6 +19,11 @@ import { Router } from '@angular/router';
 import { Subscription, catchError, map, of } from 'rxjs';
 import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
 import { PromoMock, PROMOS_MOCK } from '../promocion/promocion/promocionesMock';
+import {
+  ResenaComentarioCreadoEvent,
+  ResenaDetalleModalComponent,
+  ResenaLikeCambiadoEvent,
+} from '../resena-detalle-modal/resena-detalle-modal.component';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 import {
   AuthService,
@@ -26,10 +31,15 @@ import {
   resolveOwnedBusinessId,
   resolvePrivateProfileRoute,
 } from '../../servicios/authService/auth.service';
+import {
+  EstanqueFeedService,
+  PondPromotionAnnouncement,
+  PondReviewAnnouncement,
+} from '../../servicios/estanqueFeed/estanque-feed.service';
 import { HomeHeaderService } from '../../servicios/homeHeaderServicio/home-header.service';
 import {
   NegocioService,
-  resolveNegocioRouteKey,
+  resolveNegocioRouteCommands,
 } from '../../servicios/negocioService/negocio.service';
 import {
   NegocioLite,
@@ -41,15 +51,21 @@ import {
   NegocioVisualData,
   addUnsplashParams,
   buildUnsplashSrcset,
-  resolveNenufarAsset,
+  resolveBusinessNenufarAsset,
 } from '../../core/negocio/negocio-visuals';
 import {
   Promocion,
   PromocionService,
   TipoDescuento,
 } from '../../servicios/promocionServicio/promocionService.service';
+import {
+  PostComentario,
+  PostService,
+} from '../../servicios/postServicio/post.service';
+import { ReviewProductMetaService } from '../../servicios/reviewProductMeta/review-product-meta.service';
 
 type HomePromo = PromoMock & {
+  creadoEnISO?: string;
   negocio?: (NegocioVisualData & {
     categoria?: { id?: number; nombre?: string } | string | null;
     duenoId?: number | null;
@@ -62,7 +78,8 @@ type HomePromo = PromoMock & {
 };
 
 type ZoneKey = 'promos' | 'resenas' | 'perfil' | 'crear';
-type LilyKind = 'promo' | 'review' | 'profile' | 'create';
+type LilyKind = 'promo' | 'review' | 'business' | 'profile' | 'create';
+type LilyEntryMotion = 'burst' | null;
 type TooltipTone = 'promo' | 'review' | 'profile' | 'create';
 type HoverTooltip = {
   placement: 'above' | 'below';
@@ -83,8 +100,10 @@ type HoveredLilyTarget = {
 type HomePopup =
   | { kind: 'info' }
   | { kind: 'ayuda' }
+  | { kind: 'navigationError'; message: string; title: string }
   | { kind: 'signin'; message: string; title: string }
-  | { kind: 'review'; lilyId: string; business: NegocioLite }
+  | { kind: 'review'; lilyId: string; business: NegocioLite; review: PondReviewItem }
+  | { kind: 'business'; lilyId: string; business: NegocioLite }
   | { kind: 'promo'; lilyId: string; promo: HomePromo }
   | { kind: 'profile'; lilyId: string }
   | { kind: 'create'; lilyId: string };
@@ -100,13 +119,41 @@ type NavigableBusiness =
       slug?: string | null;
     });
 
+type PondReviewItem = NegocioReviewSnippet & {
+  business: NegocioLite;
+  negocioId: number;
+};
+
+type ReviewInteractionState = {
+  commentDraft: string;
+  comments: PostComentario[];
+  commentsCount: number;
+  error: string | null;
+  likedByMe: boolean;
+  likesCount: number;
+  loading: boolean;
+  submittingComment: boolean;
+  togglingLike: boolean;
+};
+
+type PondCandidate = {
+  item: LilyView;
+  key: string;
+  priority: number;
+  timestamp: number;
+};
+
 type LilyView = {
   id: string;
   kind: LilyKind;
   label: string;
+  insertedAt: number;
+  entryMotion?: LilyEntryMotion;
+  highlighted?: boolean;
   priority: number;
   promo?: HomePromo;
   business?: NegocioLite;
+  review?: PondReviewItem;
   subtitle: string;
   tone: 'fresh' | 'mustio';
   zone: ZoneKey;
@@ -181,7 +228,7 @@ function readJson<T>(key: string): T | null {
 @Component({
   selector: 'app-principal',
   standalone: true,
-  imports: [CommonModule, CrearResenaModalComponent, EstanqueBackgroundComponent],
+  imports: [CommonModule, CrearResenaModalComponent, ResenaDetalleModalComponent, EstanqueBackgroundComponent],
   templateUrl: './principal.component.html',
   styleUrl: './principal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -203,6 +250,9 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly negocioService = inject(NegocioService);
   private readonly negocioSearchService = inject(NegocioSearchService);
   private readonly promocionService = inject(PromocionService);
+  private readonly postService = inject(PostService);
+  private readonly estanqueFeed = inject(EstanqueFeedService);
+  private readonly reviewProductMeta = inject(ReviewProductMetaService);
 
   readonly freshLilyImageSrc = DEFAULT_NENUFAR_SMALL_ASSET;
   readonly mustioLilyImageSrc = 'assets/imagenes/nenufar_mustio_small.png';
@@ -218,18 +268,22 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly usuarioLogueado = signal<AuthUser | null>(null);
   readonly profileLilies = signal<LilyView[]>([]);
   readonly createLilies = signal<LilyView[]>([]);
+  readonly reviewInteractions = signal<Record<number, ReviewInteractionState>>({});
   readonly nombreUsuario = computed(() => {
     const nombre = this.usuarioLogueado()?.nombre;
     return nombre ? String(nombre).split(' ')[0] : 'Invitado';
   });
 
   private readonly zoneConfigs: Record<ZoneKey, ZonePhysicsConfig> = {
-    promos: { targetCount: 5, maxSpeed: 76, minSpeed: 7, damping: 0.991, restitution: 0.78 },
-    resenas: { targetCount: 7, maxSpeed: 62, minSpeed: 6, damping: 0.992, restitution: 0.8 },
+    promos: { targetCount: 8, maxSpeed: 76, minSpeed: 7, damping: 0.991, restitution: 0.78 },
+    resenas: { targetCount: 24, maxSpeed: 62, minSpeed: 6, damping: 0.992, restitution: 0.8 },
     perfil: { targetCount: 0, maxSpeed: 72, minSpeed: 6, damping: 0.991, restitution: 0.82 },
     crear: { targetCount: 0, maxSpeed: 70, minSpeed: 6, damping: 0.991, restitution: 0.82 }
   };
 
+  private readonly cooldownMs = 5 * 60 * 1000;
+  private readonly recentDisplayWindowMs = 90 * 1000;
+  private readonly highlightDurationMs = 1600;
   private animationFrameId = 0;
   private lilyInstanceCounter = 0;
   private lastFrameTime = 0;
@@ -247,6 +301,9 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly tooltipSyncCadenceMs = 84;
   private readonly tooltipViewportPadding = 12;
   private readonly zoneRuntimes = new Map<ZoneKey, ZoneRuntime>();
+  private readonly cooldownUntilByKey = new Map<string, number>();
+  private readonly lastShownAtByKey = new Map<string, number>();
+  private readonly highlightTimerByKey = new Map<string, number>();
 
   constructor() {
     effect(() => {
@@ -262,6 +319,26 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       }
 
       this.homeHeaderService.clearPopup(pendingPopup.nonce);
+    }, { allowSignalWrites: true });
+
+    effect(() => {
+      const announcedReviews = this.estanqueFeed.reviewAnnouncements();
+      if (!announcedReviews.length) {
+        return;
+      }
+
+      announcedReviews.forEach((review) => this.integrateAnnouncedReview(review));
+      this.estanqueFeed.clearReviews(announcedReviews.map((review) => review.id));
+    }, { allowSignalWrites: true });
+
+    effect(() => {
+      const announcedPromotions = this.estanqueFeed.promotionAnnouncements();
+      if (!announcedPromotions.length) {
+        return;
+      }
+
+      announcedPromotions.forEach((promotion) => this.integrateAnnouncedPromotion(promotion));
+      this.estanqueFeed.clearPromotions(announcedPromotions.map((promotion) => promotion.id));
     }, { allowSignalWrites: true });
   }
 
@@ -322,6 +399,8 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       runtime.respawnTimers.clear();
     });
     this.zoneRuntimes.clear();
+    this.highlightTimerByKey.forEach((timerId) => window.clearTimeout(timerId));
+    this.highlightTimerByKey.clear();
   }
 
   abrirAyuda(): void {
@@ -388,16 +467,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getNenufarNegocio(negocio: NegocioLite | NegocioVisualData | null | undefined): string {
-    const nenufarAsset = resolveNenufarAsset(
-      negocio?.nenufarActivo ??
-        negocio?.assetNenufar ??
-        negocio?.nenufarAsset ??
-        negocio?.imagenNenufar ??
-        negocio?.nenufarKey ??
-        negocio?.nenufarColor,
-    );
-
-    return nenufarAsset ?? DEFAULT_NENUFAR_SMALL_ASSET;
+    return resolveBusinessNenufarAsset(negocio, DEFAULT_NENUFAR_SMALL_ASSET);
   }
 
   getLilyImageSrc(item: LilyView): string {
@@ -490,13 +560,150 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       | null
       | undefined,
   ): string | null {
-    const productoNombre =
-      review?.productoNombre ??
-      review?.nombreProducto ??
-      review?.servicioNombre;
+    return this.reviewProductMeta.getPrimaryProductLabel(review);
+  }
 
-    const normalized = String(productoNombre ?? '').trim();
-    return normalized || null;
+  getReviewProductLabels(review: Partial<NegocioReviewSnippet> | null | undefined): string[] {
+    return this.reviewProductMeta.getProductLabels(review);
+  }
+
+  getReviewPendingProductLabels(review: Partial<NegocioReviewSnippet> | null | undefined): string[] {
+    return this.reviewProductMeta.getPendingSuggestionLabels(review);
+  }
+
+  getReviewPostId(review: Partial<NegocioReviewSnippet> | null | undefined): number | null {
+    const postId = Number(review?.postId ?? 0);
+    return Number.isFinite(postId) && postId > 0 ? postId : null;
+  }
+
+  getReviewInteraction(review: Partial<NegocioReviewSnippet>): ReviewInteractionState {
+    return this.reviewInteractions()[Number(review.id)] ?? this.createInitialReviewInteraction(review);
+  }
+
+  updateReviewCommentDraft(review: Partial<NegocioReviewSnippet>, value: string): void {
+    const reviewId = Number(review.id ?? 0);
+    if (!Number.isFinite(reviewId) || reviewId <= 0) {
+      return;
+    }
+
+    this.patchReviewInteraction(reviewId, {
+      ...this.getReviewInteraction(review),
+      commentDraft: value,
+      error: null,
+    });
+  }
+
+  toggleReviewLike(review: Partial<NegocioReviewSnippet>): void {
+    const postId = this.getReviewPostId(review);
+    const reviewId = Number(review.id ?? 0);
+    if (!postId || !Number.isFinite(reviewId) || reviewId <= 0) {
+      return;
+    }
+
+    if (!this.usuarioLogueado()?.id) {
+      this.patchReviewInteraction(reviewId, {
+        ...this.getReviewInteraction(review),
+        error: 'Inicia sesión para dar like a esta reseña.',
+      });
+      return;
+    }
+
+    const current = this.getReviewInteraction(review);
+    if (current.togglingLike) {
+      return;
+    }
+
+    this.patchReviewInteraction(reviewId, { ...current, togglingLike: true, error: null });
+    const request$ = current.likedByMe
+      ? this.postService.unlike(postId)
+      : this.postService.like(postId);
+
+    request$.subscribe({
+      next: () => {
+        const next = this.getReviewInteraction(review);
+        const likedByMe = !current.likedByMe;
+        const likesCount = Math.max(0, next.likesCount + (likedByMe ? 1 : -1));
+        this.patchReviewInteraction(reviewId, {
+          ...next,
+          likedByMe,
+          likesCount,
+          togglingLike: false,
+          error: null,
+        });
+        this.patchReviewStats(reviewId, { likedByMe, likesCount });
+      },
+      error: () => {
+        this.patchReviewInteraction(reviewId, {
+          ...this.getReviewInteraction(review),
+          togglingLike: false,
+          error: 'No se ha podido actualizar el like.',
+        });
+      },
+    });
+  }
+
+  submitReviewComment(review: Partial<NegocioReviewSnippet>): void {
+    const postId = this.getReviewPostId(review);
+    const reviewId = Number(review.id ?? 0);
+    if (!postId || !Number.isFinite(reviewId) || reviewId <= 0) {
+      return;
+    }
+
+    if (!this.usuarioLogueado()?.id) {
+      this.patchReviewInteraction(reviewId, {
+        ...this.getReviewInteraction(review),
+        error: 'Inicia sesión para comentar esta reseña.',
+      });
+      return;
+    }
+
+    const current = this.getReviewInteraction(review);
+    const contenido = current.commentDraft.trim();
+    if (!contenido || current.submittingComment) {
+      return;
+    }
+
+    this.patchReviewInteraction(reviewId, {
+      ...current,
+      submittingComment: true,
+      error: null,
+    });
+
+    this.postService.crearComentario(postId, contenido).subscribe({
+      next: (comment) => {
+        const next = this.getReviewInteraction(review);
+        const comments = [...next.comments, comment];
+        this.patchReviewInteraction(reviewId, {
+          ...next,
+          comments,
+          commentsCount: comments.length,
+          commentDraft: '',
+          submittingComment: false,
+          error: null,
+        });
+        this.patchReviewStats(reviewId, { comentariosCount: comments.length });
+      },
+      error: () => {
+        this.patchReviewInteraction(reviewId, {
+          ...this.getReviewInteraction(review),
+          submittingComment: false,
+          error: 'No se ha podido publicar el comentario.',
+        });
+      },
+    });
+  }
+
+  manejarComentarioResenaCreado(event: ResenaComentarioCreadoEvent): void {
+    this.patchReviewStats(event.resenaId, {
+      comentariosCount: event.comentariosCount,
+    });
+  }
+
+  manejarLikeResenaCambiado(event: ResenaLikeCambiadoEvent): void {
+    this.patchReviewStats(event.resenaId, {
+      likedByMe: event.likedByMe,
+      likesCount: event.likesCount,
+    });
   }
 
   handleBackdropClick(event: MouseEvent): void {
@@ -512,10 +719,13 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   goToNegocio(negocio: NavigableBusiness | null | undefined): void {
     if (!negocio) {
+      this.schedulePopup({
+        kind: 'navigationError',
+        title: 'Negocio no disponible',
+        message: 'No hemos podido abrir este negocio porque le falta una direccion pública.',
+      });
       return;
     }
-
-    this.schedulePopup(null);
 
     const negocioId = Number(negocio.id ?? 0);
     const negocioDuenoId = Number(negocio.duenoId ?? 0);
@@ -526,29 +736,38 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       (Number.isFinite(negocioDuenoId) && negocioDuenoId > 0 && negocioDuenoId === usuarioActualId);
 
     if (esMiNegocio) {
-      void this.router.navigate(['/mi-negocio']);
+      this.schedulePopup(null);
+      void this.router.navigate(resolvePrivateProfileRoute(this.usuarioLogueado()));
       return;
     }
 
-    const routeKey = resolveNegocioRouteKey(negocio);
-    if (routeKey && !this.negocioService.isReservedRouteParam(routeKey)) {
-      void this.router.navigate(['/', routeKey]);
+    const negocioRoute = resolveNegocioRouteCommands(negocio);
+    if (negocioRoute) {
+      this.schedulePopup(null);
+      void this.router.navigate(negocioRoute);
+      return;
     }
+
+    this.schedulePopup({
+      kind: 'navigationError',
+      title: 'Negocio no disponible',
+      message: 'No hemos podido abrir este negocio porque le falta una direccion pública.',
+    });
   }
 
   private cargarNegociosDestacados(): void {
-    this.negocioSearchService.showcase(14).subscribe({
+    this.negocioSearchService.showcase(24).subscribe({
       next: (items) => {
-        this.negociosDestacados.set(items);
-        this.promoLilies.set(this.takeInitialLilies('promos'));
-        this.reviewLilies.set(this.takeInitialLilies('resenas'));
+        this.negociosDestacados.update((current) => this.mergeBusinesses(current, items));
+        this.reconcileZonePopulation('resenas');
+        this.reconcileZonePopulation('promos');
         this.queueZoneSync();
         this.changeDetector.markForCheck();
       },
       error: () => {
-        this.negociosDestacados.set([]);
-        this.promoLilies.set(this.takeInitialLilies('promos'));
-        this.reviewLilies.set([]);
+        this.negociosDestacados.update((items) => items);
+        this.reconcileZonePopulation('resenas');
+        this.reconcileZonePopulation('promos');
         this.queueZoneSync();
         this.changeDetector.markForCheck();
       },
@@ -567,70 +786,685 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       )
       .subscribe({
         next: (items) => {
-          this.promociones.set(items);
-          this.promoLilies.set(this.takeInitialLilies('promos'));
+          this.promociones.update((current) => this.mergePromotions(current, items));
+          this.reconcileZonePopulation('promos');
           this.queueZoneSync();
           this.changeDetector.markForCheck();
         },
         error: () => {
-          this.promociones.set(PROMOS_MOCK);
-          this.promoLilies.set(this.takeInitialLilies('promos'));
+          this.promociones.update((current) => this.mergePromotions(current, PROMOS_MOCK));
+          this.reconcileZonePopulation('promos');
           this.queueZoneSync();
           this.changeDetector.markForCheck();
         },
       });
   }
 
-  manejarResenaCreada(respuesta: any): void {
-    const negocioId = Number(respuesta?.negocioId ?? 0);
-    const productoNombre = this.getReviewProductLabel({
-      productoNombre: String(
-        respuesta?.producto?.nombre ??
-          respuesta?.productoNombre ??
-          respuesta?.nombreProducto ??
-          respuesta?.servicioNombre ??
-          '',
-      ),
-    });
-    const review: NegocioReviewSnippet = {
-      id: Number(respuesta?.id ?? Date.now()),
-      autorNombre: this.usuarioLogueado()?.nombre || 'Tu',
-      puntuacion: Number(respuesta?.puntuacion ?? 5),
-      contenido: String(
-        respuesta?.contenido ??
-          'Tu nueva reseña ya está flotando por el estanque y volverá a aparecer en el negocio.'
-      ),
-      contenidoCorto: String(
-        respuesta?.contenido ?? 'Tu nueva reseña ya está flotando por el estanque.'
-      ).slice(0, 132),
-      fechaISO: new Date().toISOString(),
-      selloNenufar: Boolean(respuesta?.selloNenufar),
-      ...(productoNombre ? { productoNombre } : {}),
-      ...(this.usuarioLogueado()?.nickname ? { usuarioNickname: this.usuarioLogueado()?.nickname } : {}),
-      ...(typeof this.usuarioLogueado()?.foto === 'string' ? { usuarioFoto: this.usuarioLogueado()?.foto || undefined } : {}),
+  private createInitialReviewInteraction(
+    review: Partial<NegocioReviewSnippet>,
+  ): ReviewInteractionState {
+    return {
+      commentDraft: '',
+      comments: [],
+      commentsCount: Number(review.comentariosCount ?? 0) || 0,
+      error: null,
+      likedByMe: Boolean(review.likedByMe),
+      likesCount: Number(review.likesCount ?? 0) || 0,
+      loading: false,
+      submittingComment: false,
+      togglingLike: false,
     };
+  }
+
+  private patchReviewInteraction(reviewId: number, state: ReviewInteractionState): void {
+    this.reviewInteractions.update((items) => ({
+      ...items,
+      [reviewId]: state,
+    }));
+    this.changeDetector.markForCheck();
+  }
+
+  private loadReviewInteractionsForBusiness(business: NegocioLite): void {
+    business.latestReviews.forEach((review) => this.loadReviewInteraction(review));
+  }
+
+  private loadReviewInteraction(review: NegocioReviewSnippet): void {
+    const reviewId = Number(review.id ?? 0);
+    const postId = this.getReviewPostId(review);
+    if (!postId || !Number.isFinite(reviewId) || reviewId <= 0) {
+      return;
+    }
+
+    const existing = this.reviewInteractions()[reviewId];
+    if (existing?.loading || existing?.comments.length) {
+      return;
+    }
+
+    this.patchReviewInteraction(reviewId, {
+      ...(existing ?? this.createInitialReviewInteraction(review)),
+      loading: true,
+      error: null,
+    });
+
+    this.postService.listLikes(postId).subscribe({
+      next: (likesResponse) => {
+        const usuarioId = Number(this.usuarioLogueado()?.id ?? 0);
+        const likedByMe =
+          Number.isFinite(usuarioId) &&
+          usuarioId > 0 &&
+          likesResponse.likes.some((like) => Number(like.usuarioId) === usuarioId);
+
+        this.patchReviewInteraction(reviewId, {
+          ...this.getReviewInteraction(review),
+          likedByMe,
+          likesCount: likesResponse.count,
+        });
+        this.patchReviewStats(reviewId, { likedByMe, likesCount: likesResponse.count });
+      },
+      error: () => {
+        this.patchReviewInteraction(reviewId, {
+          ...this.getReviewInteraction(review),
+          error: 'No se han podido cargar los likes.',
+        });
+      },
+    });
+
+    this.postService.listComentarios(postId).subscribe({
+      next: (comments) => {
+        this.patchReviewInteraction(reviewId, {
+          ...this.getReviewInteraction(review),
+          comments,
+          commentsCount: comments.length,
+          loading: false,
+        });
+        this.patchReviewStats(reviewId, { comentariosCount: comments.length });
+      },
+      error: () => {
+        this.patchReviewInteraction(reviewId, {
+          ...this.getReviewInteraction(review),
+          loading: false,
+          error: 'No se han podido cargar los comentarios.',
+        });
+      },
+    });
+  }
+
+  private patchReviewStats(
+    reviewId: number,
+    stats: { likedByMe?: boolean; likesCount?: number; comentariosCount?: number },
+  ): void {
+    const patchReview = <T extends NegocioReviewSnippet>(review: T): T =>
+      review.id === reviewId ? { ...review, ...stats } : review;
 
     this.negociosDestacados.update((items) =>
+      items.map((business) => ({
+        ...business,
+        latestReviews: business.latestReviews.map((review) => patchReview(review)),
+      })),
+    );
+
+    const activePopup = this.popup();
+    if (activePopup?.kind === 'review') {
+      this.popup.set({
+        ...activePopup,
+        review:
+          activePopup.review.id === reviewId
+            ? { ...activePopup.review, ...stats }
+            : activePopup.review,
+        business: {
+          ...activePopup.business,
+          latestReviews: activePopup.business.latestReviews.map((review) =>
+            patchReview(review),
+          ),
+        },
+      });
+    }
+  }
+
+  manejarResenaCreada(respuesta: any): void {
+    this.integrateAnnouncedReview(this.normalizeReviewAnnouncement(respuesta));
+    this.crearResenaAbierto.set(false);
+    this.changeDetector.markForCheck();
+  }
+
+  private normalizeReviewAnnouncement(response: unknown): PondReviewAnnouncement {
+    const payload = (response && typeof response === 'object' ? response : {}) as Record<string, unknown>;
+    const mergedPayload = this.reviewProductMeta.mergeReview(payload);
+    const productoNombre = this.reviewProductMeta.getPrimaryProductLabel(mergedPayload);
+
+    return {
+      id: Number(payload['id'] ?? Date.now()),
+      negocioId: Number(payload['negocioId'] ?? 0),
+      ...(Number.isFinite(Number(payload['postId'])) ? { postId: Number(payload['postId']) } : {}),
+      ...(typeof payload['likesCount'] === 'number' ? { likesCount: Number(payload['likesCount']) } : {}),
+      ...(typeof payload['likedByMe'] === 'boolean' ? { likedByMe: Boolean(payload['likedByMe']) } : {}),
+      ...(typeof payload['comentariosCount'] === 'number' ? { comentariosCount: Number(payload['comentariosCount']) } : {}),
+      contenido: String(
+        payload['contenido'] ??
+          'Tu nueva reseña ya está flotando por el estanque y volverá a aparecer en el negocio.',
+      ),
+      puntuacion: Number(payload['puntuacion'] ?? 5),
+      selloNenufar: Boolean(payload['selloNenufar']),
+      fechaISO: String(payload['fechaISO'] ?? new Date().toISOString()),
+      autorNombre:
+        typeof payload['autorNombre'] === 'string'
+          ? payload['autorNombre']
+          : this.usuarioLogueado()?.nombre ?? 'Tu',
+      usuarioNickname:
+        typeof payload['usuarioNickname'] === 'string'
+          ? payload['usuarioNickname']
+          : this.usuarioLogueado()?.nickname,
+      usuarioFoto:
+        typeof payload['usuarioFoto'] === 'string'
+          ? payload['usuarioFoto']
+          : this.usuarioLogueado()?.foto ?? null,
+      productoNombre,
+      productos:
+        (mergedPayload as { productos?: PondReviewAnnouncement['productos'] }).productos ?? [],
+      productosSugeridos:
+        (mergedPayload as { productosSugeridos?: PondReviewAnnouncement['productosSugeridos'] }).productosSugeridos ?? [],
+      negocio: (payload['negocio'] as PondReviewAnnouncement['negocio']) ?? null,
+    };
+  }
+
+  private integrateAnnouncedReview(announcement: PondReviewAnnouncement): void {
+    const business = this.buildBusinessFromSnapshot(
+      announcement.negocio,
+      announcement.negocioId,
+    );
+    const review = this.buildReviewFromAnnouncement(announcement, business);
+
+    this.negociosDestacados.update((items) => {
+      const current = items.find((item) => item.id === business.id) ?? null;
+      const reviewCount = Math.max(
+        Number(current?.reviewCount ?? 0) + (this.businessHasReview(current, review.id) ? 0 : 1),
+        Number(current?.reviewCount ?? 0),
+        1,
+      );
+      const averageRating =
+        current && current.reviewCount > 0 && !this.businessHasReview(current, review.id)
+          ? Number(
+              (
+                ((current.averageRating || 0) * current.reviewCount + review.puntuacion) /
+                Math.max(1, current.reviewCount + 1)
+              ).toFixed(1),
+            )
+          : current?.averageRating ?? review.puntuacion;
+
+      const mergedBusiness = this.mergeBusiness(
+        current ?? business,
+        {
+          ...business,
+          reviewCount,
+          averageRating,
+          latestReviews: this.mergeReviewCollections([review], current?.latestReviews ?? []),
+        },
+      );
+
+      return this.upsertBusiness(items, mergedBusiness);
+    });
+
+    this.forceInsertPriorityItem(
+      'resenas',
+      this.createReviewLily(review, this.isFollowedBusiness(review.business), 'burst'),
+    );
+    this.queueZoneSync();
+    this.changeDetector.markForCheck();
+  }
+
+  private integrateAnnouncedPromotion(announcement: PondPromotionAnnouncement): void {
+    const estadoNormalizado = String(announcement.estado ?? 'PUBLICADO').trim().toUpperCase();
+    const promoEsVisible = announcement.activa !== false && estadoNormalizado !== 'OCULTO' && estadoNormalizado !== 'BORRADOR';
+
+    if (!promoEsVisible) {
+      this.promociones.update((items) => items.filter((item) => item.id !== announcement.id));
+      this.promoLilies.update((items) => items.filter((item) => item.id !== `promo:${announcement.id}`));
+      this.queueZoneSync();
+      this.changeDetector.markForCheck();
+      return;
+    }
+
+    if (announcement.negocio) {
+      this.negociosDestacados.update((items) =>
+        this.upsertBusiness(
+          items,
+          this.buildBusinessFromSnapshot(announcement.negocio, announcement.negocioId),
+        ),
+      );
+    }
+
+    const nextPromo = this.toHomePromoFromAnnouncement(announcement);
+    if (!nextPromo) {
+      return;
+    }
+
+    this.promociones.update((items) => this.mergePromotions(items, [nextPromo]));
+
+    const visiblePromoId = this.promoLilies().find((item) => item.promo?.id === nextPromo.id)?.id ?? null;
+    if (visiblePromoId) {
+      this.highlightVisibleItem('promos', visiblePromoId);
+      this.changeDetector.markForCheck();
+      return;
+    }
+
+    this.forceInsertPriorityItem(
+      'promos',
+      this.createPromoLily(nextPromo, this.isFollowedPromotion(nextPromo), 'burst'),
+    );
+    this.queueZoneSync();
+    this.changeDetector.markForCheck();
+  }
+
+  private buildBusinessFromSnapshot(
+    snapshot: PondReviewAnnouncement['negocio'] | PondPromotionAnnouncement['negocio'],
+    fallbackId: number,
+  ): NegocioLite {
+    const negocioId = Number(snapshot?.id ?? fallbackId);
+    const categoriaNombre =
+      typeof snapshot?.categoria === 'string'
+        ? snapshot.categoria
+        : snapshot?.categoria?.nombre;
+
+    return {
+      id: Number.isFinite(negocioId) && negocioId > 0 ? negocioId : fallbackId,
+      nombre: String(snapshot?.nombre ?? '').trim() || `Negocio ${fallbackId}`,
+      ...(snapshot?.slug?.trim() ? { slug: snapshot.slug.trim() } : {}),
+      ...(snapshot?.nickname?.trim() ? { nickname: snapshot.nickname.trim() } : {}),
+      ...(snapshot?.ciudad?.trim() ? { ciudad: snapshot.ciudad.trim() } : {}),
+      ...(snapshot?.provincia?.trim() ? { provincia: snapshot.provincia.trim() } : {}),
+      ...(Number.isFinite(Number(snapshot?.duenoId)) ? { duenoId: Number(snapshot?.duenoId) } : {}),
+      ...(categoriaNombre?.trim() ? { categoria: { nombre: categoriaNombre.trim() } } : {}),
+      ...(snapshot?.descripcion?.trim() ? { descripcion: snapshot.descripcion.trim() } : {}),
+      ...(snapshot?.foto?.trim() ? { foto: snapshot.foto.trim() } : {}),
+      ...(snapshot?.fotoPerfil?.trim() ? { fotoPerfil: snapshot.fotoPerfil.trim() } : {}),
+      ...(snapshot?.fotoPortada?.trim() ? { fotoPortada: snapshot.fotoPortada.trim() } : {}),
+      ...(snapshot?.imagenNenufar?.trim() ? { imagenNenufar: snapshot.imagenNenufar.trim() } : {}),
+      ...(snapshot?.nenufarActivo?.trim() ? { nenufarActivo: snapshot.nenufarActivo.trim() } : {}),
+      ...(snapshot?.assetNenufar?.trim() ? { assetNenufar: snapshot.assetNenufar.trim() } : {}),
+      ...(snapshot?.nenufarColor?.trim() ? { nenufarColor: snapshot.nenufarColor.trim() } : {}),
+      ...(snapshot?.nenufarAsset?.trim() ? { nenufarAsset: snapshot.nenufarAsset.trim() } : {}),
+      ...(snapshot?.nenufarKey?.trim() ? { nenufarKey: snapshot.nenufarKey.trim() } : {}),
+      ...(typeof snapshot?.verificado === 'boolean' ? { verificado: snapshot.verificado } : {}),
+      reviewCount: 0,
+      averageRating: 0,
+      latestReviews: [],
+      isFollowing: Boolean(snapshot?.isFollowing ?? snapshot?.isFollowedByMe),
+      followersCount: Number(snapshot?.followersCount ?? 0) || 0,
+    };
+  }
+
+  private buildReviewFromAnnouncement(
+    announcement: PondReviewAnnouncement,
+    business: NegocioLite,
+  ): PondReviewItem {
+    const contenido = String(announcement.contenido ?? '').trim();
+    return {
+      id: Number(announcement.id ?? Date.now()),
+      negocioId: business.id,
+      business,
+      autorNombre: String(announcement.autorNombre ?? 'Cliente de Nenúfar').trim() || 'Cliente de Nenúfar',
+      contenido,
+      contenidoCorto: contenido.length > 132 ? `${contenido.slice(0, 129)}...` : contenido,
+      fechaISO: String(announcement.fechaISO ?? new Date().toISOString()),
+      ...(Number.isFinite(Number(announcement.postId)) ? { postId: Number(announcement.postId) } : {}),
+      ...(typeof announcement.likesCount === 'number' ? { likesCount: announcement.likesCount } : {}),
+      ...(typeof announcement.likedByMe === 'boolean' ? { likedByMe: announcement.likedByMe } : {}),
+      ...(typeof announcement.comentariosCount === 'number' ? { comentariosCount: announcement.comentariosCount } : {}),
+      puntuacion: Number(announcement.puntuacion ?? 0) || 0,
+      selloNenufar: Boolean(announcement.selloNenufar),
+      ...(announcement.productoNombre?.trim() ? { productoNombre: announcement.productoNombre.trim() } : {}),
+      ...(announcement.productos?.length ? { productos: announcement.productos } : {}),
+      ...(announcement.productosSugeridos?.length ? { productosSugeridos: announcement.productosSugeridos } : {}),
+      ...(announcement.usuarioNickname?.trim() ? { usuarioNickname: announcement.usuarioNickname.trim() } : {}),
+      ...(announcement.usuarioFoto?.trim() ? { usuarioFoto: announcement.usuarioFoto.trim() } : {}),
+    };
+  }
+
+  private businessHasReview(
+    business: NegocioLite | null | undefined,
+    reviewId: number,
+  ): boolean {
+    return Boolean(
+      business?.latestReviews?.some((review) => Number(review.id ?? 0) === reviewId),
+    );
+  }
+
+  private mergeReviewCollections(
+    ...reviewLists: Array<Array<NegocioReviewSnippet | PondReviewItem>>
+  ): NegocioReviewSnippet[] {
+    const byId = new Map<number, NegocioReviewSnippet>();
+
+    reviewLists
+      .flat()
+      .filter((review) => Number.isFinite(Number(review?.id ?? NaN)))
+      .sort((left, right) =>
+        String(right.fechaISO ?? '').localeCompare(String(left.fechaISO ?? '')),
+      )
+      .forEach((review) => {
+        const reviewId = Number(review.id ?? 0);
+        if (!byId.has(reviewId)) {
+          byId.set(reviewId, review);
+        }
+      });
+
+    return Array.from(byId.values())
+      .sort((left, right) =>
+        String(right.fechaISO ?? '').localeCompare(String(left.fechaISO ?? '')),
+      )
+      .slice(0, 6);
+  }
+
+  private mergeBusiness(existing: NegocioLite, incoming: NegocioLite): NegocioLite {
+    const incomingCount = Number(incoming.reviewCount ?? 0);
+    const existingCount = Number(existing.reviewCount ?? 0);
+
+    return {
+      ...existing,
+      ...incoming,
+      latestReviews: this.mergeReviewCollections(
+        incoming.latestReviews ?? [],
+        existing.latestReviews ?? [],
+      ),
+      reviewCount: Math.max(incomingCount, existingCount),
+      averageRating:
+        incomingCount >= existingCount
+          ? Number(incoming.averageRating ?? existing.averageRating ?? 0)
+          : Number(existing.averageRating ?? incoming.averageRating ?? 0),
+      isFollowing: Boolean(incoming.isFollowing ?? existing.isFollowing),
+      followersCount: Number(incoming.followersCount ?? existing.followersCount ?? 0) || 0,
+    };
+  }
+
+  private upsertBusiness(items: NegocioLite[], nextBusiness: NegocioLite): NegocioLite[] {
+    const nextItems = items.filter((item) => item.id !== nextBusiness.id);
+    nextItems.unshift(nextBusiness);
+    return this.sortBusinesses(nextItems);
+  }
+
+  private mergeBusinesses(
+    current: NegocioLite[],
+    incoming: NegocioLite[],
+  ): NegocioLite[] {
+    const businessById = new Map<number, NegocioLite>();
+
+    [...current, ...incoming].forEach((business) => {
+      const businessId = Number(business.id ?? 0);
+      if (!Number.isFinite(businessId) || businessId <= 0) {
+        return;
+      }
+
+      const existing = businessById.get(businessId);
+      businessById.set(
+        businessId,
+        existing ? this.mergeBusiness(existing, business) : business,
+      );
+    });
+
+    return this.sortBusinesses(Array.from(businessById.values()));
+  }
+
+  private sortBusinesses(items: NegocioLite[]): NegocioLite[] {
+    return [...items].sort((left, right) => {
+      const followDelta = Number(Boolean(right.isFollowing)) - Number(Boolean(left.isFollowing));
+      if (followDelta !== 0) {
+        return followDelta;
+      }
+
+      const reviewDelta = Number(right.reviewCount ?? 0) - Number(left.reviewCount ?? 0);
+      if (reviewDelta !== 0) {
+        return reviewDelta;
+      }
+
+      return String(left.nombre ?? '').localeCompare(String(right.nombre ?? ''));
+    });
+  }
+
+  private mergePromotions(current: HomePromo[], incoming: HomePromo[]): HomePromo[] {
+    const promoById = new Map<number, HomePromo>();
+
+    [...current, ...incoming].forEach((promo) => {
+      const promoId = Number(promo.id ?? 0);
+      if (!Number.isFinite(promoId) || promoId <= 0) {
+        return;
+      }
+
+      const existing = promoById.get(promoId);
+      promoById.set(
+        promoId,
+        existing
+          ? {
+              ...existing,
+              ...promo,
+              creadoEnISO: promo.creadoEnISO ?? existing.creadoEnISO,
+              negocio: promo.negocio ?? existing.negocio,
+            }
+          : promo,
+      );
+    });
+
+    return Array.from(promoById.values()).sort((left, right) =>
+      this.getPromoTimestamp(right) - this.getPromoTimestamp(left),
+    );
+  }
+
+  private isFollowedBusiness(
+    business: NegocioLite | NegocioVisualData | null | undefined,
+  ): boolean {
+    return Boolean((business as { isFollowing?: boolean } | null)?.isFollowing);
+  }
+
+  private isFollowedPromotion(promo: HomePromo): boolean {
+    return this.isFollowedBusiness(this.getPromoBusiness(promo));
+  }
+
+  private getZoneTargetCount(zone: ZoneKey): number {
+    const width =
+      this.sceneRef?.nativeElement.clientWidth ??
+      (typeof window !== 'undefined' ? window.innerWidth : 1280);
+
+    switch (zone) {
+      case 'resenas':
+        return width <= 640 ? 9 : width <= 960 ? 16 : 24;
+      case 'promos':
+        return width <= 640 ? 3 : width <= 960 ? 5 : 8;
+      case 'perfil':
+      case 'crear':
+        return 0;
+    }
+  }
+
+  private reconcileZonePopulation(zone: ZoneKey): void {
+    const signalRef = this.getSignalForZone(zone);
+    const targetCount = this.getZoneTargetCount(zone);
+    const currentItems = signalRef();
+
+    if (!targetCount) {
+      if (currentItems.length) {
+        signalRef.set([]);
+      }
+      return;
+    }
+
+    let nextItems = [...currentItems];
+    if (nextItems.length > targetCount) {
+      const keepIds = new Set(
+        [...nextItems]
+          .sort((left, right) =>
+            right.priority - left.priority || right.insertedAt - left.insertedAt,
+          )
+          .slice(0, targetCount)
+          .map((item) => item.id),
+      );
+      nextItems = nextItems.filter((item) => keepIds.has(item.id));
+    }
+
+    const blockedKeys = new Set(nextItems.map((item) => item.id));
+    while (nextItems.length < targetCount) {
+      const nextItem = this.createNextZoneItem(zone, blockedKeys);
+      if (!nextItem) {
+        break;
+      }
+
+      nextItems.push(nextItem);
+      blockedKeys.add(nextItem.id);
+      this.registerItemShown(nextItem);
+    }
+
+    signalRef.set(nextItems);
+  }
+
+  private getVisibleKeysForZone(zone: ZoneKey): Set<string> {
+    return new Set(this.getSignalForZone(zone)().map((item) => item.id));
+  }
+
+  private registerItemShown(item: LilyView): void {
+    this.lastShownAtByKey.set(item.id, Date.now());
+    this.cooldownUntilByKey.delete(item.id);
+  }
+
+  private registerItemCooldown(itemKey: string): void {
+    this.cooldownUntilByKey.set(itemKey, Date.now() + this.cooldownMs);
+  }
+
+  private isCoolingDown(itemKey: string): boolean {
+    const until = this.cooldownUntilByKey.get(itemKey) ?? 0;
+    if (!until) {
+      return false;
+    }
+
+    if (until <= Date.now()) {
+      this.cooldownUntilByKey.delete(itemKey);
+      return false;
+    }
+
+    return true;
+  }
+
+  private hasBeenShownRecently(itemKey: string): boolean {
+    const shownAt = this.lastShownAtByKey.get(itemKey) ?? 0;
+    return shownAt > 0 && Date.now() - shownAt < this.recentDisplayWindowMs;
+  }
+
+  private forceInsertPriorityItem(zone: ZoneKey, nextItem: LilyView): void {
+    const signalRef = this.getSignalForZone(zone);
+    const visibleItems = signalRef();
+
+    if (visibleItems.some((item) => item.id === nextItem.id)) {
+      this.highlightVisibleItem(zone, nextItem.id);
+      return;
+    }
+
+    this.cooldownUntilByKey.delete(nextItem.id);
+    const stampedItem = {
+      ...nextItem,
+      insertedAt: Date.now(),
+    };
+    const targetCount = this.getZoneTargetCount(zone);
+
+    if (visibleItems.length < targetCount) {
+      signalRef.set([...visibleItems, stampedItem]);
+      this.registerItemShown(stampedItem);
+      return;
+    }
+
+    const replaceIndex = this.pickReplacementIndex(visibleItems);
+    if (replaceIndex < 0) {
+      signalRef.set([...visibleItems, stampedItem]);
+      this.registerItemShown(stampedItem);
+      return;
+    }
+
+    const removed = visibleItems[replaceIndex];
+    const nextVisibleItems = [...visibleItems];
+    nextVisibleItems.splice(replaceIndex, 1, stampedItem);
+    signalRef.set(nextVisibleItems);
+    this.handleRemovedVisibleItem(removed.id);
+    this.registerItemCooldown(removed.id);
+    this.registerItemShown(stampedItem);
+  }
+
+  private pickReplacementIndex(items: LilyView[]): number {
+    if (!items.length) {
+      return -1;
+    }
+
+    let lowestIndex = 0;
+    for (let index = 1; index < items.length; index += 1) {
+      const current = items[index];
+      const lowest = items[lowestIndex];
+      if (
+        current.priority < lowest.priority ||
+        (current.priority === lowest.priority && current.insertedAt < lowest.insertedAt)
+      ) {
+        lowestIndex = index;
+      }
+    }
+
+    return lowestIndex;
+  }
+
+  private handleRemovedVisibleItem(itemId: string): void {
+    if (this.hoveredTarget?.item.id === itemId) {
+      this.ocultarTooltip();
+    }
+
+    const activePopup = this.popup();
+    if (activePopup && 'lilyId' in activePopup && activePopup.lilyId === itemId) {
+      this.schedulePopup(null);
+    }
+  }
+
+  private highlightVisibleItem(zone: ZoneKey, itemId: string): void {
+    const signalRef = this.getSignalForZone(zone);
+    signalRef.update((items) =>
       items.map((item) =>
-        item.id === negocioId
+        item.id === itemId
           ? {
               ...item,
-              reviewCount: item.reviewCount + 1,
-              latestReviews: [review, ...item.latestReviews].slice(0, 2),
-              averageRating: Number(
-                (
-                  ((item.averageRating || 0) * item.reviewCount + review.puntuacion) /
-                  Math.max(1, item.reviewCount + 1)
-                ).toFixed(1)
-              ),
+              highlighted: false,
             }
           : item,
       ),
     );
-    this.crearResenaAbierto.set(false);
-    this.reviewLilies.set(this.takeInitialLilies('resenas'));
-    this.queueZoneSync();
-    this.changeDetector.markForCheck();
+
+    queueMicrotask(() => {
+      signalRef.update((items) =>
+        items.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                highlighted: true,
+              }
+            : item,
+        ),
+      );
+      this.scheduleHighlightCleanup(zone, itemId);
+      this.changeDetector.markForCheck();
+    });
+  }
+
+  private scheduleHighlightCleanup(zone: ZoneKey, itemId: string): void {
+    const currentTimer = this.highlightTimerByKey.get(itemId);
+    if (currentTimer) {
+      window.clearTimeout(currentTimer);
+    }
+
+    const timerId = window.setTimeout(() => {
+      this.highlightTimerByKey.delete(itemId);
+      this.getSignalForZone(zone).update((items) =>
+        items.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                highlighted: false,
+              }
+            : item,
+        ),
+      );
+      this.changeDetector.markForCheck();
+    }, this.highlightDurationMs);
+
+    this.highlightTimerByKey.set(itemId, timerId);
   }
 
   onLilyHoverStart(event: MouseEvent, item: LilyView): void {
@@ -749,8 +1583,13 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         break;
       case 'review':
+        if (item.business && item.review) {
+          this.openReviewPopup(item.id, item.business, item.review);
+        }
+        break;
+      case 'business':
         if (item.business) {
-          this.schedulePopup({ kind: 'review', lilyId: item.id, business: item.business });
+          this.schedulePopup({ kind: 'business', lilyId: item.id, business: item.business });
         }
         break;
       case 'profile':
@@ -762,6 +1601,11 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private openReviewPopup(lilyId: string, business: NegocioLite, review: PondReviewItem): void {
+    this.schedulePopup({ kind: 'review', lilyId, business, review });
+    this.loadReviewInteraction(review);
+  }
+
   private patchNegocioDestacado(
     negocioId: number,
     updater: (item: NegocioLite) => NegocioLite,
@@ -769,25 +1613,48 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     this.negociosDestacados.update((items) =>
       items.map((item) => (item.id === negocioId ? updater(item) : item)),
     );
+    const nextBusiness = this.negociosDestacados().find((item) => item.id === negocioId) ?? null;
 
     const activePopup = this.popup();
-    if (activePopup?.kind === 'review' && activePopup.business.id === negocioId) {
-      const nextBusiness = this.negociosDestacados().find((item) => item.id === negocioId);
-      if (nextBusiness) {
-        this.schedulePopup({
-          kind: 'review',
-          lilyId: activePopup.lilyId,
-          business: nextBusiness,
-        });
-      }
+    if (activePopup?.kind === 'review' && activePopup.business.id === negocioId && nextBusiness) {
+      const nextReview = nextBusiness.latestReviews.find((review) => review.id === activePopup.review.id);
+      this.openReviewPopup(
+        activePopup.lilyId,
+        nextBusiness,
+        nextReview
+          ? { ...nextReview, negocioId: nextBusiness.id, business: nextBusiness }
+          : { ...activePopup.review, negocioId: nextBusiness.id, business: nextBusiness },
+      );
     }
 
     this.reviewLilies.update((items) =>
       items.map((item) =>
-        item.business?.id === negocioId
+        item.business?.id === negocioId && nextBusiness
           ? {
               ...item,
-              business: this.negociosDestacados().find((candidate) => candidate.id === negocioId) ?? item.business,
+              business: nextBusiness,
+              ...(item.review
+                ? {
+                    review:
+                      (() => {
+                        const nextReview = nextBusiness.latestReviews.find(
+                          (review) => review.id === item.review?.id,
+                        );
+                        return nextReview
+                          ? {
+                              ...item.review,
+                              ...nextReview,
+                              business: nextBusiness,
+                              negocioId: nextBusiness.id,
+                            }
+                          : {
+                              ...item.review,
+                              business: nextBusiness,
+                              negocioId: nextBusiness.id,
+                            };
+                      })(),
+                  }
+                : {}),
             }
           : item,
       ),
@@ -866,13 +1733,24 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (item.kind === 'review' && item.business) {
-      const latest = item.business.latestReviews[0];
+      const latest = item.review ?? item.business.latestReviews[0];
       return {
         tone: 'review',
         title: item.business.nombre,
         text: latest
           ? `${latest.autorNombre} · ${this.getEstrellas(latest.puntuacion)} · ${latest.contenidoCorto}`
           : `${item.business.categoria?.nombre || 'Negocio local'} · Disponible en el estanque`
+      };
+    }
+
+    if (item.kind === 'business' && item.business) {
+      const latest = item.business.latestReviews[0];
+      return {
+        tone: 'review',
+        title: item.business.nombre,
+        text: latest
+          ? `${latest.autorNombre} · ${this.getEstrellas(latest.puntuacion)} · ${latest.contenidoCorto}`
+          : `${item.business.categoria?.nombre || 'Negocio local'} · Disponible en el estanque`,
       };
     }
 
@@ -986,10 +1864,17 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     };
 
     this.attachElement(body, runtime.host);
-    this.placeBodyWithoutOverlap(runtime, body, [
+    const occupiedBodies = [
       ...occupied,
       ...this.getSharedPondBodies(runtime.key),
-    ]);
+    ];
+
+    if (item.entryMotion === 'burst') {
+      this.placeBurstBody(runtime, body, occupiedBodies);
+    } else {
+      this.placeBodyWithoutOverlap(runtime, body, occupiedBodies);
+    }
+
     return body;
   }
 
@@ -999,6 +1884,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       zone: 'crear',
       kind: 'create',
       label: 'Crear resena',
+      insertedAt: Date.now(),
       priority: 0,
       subtitle: this.usuarioLogueado()?.id ? 'Abrir ficha de nueva resena' : 'Necesitas sesion',
       tone: 'fresh'
@@ -1013,53 +1899,113 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     );
   }
 
-  private getPriorityPromoPool(): HomePromo[] {
+  private buildReviewCandidates(): PondCandidate[] {
+    const followedBusinessIds = this.getPriorityBusinessIds();
+    const reviewById = new Map<number, PondReviewItem>();
+
+    this.negociosDestacados().forEach((business) => {
+      (business.latestReviews ?? []).forEach((review) => {
+        const reviewId = Number(review.id ?? 0);
+        if (!Number.isFinite(reviewId) || reviewId <= 0) {
+          return;
+        }
+
+        reviewById.set(reviewId, {
+          ...review,
+          negocioId: business.id,
+          business,
+        });
+      });
+    });
+
+    return Array.from(reviewById.values()).map((review) => {
+      const prioritario = followedBusinessIds.has(review.business.id);
+      return {
+        key: `review:${review.id}`,
+        item: this.createReviewLily(review, prioritario),
+        priority: prioritario ? 700 : 500,
+        timestamp: Date.parse(review.fechaISO ?? '') || 0,
+      };
+    });
+  }
+
+  private buildBusinessCandidates(): PondCandidate[] {
     const followedBusinessIds = this.getPriorityBusinessIds();
 
-    return [...this.promociones()].sort((left, right) => {
-      const leftPriority = followedBusinessIds.has(left.negocioId) ? 1 : 0;
-      const rightPriority = followedBusinessIds.has(right.negocioId) ? 1 : 0;
-
-      if (leftPriority !== rightPriority) {
-        return rightPriority - leftPriority;
-      }
-
-      return String(left.fechaCaducidadISO).localeCompare(String(right.fechaCaducidadISO));
-    });
+    return this.negociosDestacados()
+      .filter((business) => Number.isFinite(Number(business.id ?? 0)) && Number(business.id ?? 0) > 0)
+      .map((business) => {
+        const prioritario = followedBusinessIds.has(business.id);
+        return {
+          key: `business:${business.id}`,
+          item: this.createBusinessLily(business, prioritario),
+          priority: prioritario ? 300 : 100,
+          timestamp: Number(business.reviewCount ?? 0),
+        };
+      });
   }
 
-  private getPriorityReviewPool(): NegocioLite[] {
-    return [...this.negociosDestacados()].sort((left, right) => {
-      const followDelta = Number(Boolean(right.isFollowing)) - Number(Boolean(left.isFollowing));
-      if (followDelta !== 0) {
-        return followDelta;
-      }
-
-      return (right.reviewCount ?? 0) - (left.reviewCount ?? 0);
-    });
+  private buildPromoCandidates(): PondCandidate[] {
+    return this.promociones()
+      .filter((promo) => Number.isFinite(Number(promo.id ?? 0)) && Number(promo.id ?? 0) > 0)
+      .map((promo) => {
+        const prioritario = this.isFollowedPromotion(promo);
+        return {
+          key: `promo:${promo.id}`,
+          item: this.createPromoLily(promo, prioritario),
+          priority: prioritario ? 650 : 450,
+          timestamp: this.getPromoTimestamp(promo),
+        };
+      });
   }
 
-  private createNextZoneItem(key: ZoneKey): LilyView | null {
+  private pickNextCandidate(
+    candidates: PondCandidate[],
+    blockedKeys: Set<string>,
+  ): PondCandidate | null {
+    const eligibleCandidates = candidates
+      .filter((candidate) => !blockedKeys.has(candidate.key))
+      .filter((candidate) => !this.isCoolingDown(candidate.key))
+      .sort((left, right) => {
+        const priorityDelta = right.priority - left.priority;
+        if (priorityDelta !== 0) {
+          return priorityDelta;
+        }
+
+        const leftRecent = this.hasBeenShownRecently(left.key);
+        const rightRecent = this.hasBeenShownRecently(right.key);
+        if (leftRecent !== rightRecent) {
+          return Number(leftRecent) - Number(rightRecent);
+        }
+
+        const leftShownAt = this.lastShownAtByKey.get(left.key) ?? 0;
+        const rightShownAt = this.lastShownAtByKey.get(right.key) ?? 0;
+        if (leftShownAt !== rightShownAt) {
+          return leftShownAt - rightShownAt;
+        }
+
+        return right.timestamp - left.timestamp;
+      });
+
+    return eligibleCandidates[0] ?? null;
+  }
+
+  private createNextZoneItem(
+    key: ZoneKey,
+    blockedKeys: Set<string> = new Set<string>(),
+  ): LilyView | null {
     switch (key) {
       case 'promos': {
-        const pool = this.getPriorityPromoPool();
-        if (!pool.length) {
-          return null;
-        }
-
-        const promo = pool[this.promoSpawnCursor % pool.length];
-        this.promoSpawnCursor = (this.promoSpawnCursor + 1) % pool.length;
-        return this.createPromoLily(promo);
+        return this.pickNextCandidate(this.buildPromoCandidates(), blockedKeys)?.item ?? null;
       }
       case 'resenas': {
-        const pool = this.getPriorityReviewPool();
-        if (!pool.length) {
-          return null;
-        }
-
-        const review = pool[this.reviewSpawnCursor % pool.length];
-        this.reviewSpawnCursor = (this.reviewSpawnCursor + 1) % pool.length;
-        return this.createReviewLily(review);
+        return this.pickNextCandidate(
+          [
+            ...this.buildReviewCandidates(),
+            ...this.buildBusinessCandidates(),
+          ],
+          blockedKeys,
+        )?.item ?? null;
       }
       case 'perfil':
         this.profileSpawnCursor = (this.profileSpawnCursor + 1) % 1000;
@@ -1076,34 +2022,68 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       zone: 'perfil',
       kind: 'profile',
       label: this.usuarioLogueado()?.id ? `Perfil de ${this.nombreUsuario()}` : 'Perfil invitado',
+      insertedAt: Date.now(),
       priority: 0,
       subtitle: this.usuarioLogueado()?.id ? 'Abrir tu zona privada' : 'Inicia sesion',
       tone: 'fresh'
     };
   }
 
-  private createPromoLily(promo: HomePromo): LilyView {
-    const followedBusinessIds = this.getPriorityBusinessIds();
+  private createPromoLily(
+    promo: HomePromo,
+    prioritario = false,
+    entryMotion: LilyEntryMotion = null,
+  ): LilyView {
     return {
-      id: `promo-${promo.id}-${++this.lilyInstanceCounter}`,
+      id: `promo:${promo.id}`,
       zone: 'promos',
       kind: 'promo',
       label: promo.titulo,
-      priority: followedBusinessIds.has(promo.negocioId) ? 1 : 0,
+      insertedAt: Date.now(),
+      entryMotion,
+      priority: prioritario ? 650 : 450,
       subtitle: `${promo.negocioNombre} · ${promo.descuentoTexto}`,
       promo,
       tone: 'fresh'
     };
   }
 
-  private createReviewLily(business: NegocioLite): LilyView {
+  private createReviewLily(
+    review: PondReviewItem,
+    prioritario = false,
+    entryMotion: LilyEntryMotion = null,
+  ): LilyView {
     return {
-      id: `review-${business.id}-${++this.lilyInstanceCounter}`,
+      id: `review:${review.id}`,
       zone: 'resenas',
       kind: 'review',
+      label: review.business.nombre,
+      insertedAt: Date.now(),
+      entryMotion,
+      priority: prioritario ? 700 : 500,
+      subtitle:
+        review.productoNombre
+          ? `${review.autorNombre} · ${review.productoNombre}`
+          : `${review.autorNombre} · ${review.business.categoria?.nombre || 'Negocio local'}`,
+      business: review.business,
+      review,
+      tone: review.puntuacion >= 3 || review.business.reviewCount === 0 ? 'fresh' : 'mustio'
+    };
+  }
+
+  private createBusinessLily(
+    business: NegocioLite,
+    prioritario = false,
+  ): LilyView {
+    return {
+      id: `business:${business.id}`,
+      zone: 'resenas',
+      kind: 'business',
       label: business.nombre,
-      priority: business.isFollowing ? 1 : 0,
-      subtitle: `${business.categoria?.nombre || 'Negocio local'} · ${business.reviewCount} reseña${business.reviewCount !== 1 ? 's' : ''}`,
+      insertedAt: Date.now(),
+      priority: prioritario ? 300 : 100,
+      subtitle:
+        `${business.categoria?.nombre || 'Negocio local'} · ${business.reviewCount} reseña${business.reviewCount !== 1 ? 's' : ''}`,
       business,
       tone: business.averageRating >= 3 || business.reviewCount === 0 ? 'fresh' : 'mustio'
     };
@@ -1114,7 +2094,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       return this.getNenufarNegocio(this.getPromoBusiness(item.promo));
     }
 
-    if (item.kind === 'review' && item.business) {
+    if ((item.kind === 'review' || item.kind === 'business') && item.business) {
       return this.getNenufarNegocio(item.business);
     }
 
@@ -1186,6 +2166,9 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     const fechaCaducidadISO =
       String(promocion.fechaCaducidad ?? promocion['fechaCaducidadISO'] ?? '').trim() ||
       new Date().toISOString();
+    const creadoEnISO =
+      String(promocion['creadoEn'] ?? promocion['createdAt'] ?? '').trim() ||
+      new Date().toISOString();
 
     return {
       id,
@@ -1195,10 +2178,73 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       descripcion: descripcion || 'Promocion activa en Nenufar.',
       descripcionCorta: this.getPromoDescriptionShort(descripcion),
       descuentoTexto: this.getPromoDiscountText(promocion),
+      creadoEnISO,
       fechaCaducidadISO,
       condiciones: this.getPromoConditions(promocion),
       ...(promocion.negocio ? { negocio: promocion.negocio } : {}),
     };
+  }
+
+  private toHomePromoFromAnnouncement(
+    promocion: PondPromotionAnnouncement,
+  ): HomePromo | null {
+    const id = Number(promocion.id ?? 0);
+    const negocioId = Number(promocion.negocioId ?? 0);
+    if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(negocioId) || negocioId <= 0) {
+      return null;
+    }
+
+    const descripcion = String(promocion.descripcion ?? '').trim();
+    return {
+      id,
+      negocioId,
+      negocioNombre:
+        String(promocion.negocioNombre ?? promocion.negocio?.nombre ?? '').trim() ||
+        `Negocio ${negocioId}`,
+      titulo: String(promocion.titulo ?? '').trim() || 'Promocion activa',
+      descripcion: descripcion || 'Promocion activa en Nenufar.',
+      descripcionCorta: this.getPromoDescriptionShort(descripcion),
+      descuentoTexto: this.getPromoDiscountText({
+        descuento: Number(promocion.descuento ?? 0),
+        tipoDescuento: promocion.tipoDescuento ?? 'PORCENTAJE',
+      } as Promocion),
+      creadoEnISO: String(promocion.creadoEnISO ?? new Date().toISOString()),
+      fechaCaducidadISO:
+        String(promocion.fechaCaducidad ?? '').trim() || new Date().toISOString(),
+      condiciones: this.getPromoConditions({
+        codigo: promocion.codigo ?? null,
+        fechaInicio: promocion.fechaInicio ?? null,
+        fechaCaducidad: promocion.fechaCaducidad ?? new Date().toISOString(),
+      } as Promocion),
+      ...(promocion.negocio
+        ? {
+            negocio: {
+              id: promocion.negocio.id,
+              nombre:
+                promocion.negocio.nombre?.trim() || `Negocio ${promocion.negocio.id}`,
+              slug: promocion.negocio.slug ?? null,
+              nickname: promocion.negocio.nickname ?? null,
+              duenoId: promocion.negocio.duenoId ?? null,
+              categoria: promocion.negocio.categoria ?? null,
+              fotoPerfil: promocion.negocio.fotoPerfil ?? null,
+              imagenNenufar: promocion.negocio.imagenNenufar ?? null,
+              nenufarActivo: promocion.negocio.nenufarActivo ?? null,
+              assetNenufar: promocion.negocio.assetNenufar ?? null,
+              nenufarColor: promocion.negocio.nenufarColor ?? null,
+              nenufarKey: promocion.negocio.nenufarKey ?? null,
+              nenufarAsset: promocion.negocio.nenufarAsset ?? null,
+            },
+          }
+        : {}),
+    };
+  }
+
+  private getPromoTimestamp(promo: HomePromo): number {
+    return (
+      Date.parse(String(promo.creadoEnISO ?? '')) ||
+      Date.parse(String(promo.fechaCaducidadISO ?? '')) ||
+      0
+    );
   }
 
   private hidratarSesionPersistida(): void {
@@ -1233,6 +2279,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       this.schedulePopup(null);
     }
 
+    this.registerItemCooldown(bodyId);
     this.removeZoneItem(runtime.key, bodyId);
     this.scheduleRespawn(runtime.key, this.randomBetween(900, 1700));
   }
@@ -1383,6 +2430,22 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       body.x = x;
       body.y = y;
     }
+  }
+
+  private placeBurstBody(runtime: ZoneRuntime, body: LilyBody, occupied: LilyBody[]): void {
+    const centerX = runtime.size.width * 0.5 + this.randomBetween(-48, 48);
+    const centerY = runtime.size.height * 0.62 + this.randomBetween(-24, 24);
+    body.x = this.clamp(centerX, body.r, Math.max(body.r, runtime.size.width - body.r));
+    body.y = this.clamp(centerY, body.r, Math.max(body.r, runtime.size.height - body.r));
+
+    if (occupied.some((candidate) => this.areBodiesOverlapping(body.x, body.y, body.r, candidate))) {
+      this.placeBodyWithoutOverlap(runtime, body, occupied);
+    }
+
+    body.vx = this.randomBetween(-32, 32);
+    body.vy = this.randomBetween(-148, -86);
+    body.angVel = this.randomBetween(-0.028, 0.028);
+    body.escapeUntil = performance.now() * 0.001 + 0.85;
   }
 
   private queueZoneSync(): void {
@@ -1545,12 +2608,13 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const nextItem = this.createNextZoneItem(zone);
+    const nextItem = this.createNextZoneItem(zone, this.getVisibleKeysForZone(zone));
     if (!nextItem) {
       this.scheduleRespawn(zone, 2400);
       return;
     }
 
+    this.registerItemShown(nextItem);
     signalRef.update((items) => [...items, nextItem]);
     this.queueZoneSync();
     this.changeDetector.markForCheck();
@@ -1594,7 +2658,10 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const items = this.getSignalForZone(zoneKey)();
-    const config = this.zoneConfigs[zoneKey];
+    const config = {
+      ...this.zoneConfigs[zoneKey],
+      targetCount: this.getZoneTargetCount(zoneKey),
+    };
     const existing = this.zoneRuntimes.get(zoneKey);
 
     if (!existing) {
@@ -1641,6 +2708,10 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private syncZones(): void {
+    this.reconcileZonePopulation('promos');
+    this.reconcileZonePopulation('resenas');
+    this.reconcileZonePopulation('perfil');
+    this.reconcileZonePopulation('crear');
     this.syncZone('promos');
     this.syncZone('resenas');
     this.syncZone('perfil');
@@ -1648,13 +2719,16 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private takeInitialLilies(zone: ZoneKey): LilyView[] {
-    const targetCount = this.zoneConfigs[zone].targetCount;
+    const targetCount = this.getZoneTargetCount(zone);
     const nextItems: LilyView[] = [];
+    const blockedKeys = new Set<string>();
 
     for (let index = 0; index < targetCount; index += 1) {
-      const item = this.createNextZoneItem(zone);
+      const item = this.createNextZoneItem(zone, blockedKeys);
       if (item) {
         nextItems.push(item);
+        blockedKeys.add(item.id);
+        this.registerItemShown(item);
       }
     }
 

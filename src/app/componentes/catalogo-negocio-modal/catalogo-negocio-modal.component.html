@@ -1,0 +1,194 @@
+<section class="catalog-shell">
+  <div class="catalog-header">
+    <div>
+      <p class="catalog-kicker">Catálogo</p>
+      <h2>Productos y servicios</h2>
+      <p class="catalog-lead">
+        Gestiona tu catálogo y revisa las sugerencias que llegan desde las reseñas.
+      </p>
+    </div>
+
+    <button type="button" class="catalog-primary-btn" (click)="abrirCrearProducto()">
+      Añadir producto
+    </button>
+  </div>
+
+  @if (errorMensaje()) {
+    <p class="catalog-feedback catalog-feedback--error" role="alert">
+      {{ errorMensaje() }}
+    </p>
+  }
+
+  @if (exitoMensaje()) {
+    <p class="catalog-feedback catalog-feedback--success" role="status">
+      {{ exitoMensaje() }}
+    </p>
+  }
+
+  @if (editorAbierto()) {
+    <form class="catalog-form" [formGroup]="form" (ngSubmit)="guardarProducto()">
+      <div class="catalog-form__head">
+        <h3>{{ productoEditandoId() ? 'Editar producto' : 'Nuevo producto' }}</h3>
+        <p>El catálogo se guardará asociado a {{ negocio?.nombre || 'tu negocio' }}.</p>
+      </div>
+
+      <div class="catalog-grid">
+        <label class="field">
+          <span>Nombre</span>
+          <input type="text" formControlName="nombre" placeholder="Corte de pelo" />
+          @if (form.controls.nombre.invalid && (form.controls.nombre.dirty || form.controls.nombre.touched)) {
+            <small class="field-error">El nombre es obligatorio.</small>
+          }
+        </label>
+
+        <label class="field">
+          <span>Precio</span>
+          <input type="number" formControlName="precio" min="0" step="0.01" />
+          @if (form.controls.precio.invalid && (form.controls.precio.dirty || form.controls.precio.touched)) {
+            <small class="field-error">Indica un precio válido.</small>
+          }
+        </label>
+
+        <label class="field field--full">
+          <span>Descripción opcional</span>
+          <textarea formControlName="descripcion" rows="3" placeholder="Cuenta qué incluye el servicio o producto."></textarea>
+        </label>
+
+        <label class="field">
+          <span>Código de producto</span>
+          <input type="text" formControlName="codigoSKU" placeholder="CORT-001" />
+        </label>
+
+        <label class="field">
+          <span>Foto opcional</span>
+          <input type="url" formControlName="foto" placeholder="https://..." />
+          <small class="field-hint">Por ahora usamos URL pública para la imagen.</small>
+        </label>
+      </div>
+
+      <div class="catalog-form__actions">
+        <button type="submit" class="catalog-primary-btn" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando...' : (productoEditandoId() ? 'Guardar cambios' : 'Guardar producto') }}
+        </button>
+        <button type="button" class="catalog-secondary-btn" (click)="cancelarEdicion()">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  }
+
+  <section class="catalog-section">
+    <div class="catalog-section__head">
+      <h3>Catálogo actual</h3>
+      <span class="catalog-pill">{{ productos().length }} producto{{ productos().length !== 1 ? 's' : '' }}</span>
+    </div>
+
+    @if (cargando()) {
+      <div class="catalog-empty">
+        <strong>Cargando catálogo...</strong>
+        <span>Estamos recuperando los productos del negocio.</span>
+      </div>
+    } @else if (!productosOrdenados().length) {
+      <div class="catalog-empty">
+        <strong>El catálogo aún está vacío</strong>
+        <span>Añade el primer producto o servicio desde este mismo popup.</span>
+      </div>
+    } @else {
+      <div class="catalog-list">
+        @for (producto of productosOrdenados(); track producto.id) {
+          <article class="catalog-card">
+            <div class="catalog-card__head">
+              @if (getProductImage(producto); as productImage) {
+                <img class="catalog-card__image" [src]="productImage" [alt]="producto.nombre" />
+              } @else {
+                <div class="catalog-card__image catalog-card__image--placeholder" aria-hidden="true">
+                  {{ producto.nombre.charAt(0) }}
+                </div>
+              }
+
+              <div class="catalog-card__copy">
+                <div class="catalog-card__topline">
+                  <p class="catalog-card__title">{{ producto.nombre }}</p>
+                  <span class="catalog-card__price">{{ formatPrice(producto.precio) }}</span>
+                </div>
+                <p class="catalog-card__code">Código: {{ producto.codigoSKU || 'Sin código' }}</p>
+              </div>
+            </div>
+
+            @if (producto.descripcion) {
+              <p class="catalog-card__desc">{{ producto.descripcion }}</p>
+            }
+
+            <div class="catalog-card__actions">
+              <button type="button" class="catalog-secondary-btn" (click)="editarProducto(producto)">
+                Editar
+              </button>
+              <button type="button" class="catalog-danger-btn" (click)="eliminarProducto(producto)">
+                Eliminar
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="catalog-section">
+    <div class="catalog-section__head">
+      <h3>Solicitudes de clientes</h3>
+      <span class="catalog-pill catalog-pill--soft">
+        {{ solicitudes().length }} pendiente{{ solicitudes().length !== 1 ? 's' : '' }}
+      </span>
+    </div>
+
+    @if (!solicitudes().length) {
+      <div class="catalog-empty catalog-empty--soft">
+        <strong>No hay sugerencias pendientes</strong>
+        <span>Las propuestas hechas desde reseñas nuevas aparecerán aquí.</span>
+      </div>
+    } @else {
+      <div class="catalog-request-list">
+        @for (solicitud of solicitudes(); track solicitud.localId) {
+          <article class="catalog-request-card">
+            <div class="catalog-request-card__head">
+              <div>
+                <p class="catalog-request-card__title">{{ solicitud.nombre }}</p>
+                <p class="catalog-request-card__price">
+                  {{ formatPrice(solicitud.precioSugerido) }}
+                </p>
+              </div>
+              <span class="catalog-request-card__badge">Pendiente</span>
+            </div>
+
+            @if (solicitud.descripcion) {
+              <p class="catalog-request-card__desc">{{ solicitud.descripcion }}</p>
+            }
+
+            @if (getSolicitudContexto(solicitud)) {
+              <p class="catalog-request-card__meta">{{ getSolicitudContexto(solicitud) }}</p>
+            }
+
+            <div class="catalog-card__actions">
+              <button
+                type="button"
+                class="catalog-primary-btn"
+                [disabled]="guardando()"
+                (click)="aprobarSolicitud(solicitud)"
+              >
+                Aprobar
+              </button>
+              <button
+                type="button"
+                class="catalog-secondary-btn"
+                [disabled]="guardando()"
+                (click)="rechazarSolicitud(solicitud)"
+              >
+                Rechazar
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </section>
+</section>

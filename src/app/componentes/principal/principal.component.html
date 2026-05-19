@@ -7,6 +7,9 @@
         <button
           type="button"
           class="zone-lily zone-lily--review"
+          [class.zone-lily--business]="item.kind === 'business'"
+          [class.zone-lily--arrival]="item.entryMotion === 'burst'"
+          [class.zone-lily--highlight]="item.highlighted"
           [class.zone-lily--fresh]="item.tone === 'fresh'"
           [class.zone-lily--mustio]="item.tone === 'mustio'"
           [attr.data-lily-id]="item.id"
@@ -39,6 +42,8 @@
         <button
           type="button"
           class="zone-lily zone-lily--promo zone-lily--fresh"
+          [class.zone-lily--arrival]="item.entryMotion === 'burst'"
+          [class.zone-lily--highlight]="item.highlighted"
           [attr.data-lily-id]="item.id"
           [attr.aria-label]="item.label"
           (pointerdown)="onLilyPointerDown($event, item)"
@@ -97,7 +102,19 @@
   }
 
   @if (popup(); as activePopup) {
-    <div class="popup-overlay" (click)="handleBackdropClick($event)">
+    @if (activePopup.kind === 'review') {
+      <app-resena-detalle-modal
+        [resena]="activePopup.review"
+        [negocio]="activePopup.business"
+        [usuarioActual]="usuarioLogueado()"
+        (cerrar)="cerrarPopup()"
+        (comentarioCreado)="manejarComentarioResenaCreado($event)"
+        (likeCambiado)="manejarLikeResenaCambiado($event)"
+      />
+    }
+
+    @if (activePopup.kind !== 'review') {
+      <div class="popup-overlay" (click)="handleBackdropClick($event)">
       <section class="popup-card" (click)="$event.stopPropagation()">
         <button type="button" class="popup-close" (click)="cerrarPopup()" aria-label="Cerrar">
           ×
@@ -148,7 +165,17 @@
           </div>
         }
 
-        @if (activePopup.kind === 'review') {
+        @if (activePopup.kind === 'navigationError') {
+          <p class="popup-kicker">Navegación</p>
+          <h2>{{ activePopup.title }}</h2>
+          <p>{{ activePopup.message }}</p>
+
+          <div class="popup-actions">
+            <button type="button" class="secondary-btn" (click)="cerrarPopup()">Cerrar</button>
+          </div>
+        }
+
+        @if (activePopup.kind === 'business') {
           <p class="popup-kicker">Negocio destacado</p>
           <h2>{{ activePopup.business.nombre }}</h2>
 
@@ -175,28 +202,7 @@
             decoding="async"
           >
 
-          @if (activePopup.business.latestReviews.length) {
-            <div class="popup-review-list">
-              @for (review of activePopup.business.latestReviews; track review.id) {
-                <article class="popup-review-item">
-                  <div class="popup-review-head">
-                    <strong>{{ review.autorNombre }}</strong>
-                    <span>{{ getEstrellas(review.puntuacion) }}</span>
-                    <span>{{ formatearFechaCompleta(review.fechaISO) }}</span>
-                  </div>
-                  @if (getReviewProductLabel(review); as productoNombre) {
-                    <span class="popup-review-product">{{ productoNombre }}</span>
-                  }
-                  <p>{{ review.contenidoCorto }}</p>
-                  @if (review.selloNenufar) {
-                    <span class="review-seal">Sello Nenúfar</span>
-                  }
-                </article>
-              }
-            </div>
-          } @else {
-            <p>Este negocio todavía no tiene reseñas públicas, pero ya flota en el estanque.</p>
-          }
+          <p>Este negocio flota en el estanque. Abre su perfil para ver sus reseñas y promociones.</p>
 
           <div class="popup-actions">
             <button type="button" class="primary-btn" (click)="goToNegocio(activePopup.business)">
@@ -230,7 +236,8 @@
           </div>
         }
       </section>
-    </div>
+      </div>
+    }
   }
 
   <app-crear-resena-modal

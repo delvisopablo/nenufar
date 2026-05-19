@@ -5,8 +5,15 @@ import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { AccessRequiredModalComponent } from '../../components/shared/access-required-modal/access-required-modal.component';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
-import { AuthService, AuthUser } from '../../servicios/authService/auth.service';
+import {
+  AuthService,
+  AuthUser,
+  resolveOwnedBusinessId,
+  resolvePrivateProfileRoute,
+} from '../../servicios/authService/auth.service';
 import { Logro, LogroServiceService } from '../../servicios/logroServicio/logroService.service';
+import { resolveNegocioRouteCommands } from '../../servicios/negocioService/negocio.service';
+import { ReviewProductMetaService } from '../../servicios/reviewProductMeta/review-product-meta.service';
 import { ResenaService } from '../../servicios/reviewServicio/resena.service';
 import {
   PerfilUsuarioResponse,
@@ -21,6 +28,21 @@ type UserReview = {
   selloNenufar?: boolean;
   fecha?: string;
   creadoEn?: string;
+  productoId?: number | null;
+  productoNombre?: string | null;
+  producto?: {
+    id?: number;
+    nombre?: string;
+  } | null;
+  productos?: Array<{
+    id?: number | null;
+    nombre: string;
+  }>;
+  productosSugeridos?: Array<{
+    localId?: string;
+    nombre: string;
+    estado?: string | null;
+  }>;
   negocio?: {
     id?: number;
     nombre?: string;
@@ -42,6 +64,7 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly usuarioService = inject(UsuarioServiceService);
   private readonly resenaService = inject(ResenaService);
+  private readonly reviewProductMeta = inject(ReviewProductMetaService);
   private readonly logroService = inject(LogroServiceService);
 
   readonly cargando = signal(true);
@@ -131,7 +154,7 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
       )
       .subscribe((result) => {
         if (result) {
-          this.resenas.set(result.resenas);
+          this.resenas.set(this.reviewProductMeta.mergeReviews(result.resenas));
           this.logros.set(result.logros);
         }
 
@@ -141,6 +164,14 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
 
   getStars(n: number): string {
     return '⭐'.repeat(Math.max(0, Math.min(5, Math.round(n))));
+  }
+
+  getReviewProductLabels(review: UserReview | null | undefined): string[] {
+    return this.reviewProductMeta.getProductLabels(review);
+  }
+
+  getReviewPendingProductLabels(review: UserReview | null | undefined): string[] {
+    return this.reviewProductMeta.getPendingSuggestionLabels(review);
   }
 
   getCoverImage(): string | null {
@@ -181,12 +212,18 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
   }
 
   getBusinessRoute(negocio: UserReview['negocio'] | undefined): (string | number)[] | null {
-    const slug = String(negocio?.slug ?? negocio?.nickname ?? '').trim();
-    if (slug) {
-      return ['/', slug];
-    }
     const negocioId = Number(negocio?.id);
-    return Number.isFinite(negocioId) && negocioId > 0 ? ['/negocio', negocioId] : null;
+    const negocioPropioId = resolveOwnedBusinessId(this.usuarioActual());
+
+    if (
+      Number.isFinite(negocioId) &&
+      negocioId > 0 &&
+      negocioPropioId === negocioId
+    ) {
+      return resolvePrivateProfileRoute(this.usuarioActual());
+    }
+
+    return resolveNegocioRouteCommands(negocio);
   }
 
   private cargarLogros(usuarioId: number) {

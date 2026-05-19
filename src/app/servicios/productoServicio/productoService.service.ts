@@ -13,6 +13,9 @@ export interface Producto {
   descripcion?: string;
   precio: number;
   codigoSKU?: string;
+  foto?: string | null;
+  imagen?: string | null;
+  imageUrl?: string | null;
   stockDisponible?: number;
   stockReservado?: number;
   negocioId?: number;
@@ -24,6 +27,7 @@ export interface CreateProductoPayload {
   descripcion?: string;
   precio: number;
   codigoSKU?: string;
+  foto?: string | null;
   stockDisponible?: number;
   stockReservado?: number;
 }

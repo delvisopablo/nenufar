@@ -98,6 +98,19 @@
                 <time class="review-date">{{ (resena.fecha || resena.creadoEn) | date:'d MMM yyyy' }}</time>
               </header>
 
+              @if (getReviewProductLabels(resena); as productosResena) {
+                @if (productosResena.length || getReviewPendingProductLabels(resena).length) {
+                  <div class="review-product-list">
+                    @for (productoNombre of productosResena; track productoNombre + '-' + $index) {
+                      <span class="review-product-chip">{{ productoNombre }}</span>
+                    }
+                    @for (productoPendiente of getReviewPendingProductLabels(resena); track productoPendiente + '-' + $index) {
+                      <span class="review-product-chip review-product-chip--pending">{{ productoPendiente }}</span>
+                    }
+                  </div>
+                }
+              }
+
               <p class="review-text">{{ resena.comentario || resena.contenido || 'Sin comentario' }}</p>
 
               <footer class="review-card-foot">

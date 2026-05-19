@@ -1,12 +1,11 @@
-import { Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import {
   FormBuilder, FormGroup, Validators, ReactiveFormsModule,
-  FormArray, FormControl
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { map } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import {
   resolveNenufarAsset,
@@ -32,6 +31,7 @@ interface NegocioDetalle {
   direccion?: string;
   ciudad?: string | null;
   provincia?: string | null;
+  subcategoria?: { nombre?: string } | string | null;
   codigoPostal?: string | null;
   telefono?: string | null;
   emailContacto?: string | null;
@@ -41,20 +41,12 @@ interface NegocioDetalle {
   fotoPortada?: string | null;
   nenufarAsset?: string | null;
   nenufarKey?: string | null;
-  aceptaReservas?: boolean;
-  intervaloReserva?: number;
   dueno?: { nickname?: string };
   categoria?: { nombre?: string };
-  horario?: {
-    apertura?: string;
-    cierre?: string;
-    intervalo?: number;
-    diasAbre?: string[];
-    weekly?: Record<string, [string, string][]>;
-  };
 }
 
-type Seccion = 'perfil' | 'contacto' | 'visual' | 'horario' | 'peligro';
+type Seccion = 'perfil' | 'contacto' | 'visual' | 'peligro';
+type ImageField = 'fotoPerfil' | 'fotoPortada';
 
 @Component({
   selector: 'app-editar-negocio',
@@ -63,7 +55,7 @@ type Seccion = 'perfil' | 'contacto' | 'visual' | 'horario' | 'peligro';
   templateUrl: './editar-negocio.component.html',
   styleUrl: './editar-negocio.component.css'
 })
-export class EditarNegocioComponent implements OnInit {
+export class EditarNegocioComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private authService = inject(AuthService);
@@ -76,51 +68,44 @@ export class EditarNegocioComponent implements OnInit {
   negocioId!: number;
   negocioRouteKey = '';
 
-  readonly diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-  readonly intervalosReserva = [15, 30, 45, 60, 90, 120];
-
   cargando = true;
   guardando = false;
   borrando = false;
   errorMensaje = '';
   exitoMensaje = '';
+  avisoMensaje = '';
   confirmandoBorrar = false;
   textoConfirmacion = '';
 
-  readonly seccionAbierta = signal<Seccion>('perfil');
+  readonly seccionesAbiertas = signal<Record<Seccion, boolean>>({
+    perfil: true,
+    contacto: true,
+    visual: true,
+    peligro: false,
+  });
+  readonly fotoPerfilPreview = signal<string | null>(null);
+  readonly fotoPortadaPreview = signal<string | null>(null);
+  private readonly localPreviewUrls = new Map<ImageField, string>();
 
   ngOnInit(): void {
     this.negocioForm = this.fb.group({
-      // Datos principales
       nombre: ['', Validators.required],
       slug: [''],
       descripcionCorta: ['', Validators.maxLength(160)],
       historia: ['', Validators.maxLength(800)],
-      // Ubicación
       direccion: [''],
       ciudad: [''],
       provincia: [''],
       codigoPostal: [''],
-      // Contacto
       telefono: [''],
       emailContacto: ['', Validators.email],
       web: [''],
       instagram: [''],
-      // Imágenes — URL por ahora (TODO: subida de fichero)
       fotoPerfil: [''],
       fotoPortada: [''],
-      // Nenúfar
       nenufarAsset: [null as string | null],
-      // Categoría (solo lectura en este form, editaría mediante selector externo)
       categoria: [''],
-      // Reservas
-      aceptaReservas: [false],
-      intervaloReserva: [30],
-      horario: this.fb.group({
-        apertura: [''],
-        cierre: [''],
-        diasAbre: this.fb.array([]),
-      }),
+      subcategoria: [''],
     });
 
     const negocioId = resolveOwnedBusinessId(this.authService.obtenerUsuario());
@@ -134,7 +119,7 @@ export class EditarNegocioComponent implements OnInit {
       next: (negocio) => {
         if (!negocio?.id) {
           this.cargando = false;
-          this.errorMensaje = 'No hemos podido identificar el negocio que quieres editar.';
+          this.errorMensaje = 'No hemos podido identificar el negocio para NENUditar.';
           return;
         }
         this.negocioId = negocio.id;
@@ -147,48 +132,31 @@ export class EditarNegocioComponent implements OnInit {
     });
   }
 
-  get diasAbre(): FormArray {
-    return this.negocioForm.get('horario.diasAbre') as FormArray;
-  }
-
-  toggleDia(dia: string): void {
-    const idx = this.diasAbre.controls.findIndex(c => c.value === dia);
-    if (idx === -1) {
-      this.diasAbre.push(new FormControl(dia));
-    } else {
-      this.diasAbre.removeAt(idx);
-    }
-  }
-
-  isDiaActivo(dia: string): boolean {
-    return this.diasAbre.controls.some(c => c.value === dia);
+  ngOnDestroy(): void {
+    this.localPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    this.localPreviewUrls.clear();
   }
 
   abrirSeccion(s: Seccion): void {
-    this.seccionAbierta.set(this.seccionAbierta() === s ? 'perfil' : s);
+    this.seccionesAbiertas.update((current) => ({
+      ...current,
+      [s]: !current[s],
+    }));
   }
 
   esSeccionAbierta(s: Seccion): boolean {
-    return this.seccionAbierta() === s;
+    return Boolean(this.seccionesAbiertas()[s]);
   }
 
   cargarDatos(): void {
     this.errorMensaje = '';
+    this.avisoMensaje = '';
     this.cargando = true;
 
-    forkJoin({
-      negocio: this.negocioService.getNegocioById(this.negocioId).pipe(
-        map((n) => n as NegocioDetalle),
-      ),
-      horario: this.negocioService.getHorario(this.negocioId).pipe(
-        catchError(() => of(null)),
-      ),
-    }).subscribe({
-      next: ({ negocio, horario }) => {
-        const horarioActual = horario ?? negocio.horario ?? null;
-        const rangoBase = this.resolveHorarioBase(horarioActual);
-
-        this.diasAbre.clear();
+    this.negocioService.getNegocioById(this.negocioId)
+      .pipe(map((n) => n as NegocioDetalle))
+      .subscribe({
+      next: (negocio) => {
         this.negocioForm.patchValue({
           nombre: negocio.nombre ?? '',
           slug: negocio.slug ?? negocio.nickname ?? '',
@@ -206,20 +174,14 @@ export class EditarNegocioComponent implements OnInit {
           fotoPortada: negocio.fotoPortada ?? '',
           nenufarAsset: negocio.nenufarAsset ?? resolveNenufarAsset(negocio.nenufarKey) ?? null,
           categoria: negocio.categoria?.nombre ?? '',
-          aceptaReservas: negocio.aceptaReservas ?? false,
-          intervaloReserva: Number(negocio.intervaloReserva ?? horarioActual?.intervalo ?? 30) || 30,
-          horario: {
-            apertura: rangoBase.apertura,
-            cierre: rangoBase.cierre,
-          },
+          subcategoria:
+            typeof negocio.subcategoria === 'string'
+              ? negocio.subcategoria
+              : negocio.subcategoria?.nombre ?? '',
         });
 
-        if (Array.isArray(horarioActual?.diasAbre)) {
-          horarioActual.diasAbre.forEach((dia: string) => {
-            this.diasAbre.push(new FormControl(dia));
-          });
-        }
-
+        this.syncPreviewFromUrl('fotoPerfil', negocio.fotoPerfil ?? '');
+        this.syncPreviewFromUrl('fotoPortada', negocio.fotoPortada ?? '');
         this.cargando = false;
       },
       error: (error: unknown) => {
@@ -232,6 +194,7 @@ export class EditarNegocioComponent implements OnInit {
   guardarCambios(): void {
     this.errorMensaje = '';
     this.exitoMensaje = '';
+    this.avisoMensaje = '';
 
     if (this.negocioForm.invalid) {
       this.negocioForm.markAllAsTouched();
@@ -244,6 +207,7 @@ export class EditarNegocioComponent implements OnInit {
 
     const negocioPayload: Record<string, unknown> = {
       nombre: datos.nombre?.trim(),
+      slug: datos.slug?.trim() || null,
       descripcionCorta: datos.descripcionCorta?.trim() || null,
       historia: datos.historia?.trim() || null,
       direccion: datos.direccion?.trim() || null,
@@ -254,44 +218,29 @@ export class EditarNegocioComponent implements OnInit {
       emailContacto: datos.emailContacto?.trim() || null,
       web: datos.web?.trim() || null,
       instagram: datos.instagram?.trim() || null,
-      aceptaReservas: Boolean(datos.aceptaReservas),
       ...(datos.fotoPerfil?.trim() ? { fotoPerfil: datos.fotoPerfil.trim() } : {}),
       ...(datos.fotoPortada?.trim() ? { fotoPortada: datos.fotoPortada.trim() } : {}),
       ...(nenufarAsset ? { nenufarAsset } : {}),
       ...(nenufarKey ? { nenufarKey } : {}),
     };
 
-    const horarioPayload = this.buildHorarioPayload(datos);
-
     this.guardando = true;
-
-    forkJoin({
-      negocioActualizado: this.negocioService.update(this.negocioId, negocioPayload as any),
-      horarioActualizado: this.negocioService.configHorario(this.negocioId, horarioPayload).pipe(
-        catchError((error: unknown) => {
-          if ((error as { status?: number })?.status === 404) {
-            return this.negocioService.update(this.negocioId, {
-              horario: horarioPayload.horario,
-              intervaloReserva: horarioPayload.intervaloReserva,
-            });
-          }
-          throw error;
-        }),
-      ),
-    })
+    this.negocioService.update(this.negocioId, negocioPayload as any)
       .pipe(
-        switchMap(() =>
-          this.negocioService.getNegocioById(this.negocioId).pipe(
-            map((n) => n as NegocioDetalle),
-          ),
-        ),
+        map((n) => n as NegocioDetalle),
       )
       .subscribe({
         next: (negocioActualizado) => {
           this.guardando = false;
           this.exitoMensaje = 'Cambios guardados correctamente.';
+          if (this.localPreviewUrls.size) {
+            this.avisoMensaje =
+              'La previsualización desde tu dispositivo queda lista en la UI, pero el backend actual todavía no sube archivos binarios. Para guardar imágenes reales por ahora sigue usando URL.';
+          }
           this.sincronizarNegocioEnSesion(negocioActualizado);
           this.nenufarSelector?.markAsSaved(negocioActualizado.nenufarAsset ?? null);
+          this.syncPreviewFromUrl('fotoPerfil', String(datos.fotoPerfil ?? ''));
+          this.syncPreviewFromUrl('fotoPortada', String(datos.fotoPortada ?? ''));
           setTimeout(() => void this.router.navigate(['/mi-negocio']), 900);
         },
         error: (error: unknown) => {
@@ -342,28 +291,58 @@ export class EditarNegocioComponent implements OnInit {
     void this.router.navigate(['/mi-negocio']);
   }
 
-  private resolveHorarioBase(horario: NegocioDetalle['horario'] | null | undefined): { apertura: string; cierre: string } {
-    if (!horario) return { apertura: '', cierre: '' };
-    if (horario.apertura && horario.cierre) return { apertura: horario.apertura, cierre: horario.cierre };
-    const ranges = horario.weekly ? Object.values(horario.weekly).flat() : [];
-    const first = ranges.find((r): r is [string, string] => Array.isArray(r) && r.length >= 2);
-    return { apertura: first?.[0] ?? '', cierre: first?.[1] ?? '' };
+  onImageFileSelected(field: ImageField, event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      this.errorMensaje = 'Selecciona una imagen válida para la previsualización.';
+      if (input) {
+        input.value = '';
+      }
+      return;
+    }
+
+    const previousUrl = this.localPreviewUrls.get(field);
+    if (previousUrl) {
+      URL.revokeObjectURL(previousUrl);
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    this.localPreviewUrls.set(field, objectUrl);
+    if (field === 'fotoPerfil') {
+      this.fotoPerfilPreview.set(objectUrl);
+    } else {
+      this.fotoPortadaPreview.set(objectUrl);
+    }
+
+    this.avisoMensaje =
+      'Puedes previsualizar imágenes desde tu dispositivo, pero el backend actual solo guarda URLs. La subida binaria queda preparada como siguiente paso.';
+    this.errorMensaje = '';
   }
 
-  private buildHorarioPayload(datos: ReturnType<FormGroup['getRawValue']>) {
-    const apertura = String(datos.horario?.apertura ?? '').trim();
-    const cierre = String(datos.horario?.cierre ?? '').trim();
-    const intervalo = Number(datos.intervaloReserva ?? 30) || 30;
-    const diasAbre = Array.isArray(datos.horario?.diasAbre)
-      ? datos.horario.diasAbre.filter((d: unknown): d is string => typeof d === 'string')
-      : [];
+  getImagePreview(field: ImageField): string | null {
+    if (field === 'fotoPerfil') {
+      return this.fotoPerfilPreview() || this.normalizeImageValue(this.negocioForm.get('fotoPerfil')?.value);
+    }
 
-    return {
-      intervaloReserva: intervalo,
-      horario: Boolean(datos.aceptaReservas)
-        ? { apertura, cierre, intervalo, diasAbre }
-        : { apertura: '', cierre: '', intervalo, diasAbre: [] as string[] },
-    };
+    return this.fotoPortadaPreview() || this.normalizeImageValue(this.negocioForm.get('fotoPortada')?.value);
+  }
+
+  clearLocalPreview(field: ImageField): void {
+    const localUrl = this.localPreviewUrls.get(field);
+    if (localUrl) {
+      URL.revokeObjectURL(localUrl);
+      this.localPreviewUrls.delete(field);
+    }
+
+    this.syncPreviewFromUrl(
+      field,
+      String(this.negocioForm.get(field)?.value ?? ''),
+    );
   }
 
   private sincronizarNegocioEnSesion(negocioActualizado: NegocioDetalle): void {
@@ -378,5 +357,26 @@ export class EditarNegocioComponent implements OnInit {
     } catch {
       localStorage.removeItem('usuarioLogueado');
     }
+  }
+
+  private syncPreviewFromUrl(field: ImageField, value: string): void {
+    const localUrl = this.localPreviewUrls.get(field);
+    if (localUrl) {
+      URL.revokeObjectURL(localUrl);
+      this.localPreviewUrls.delete(field);
+    }
+
+    const normalized = this.normalizeImageValue(value);
+    if (field === 'fotoPerfil') {
+      this.fotoPerfilPreview.set(normalized);
+      return;
+    }
+
+    this.fotoPortadaPreview.set(normalized);
+  }
+
+  private normalizeImageValue(value: unknown): string | null {
+    const normalized = String(value ?? '').trim();
+    return normalized || null;
   }
 }

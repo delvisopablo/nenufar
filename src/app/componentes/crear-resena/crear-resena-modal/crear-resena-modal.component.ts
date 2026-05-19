@@ -3,13 +3,14 @@ import {
   Input,
   Output,
   EventEmitter,
+  computed,
+  inject,
   signal,
   OnInit,
   OnChanges,
   SimpleChanges,
-  computed,
 } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs';
@@ -22,22 +23,41 @@ import { getUserErrorMessage } from '../../../core/errors/error-parser';
 import { SKIP_HTTP_ERROR_HANDLING } from '../../../core/errors/http-error.interceptor';
 import { resolveBusinessImage } from '../../../core/negocio/negocio-visuals';
 import {
+  ReviewProductChip,
+  SuggestedReviewProduct,
+} from '../../../core/reviews/review-products';
+import { PondBusinessSnapshot } from '../../../servicios/estanqueFeed/estanque-feed.service';
+import {
   Producto,
   ProductoServiceService,
 } from '../../../servicios/productoServicio/productoService.service';
+import { ReviewProductMetaService } from '../../../servicios/reviewProductMeta/review-product-meta.service';
 
 interface NegocioOption {
   id: number;
   nombre: string;
+  slug?: string | null;
+  nickname?: string | null;
+  duenoId?: number | null;
+  categoria?: { id?: number; nombre?: string } | string | null;
+  ciudad?: string | null;
+  provincia?: string | null;
   foto?: string;
   fotoPerfil?: string;
   fotoPortada?: string;
+  imagenNenufar?: string;
+  nenufarActivo?: string;
+  assetNenufar?: string;
+  nenufarColor?: string;
   nenufarAsset?: string;
   nenufarKey?: string;
 }
 
 interface UsuarioActual {
   id: number;
+  nombre?: string;
+  nickname?: string;
+  foto?: string | null;
 }
 
 interface CrearResenaPayload {
@@ -45,9 +65,8 @@ interface CrearResenaPayload {
   puntuacion: number;
   selloNenufar: boolean;
   negocioId: number;
-  productoId?: number;
-  productoNombre?: string;
-  precioProducto?: number;
+  productoIds?: number[];
+  productosSugeridos?: SuggestedReviewProduct[];
 }
 
 @Component({
@@ -62,6 +81,8 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
     SKIP_HTTP_ERROR_HANDLING,
     true,
   );
+  private readonly productoService = inject(ProductoServiceService);
+  private readonly reviewProductMeta = inject(ReviewProductMetaService);
 
   // @Output() cerrarModal = new EventEmitter<void>();
   @Output() resenaCreada = new EventEmitter<unknown>();
@@ -75,46 +96,84 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
 
   form: FormGroup;
   negocios: NegocioOption[] = [];
-  productos: Producto[] = [];
   negocioIdSeleccionado: number | null = null;
-  productoIdSeleccionado: number | null = null;
 
   mostrarLista = signal(false);
-  mostrarListaProductos = signal(false);
   cargandoNegocios = signal(false);
   cargandoProductos = signal(false);
   errorMensaje = signal('');
+  errorProductos = signal('');
   enviando = signal(false);
   mostrarTooltipSello = signal(false);
-  readonly sugerenciasProducto = computed(() => {
-    const term = this.normalizeText(this.form.controls['producto'].value);
+  selectorProductosAbierto = signal(false);
+  sugerirProductoAbierto = signal(false);
+  productoBusqueda = signal('');
+  productosNegocio = signal<Producto[]>([]);
+  productosSeleccionados = signal<ReviewProductChip[]>([]);
+  productosSugeridos = signal<SuggestedReviewProduct[]>([]);
+  productosFiltrados = computed(() => {
+    const query = this.productoBusqueda().trim().toLowerCase();
+    const items = this.productosNegocio();
 
-    if (!this.productos.length) {
-      return [];
+    if (!query) {
+      return items.slice(0, 8);
     }
 
-    if (!term) {
-      return this.productos.slice(0, 6);
-    }
-
-    return this.productos.filter((producto) =>
-      this.normalizeText(producto.nombre).includes(term),
-    ).slice(0, 6);
+    return items
+      .filter((producto) => {
+        const nombre = String(producto.nombre ?? '').toLowerCase();
+        const descripcion = String(producto.descripcion ?? '').toLowerCase();
+        return nombre.includes(query) || descripcion.includes(query);
+      })
+      .slice(0, 8);
   });
+  puedeSugerirProducto = computed(() => {
+    const query = this.productoBusqueda().trim().toLowerCase();
+    if (!query || !this.negocioIdSeleccionado) {
+      return false;
+    }
+
+    const existe = this.productosNegocio().some((producto) =>
+      String(producto.nombre ?? '').trim().toLowerCase() === query,
+    );
+    const yaSugerido = this.productosSugeridos().some((producto) =>
+      String(producto.nombre ?? '').trim().toLowerCase() === query,
+    );
+
+    return !existe && !yaSugerido;
+  });
+
+  sugerenciaForm: FormGroup;
+  private ultimoNegocioProductosCargado: number | null = null;
+  private readonly productosCache = new Map<number, Producto[]>();
 
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
-    private productoService: ProductoServiceService,
   ) {
     this.form = this.fb.group({
       negocio: ['', Validators.required],
-      producto: [''],
-      precioAproximado: [''],
       comentario: ['', Validators.required],
       valoracion: [0, [Validators.required, Validators.min(1), Validators.max(5)]],
       selloNenufar: [false],
     });
+    this.sugerenciaForm = this.fb.group({
+      nombre: ['', [Validators.required, Validators.maxLength(191)]],
+      precioSugerido: [''],
+      descripcion: [''],
+    });
+  }
+
+  get sugerenciaNombreControl(): FormControl {
+    return this.sugerenciaForm.get('nombre') as FormControl;
+  }
+
+  get sugerenciaPrecioControl(): FormControl {
+    return this.sugerenciaForm.get('precioSugerido') as FormControl;
+  }
+
+  get sugerenciaDescripcionControl(): FormControl {
+    return this.sugerenciaForm.get('descripcion') as FormControl;
   }
 
   ngOnInit() {
@@ -150,15 +209,12 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
 
   cerrar(): void {
     this.visible = false;
+    this.resetProductComposer();
     this.cerrarModal.emit();
   }
 
   ocultarListaConRetraso(): void {
     setTimeout(() => this.mostrarLista.set(false), 200);
-  }
-
-  ocultarListaProductosConRetraso(): void {
-    setTimeout(() => this.mostrarListaProductos.set(false), 200);
   }
 
   toggleSello(): void {
@@ -172,48 +228,6 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
 
   ocultarInfoSello(): void {
     this.mostrarTooltipSello.set(false);
-  }
-
-  onProductoInput(): void {
-    const productoControl = this.form.controls['producto'];
-    const typed = String(productoControl.value ?? '').trim();
-    const productoSeleccionado = this.productos.find(
-      (item) => item.id === this.productoIdSeleccionado,
-    );
-
-    if (!typed) {
-      this.productoIdSeleccionado = null;
-      return;
-    }
-
-    if (
-      productoSeleccionado &&
-      this.normalizeText(productoSeleccionado.nombre) !== this.normalizeText(typed)
-    ) {
-      this.productoIdSeleccionado = null;
-    }
-  }
-
-  seleccionarProducto(producto: Producto): void {
-    this.productoIdSeleccionado = producto.id;
-    this.form.controls['producto'].setValue(producto.nombre);
-    this.mostrarListaProductos.set(false);
-  }
-
-  getProductoHint(): string {
-    if (this.cargandoProductos()) {
-      return 'Cargando productos…';
-    }
-
-    if (!this.negocioIdSeleccionado) {
-      return 'Elige antes el negocio para ver sugerencias.';
-    }
-
-    if (!this.productos.length) {
-      return 'Puedes escribirlo libremente si aún no existe.';
-    }
-
-    return 'Puedes elegir uno existente o escribirlo libremente.';
   }
 
   enviar(): void {
@@ -239,22 +253,25 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
     }
 
     if (this.form.valid && this.negocioIdSeleccionado && this.usuarioActual?.id) {
-      const productoNombreLibre = String(
-        this.form.controls['producto'].value ?? '',
-      ).trim();
-      const precioProducto = this.parseOptionalPrice(
-        this.form.controls['precioAproximado'].value,
-      );
+      const productoIds = this.productosSeleccionados()
+        .map((producto) => Number(producto.id ?? 0))
+        .filter((id) => Number.isFinite(id) && id > 0);
+      const productosSugeridos = this.productosSugeridos().map((producto) => ({
+        nombre: producto.nombre,
+        ...(Number.isFinite(Number(producto.precioSugerido))
+          ? { precioSugerido: Number(producto.precioSugerido) }
+          : {}),
+        ...(String(producto.descripcion ?? '').trim()
+          ? { descripcion: String(producto.descripcion ?? '').trim() }
+          : {}),
+      }));
       const reseña: CrearResenaPayload = {
         contenido: String(this.form.value.comentario ?? '').trim(),
         puntuacion: Number(this.form.value.valoracion ?? 0),
         selloNenufar: Boolean(this.form.value.selloNenufar),
         negocioId: this.negocioIdSeleccionado,
-        ...(this.productoIdSeleccionado ? { productoId: this.productoIdSeleccionado } : {}),
-        ...(!this.productoIdSeleccionado && productoNombreLibre
-          ? { productoNombre: productoNombreLibre }
-          : {}),
-        ...(precioProducto != null ? { precioProducto } : {}),
+        ...(productoIds.length ? { productoIds } : {}),
+        ...(productosSugeridos.length ? { productosSugeridos } : {}),
       };
 
       this.enviando.set(true);
@@ -265,26 +282,36 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
         finalize(() => this.enviando.set(false)),
       ).subscribe({
         next: (res) => {
-          const respuestaNormalizada = this.normalizarRespuestaCreada(res, reseña);
+          const respuestaNormalizada = this.normalizarRespuestaCreada(
+            res,
+            reseña,
+            this.productosSeleccionados(),
+            this.productosSugeridos(),
+          );
+          this.reviewProductMeta.rememberReviewMeta({
+            reviewId: Number((respuestaNormalizada as { id?: unknown }).id ?? Date.now()),
+            negocioId: this.negocioIdSeleccionado ?? reseña.negocioId,
+            productos: this.productosSeleccionados(),
+            productosSugeridos: this.productosSugeridos(),
+            reviewContenido: reseña.contenido,
+            usuarioId: this.usuarioActual?.id ?? null,
+            usuarioNombre: this.usuarioActual?.nombre ?? null,
+          });
 
           alert('Genial!! Tu reseña se ha guardado.');
           this.resenaCreada.emit(respuestaNormalizada);
           this.form.reset({
             negocio: this.negocioIdSeleccionado === this.negocioId ? this.getNegocioNombreInicial() : '',
-            producto: '',
-            precioAproximado: '',
             comentario: '',
             valoracion: 0,
             selloNenufar: false,
           });
-          this.productoIdSeleccionado = null;
-          this.mostrarListaProductos.set(false);
+          this.resetProductComposer();
 
           if (this.negocioId) {
             this.sincronizarNegocioInicial();
           } else {
             this.negocioIdSeleccionado = null;
-            this.productos = [];
           }
         },
         error: (error: unknown) => {
@@ -310,7 +337,7 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
     const nombre = this.getNegocioNombreInicial();
 
     if (Number.isFinite(negocioId) && negocioId > 0 && nombre) {
-      this.aplicarNegocioSeleccionado(negocioId, nombre, true);
+      this.aplicarNegocioSeleccionado(negocioId, nombre);
       return;
     }
 
@@ -319,7 +346,6 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
       this.aplicarNegocioSeleccionado(
         negocioId,
         negocioEncontrado?.nombre ?? this.form.controls['negocio'].value ?? '',
-        true,
       );
     }
   }
@@ -332,86 +358,219 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
   private aplicarNegocioSeleccionado(
     negocioId: number,
     nombreNegocio: string,
-    preserveText = false,
   ): void {
+    const negocioCambiado = this.negocioIdSeleccionado !== negocioId;
     this.negocioIdSeleccionado = negocioId;
     this.form.controls['negocio'].setValue(nombreNegocio);
-
-    const shouldResetProducto = !preserveText;
-    if (shouldResetProducto) {
-      this.form.controls['producto'].setValue('');
-      this.form.controls['precioAproximado'].setValue('');
-      this.productoIdSeleccionado = null;
+    if (negocioCambiado) {
+      this.resetProductComposer();
     }
-
     this.cargarProductosNegocio(negocioId);
   }
 
+  toggleSelectorProductos(): void {
+    this.selectorProductosAbierto.update((value) => !value);
+  }
+
+  actualizarBusquedaProducto(value: string): void {
+    this.productoBusqueda.set(String(value ?? ''));
+  }
+
+  productoSeleccionado(productoId: number): boolean {
+    return this.productosSeleccionados().some((producto) => Number(producto.id ?? 0) === productoId);
+  }
+
+  alternarProducto(producto: Producto): void {
+    const productoId = Number(producto.id ?? 0);
+    if (!Number.isFinite(productoId) || productoId <= 0) {
+      return;
+    }
+
+    this.productosSeleccionados.update((items) => {
+      const existe = items.some((item) => Number(item.id ?? 0) === productoId);
+      if (existe) {
+        return items.filter((item) => Number(item.id ?? 0) !== productoId);
+      }
+
+      return [
+        ...items,
+        {
+          id: productoId,
+          nombre: producto.nombre,
+          foto:
+            String(producto.foto ?? '').trim() ||
+            String(producto.imagen ?? '').trim() ||
+            String(producto.imageUrl ?? '').trim() ||
+            null,
+        },
+      ];
+    });
+  }
+
+  quitarProductoSeleccionado(productoId: number | null | undefined): void {
+    const normalizedId = Number(productoId ?? 0);
+    this.productosSeleccionados.update((items) =>
+      items.filter((item) => Number(item.id ?? 0) !== normalizedId),
+    );
+  }
+
+  abrirFormularioSugerencia(): void {
+    if (!this.negocioIdSeleccionado) {
+      this.errorProductos.set('Selecciona antes un negocio para sugerir un producto.');
+      return;
+    }
+
+    this.errorProductos.set('');
+    this.sugerirProductoAbierto.set(true);
+    this.sugerenciaForm.reset({
+      nombre: this.productoBusqueda().trim(),
+      precioSugerido: '',
+      descripcion: '',
+    });
+  }
+
+  cancelarSugerenciaProducto(): void {
+    this.sugerirProductoAbierto.set(false);
+    this.sugerenciaForm.reset({
+      nombre: '',
+      precioSugerido: '',
+      descripcion: '',
+    });
+  }
+
+  guardarProductoSugerido(): void {
+    if (this.sugerenciaForm.invalid) {
+      this.sugerenciaForm.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.sugerenciaForm.getRawValue();
+    const nombre = String(raw.nombre ?? '').trim();
+    const descripcion = String(raw.descripcion ?? '').trim();
+    const precioSugerido = Number(raw.precioSugerido ?? NaN);
+
+    if (!nombre) {
+      return;
+    }
+
+    const existeEnCatalogo = this.productosNegocio().some(
+      (producto) => String(producto.nombre ?? '').trim().toLowerCase() === nombre.toLowerCase(),
+    );
+    const yaSugerido = this.productosSugeridos().some(
+      (producto) => String(producto.nombre ?? '').trim().toLowerCase() === nombre.toLowerCase(),
+    );
+
+    if (existeEnCatalogo || yaSugerido) {
+      this.errorProductos.set('Ese producto ya existe o ya está sugerido.');
+      return;
+    }
+
+    this.productosSugeridos.update((items) => [
+      ...items,
+      {
+        localId: `draft-${Date.now()}-${items.length}`,
+        nombre,
+        ...(Number.isFinite(precioSugerido) ? { precioSugerido } : {}),
+        ...(descripcion ? { descripcion } : {}),
+        estado: 'pendiente',
+      },
+    ]);
+    this.errorProductos.set('');
+    this.cancelarSugerenciaProducto();
+  }
+
+  quitarProductoSugerido(localId: string | undefined): void {
+    if (!localId) {
+      return;
+    }
+
+    this.productosSugeridos.update((items) => items.filter((item) => item.localId !== localId));
+  }
+
   private cargarProductosNegocio(negocioId: number): void {
-    if (!Number.isFinite(negocioId) || negocioId <= 0) {
-      this.productos = [];
-      this.productoIdSeleccionado = null;
+    const normalizedId = Number(negocioId ?? 0);
+    if (!Number.isFinite(normalizedId) || normalizedId <= 0) {
+      this.productosNegocio.set([]);
+      return;
+    }
+
+    const cached = this.productosCache.get(normalizedId);
+    if (cached) {
+      this.productosNegocio.set(cached);
+      this.errorProductos.set('');
+      this.ultimoNegocioProductosCargado = normalizedId;
+      return;
+    }
+
+    if (this.cargandoProductos() && this.ultimoNegocioProductosCargado === normalizedId) {
       return;
     }
 
     this.cargandoProductos.set(true);
-    this.productoService.listByNegocio(negocioId)
+    this.errorProductos.set('');
+    this.ultimoNegocioProductosCargado = normalizedId;
+
+    this.productoService
+      .listByNegocio(normalizedId)
       .pipe(finalize(() => this.cargandoProductos.set(false)))
       .subscribe({
         next: (productos) => {
-          this.productos = productos;
+          this.productosCache.set(normalizedId, productos);
+          if (this.negocioIdSeleccionado === normalizedId) {
+            this.productosNegocio.set(productos);
+          }
         },
-        error: () => {
-          this.productos = [];
+        error: (error: unknown) => {
+          if (this.negocioIdSeleccionado === normalizedId) {
+            this.productosNegocio.set([]);
+            this.errorProductos.set(
+              getUserErrorMessage(error, 'No hemos podido cargar los productos del negocio.'),
+            );
+          }
         },
       });
   }
 
-  private parseOptionalPrice(raw: unknown): number | null {
-    const normalized = String(raw ?? '').replace(',', '.').trim();
-    if (!normalized) {
-      return null;
-    }
-
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  private resetProductComposer(): void {
+    this.selectorProductosAbierto.set(false);
+    this.sugerirProductoAbierto.set(false);
+    this.productoBusqueda.set('');
+    this.errorProductos.set('');
+    this.productosSeleccionados.set([]);
+    this.productosSugeridos.set([]);
+    this.sugerenciaForm.reset({
+      nombre: '',
+      precioSugerido: '',
+      descripcion: '',
+    });
   }
 
   private normalizarRespuestaCreada(
     response: unknown,
     payload: CrearResenaPayload,
+    productosSeleccionados: ReviewProductChip[],
+    productosSugeridos: SuggestedReviewProduct[],
   ): Record<string, unknown> {
-    const productoNombre =
-      payload.productoNombre?.trim() ||
-      this.productos.find((producto) => producto.id === payload.productoId)?.nombre?.trim() ||
-      '';
+    const negocio = this.getSelectedBusinessSnapshot(payload.negocioId);
+    const productoNombre = productosSeleccionados[0]?.nombre ?? null;
 
     return {
       ...(response && typeof response === 'object' ? response as Record<string, unknown> : {}),
+      id: Number((response as { id?: unknown } | null)?.id ?? Date.now()),
       negocioId: payload.negocioId,
       contenido: payload.contenido,
       puntuacion: payload.puntuacion,
       selloNenufar: payload.selloNenufar,
-      ...(payload.productoId ? { productoId: payload.productoId } : {}),
-      ...(productoNombre
-        ? {
-            productoNombre,
-            producto: {
-              id: payload.productoId ?? null,
-              nombre: productoNombre,
-            },
-          }
-        : {}),
-      ...(payload.precioProducto != null ? { precioProducto: payload.precioProducto } : {}),
+      fechaISO: new Date().toISOString(),
+      autorNombre: this.usuarioActual?.nombre ?? 'Tu',
+      usuarioNickname: this.usuarioActual?.nickname,
+      usuarioFoto: this.usuarioActual?.foto ?? null,
+      ...(productoNombre ? { productoNombre } : {}),
+      ...(productosSeleccionados.length ? { productos: productosSeleccionados } : {}),
+      ...(payload.productoIds?.length ? { productoIds: payload.productoIds } : {}),
+      ...(productosSugeridos.length ? { productosSugeridos } : {}),
+      negocio,
     };
-  }
-
-  private normalizeText(value: string | null | undefined): string {
-    return String(value ?? '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim()
-      .toLowerCase();
   }
 
   private obtenerUsuarioActual(): UsuarioActual | null {
@@ -423,9 +582,51 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
 
     try {
       const parsed = JSON.parse(raw) as Partial<UsuarioActual>;
-      return typeof parsed.id === 'number' ? { id: parsed.id } : null;
+      return typeof parsed.id === 'number'
+        ? {
+            id: parsed.id,
+            nombre: typeof parsed.nombre === 'string' ? parsed.nombre : undefined,
+            nickname: typeof parsed.nickname === 'string' ? parsed.nickname : undefined,
+            foto: typeof parsed.foto === 'string' ? parsed.foto : null,
+          }
+        : null;
     } catch {
       return null;
     }
+  }
+
+  private getSelectedBusinessSnapshot(negocioId: number): PondBusinessSnapshot | null {
+    const negocioInput = this.negocio as (PondBusinessSnapshot | null | undefined);
+    if (Number(negocioInput?.id ?? 0) === negocioId) {
+      return {
+        id: negocioId,
+        ...negocioInput,
+      };
+    }
+
+    const negocioOption = this.negocios.find((item) => item.id === negocioId);
+    if (!negocioOption) {
+      return null;
+    }
+
+    return {
+      id: negocioOption.id,
+      nombre: negocioOption.nombre,
+      slug: negocioOption.slug ?? null,
+      nickname: negocioOption.nickname ?? null,
+      duenoId: negocioOption.duenoId ?? null,
+      categoria: negocioOption.categoria ?? null,
+      ciudad: negocioOption.ciudad ?? null,
+      provincia: negocioOption.provincia ?? null,
+      foto: negocioOption.foto ?? null,
+      fotoPerfil: negocioOption.fotoPerfil ?? null,
+      fotoPortada: negocioOption.fotoPortada ?? null,
+      imagenNenufar: negocioOption.imagenNenufar ?? null,
+      nenufarActivo: negocioOption.nenufarActivo ?? null,
+      assetNenufar: negocioOption.assetNenufar ?? null,
+      nenufarColor: negocioOption.nenufarColor ?? null,
+      nenufarAsset: negocioOption.nenufarAsset ?? null,
+      nenufarKey: negocioOption.nenufarKey ?? null,
+    };
   }
 }

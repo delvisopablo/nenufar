@@ -307,7 +307,7 @@ export class ReservasComponent implements OnInit, OnChanges {
 
   get tituloPrincipal(): string {
     if (this.modoResuelto === 'negocio') {
-      return this.embebido ? 'Reservas del negocio' : 'Gestión de reservas';
+      return this.embebido ? 'Reservas del negocio' : 'Reservas';
     }
 
     if (this.negocioActual?.nombre) {
@@ -401,7 +401,7 @@ export class ReservasComponent implements OnInit, OnChanges {
       .subscribe({
         next: () => {
           this.accionEnCurso = false;
-          this.exito = 'Reserva creada correctamente.';
+          this.exito = 'Reserva confirmada correctamente.';
           this.nota = '';
           this.slotSeleccionadoIso = null;
           this.loadAvailability(this.negocioActual?.id ?? null);
@@ -516,11 +516,11 @@ export class ReservasComponent implements OnInit, OnChanges {
   }
 
   irAGestionNegocio(): void {
-    void this.router.navigate(['/mi-negocio/reservas']);
+    void this.router.navigate(['/mi-negocio'], { queryParams: { modal: 'reservas' } });
   }
 
   irAConfigurarHorario(): void {
-    void this.router.navigate(['/mi-negocio/editar']);
+    void this.router.navigate(['/mi-negocio/NENUditar']);
   }
 
   irAEstanque(): void {

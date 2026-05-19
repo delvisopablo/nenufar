@@ -1,0 +1,137 @@
+<div class="horario-shell" [formGroup]="form">
+  <section class="horario-summary-card">
+    <div>
+      <p class="horario-kicker">Configuración compacta</p>
+      <h3>Horario y reservas</h3>
+    </div>
+
+    <label class="reservas-toggle">
+      <input type="checkbox" formControlName="aceptaReservas">
+      <span>
+        <strong>Reservas online</strong>
+        <small>{{ form.controls.aceptaReservas.value ? 'Activadas' : 'Desactivadas' }}</small>
+      </span>
+    </label>
+  </section>
+
+  <section class="horario-panel">
+    <div class="panel-head">
+      <div>
+        <p class="horario-kicker">Plantilla rápida</p>
+        <h4>Aplica una franja a varios días</h4>
+      </div>
+    </div>
+
+    <div class="template-grid">
+      <label class="field">
+        <span>Apertura</span>
+        <input type="time" formControlName="plantillaApertura">
+      </label>
+
+      <label class="field">
+        <span>Cierre</span>
+        <input type="time" formControlName="plantillaCierre">
+      </label>
+
+      <div class="field">
+        <span>Intervalo</span>
+        <div class="interval-chips">
+          @for (min of intervalosReserva; track min) {
+            <button
+              type="button"
+              class="interval-chip"
+              [class.interval-chip--active]="form.controls.intervaloReserva.value === min"
+              (click)="form.controls.intervaloReserva.setValue(min)"
+            >
+              {{ min }} min
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <button type="button" class="quick-btn" (click)="applyTemplateToWeekdays()">Aplicar L-V</button>
+      <button type="button" class="quick-btn" (click)="applyTemplateToWeekend()">Aplicar finde</button>
+      <button type="button" class="quick-btn" (click)="applyTemplateToAllDays()">Aplicar a todos</button>
+      <button type="button" class="quick-btn quick-btn--ghost" (click)="clearAllDays()">Cerrar todos</button>
+    </div>
+  </section>
+
+  <section class="horario-panel">
+    <div class="panel-head">
+      <div>
+        <p class="horario-kicker">Ajuste fino</p>
+        <h4>Configura cada día</h4>
+      </div>
+    </div>
+
+    <div class="days-grid" formArrayName="dias">
+      @for (dayKey of dayOrder; track dayKey; let dayIndex = $index) {
+        <div
+          class="day-card"
+          [class.day-card--active]="diasFormArray.at(dayIndex).get('activa')?.value"
+          [formGroupName]="dayIndex"
+        >
+          <button type="button" class="day-toggle" (click)="toggleDay(dayIndex)">
+            <span class="day-toggle__name">{{ dayLabels[dayKey] }}</span>
+            <span class="day-toggle__short">{{ dayShortLabels[dayKey] }}</span>
+            <span class="day-toggle__state">
+              {{ diasFormArray.at(dayIndex).get('activa')?.value ? 'Abierto' : 'Cerrado' }}
+            </span>
+          </button>
+
+          <div class="day-hours">
+            <label class="field">
+              <span>Desde</span>
+              <input type="time" formControlName="apertura" [disabled]="!diasFormArray.at(dayIndex).get('activa')?.value">
+            </label>
+
+            <label class="field">
+              <span>Hasta</span>
+              <input type="time" formControlName="cierre" [disabled]="!diasFormArray.at(dayIndex).get('activa')?.value">
+            </label>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="horario-panel horario-panel--preview">
+    <div class="panel-head">
+      <div>
+        <p class="horario-kicker">Así se verá</p>
+        <h4>Resumen visible del perfil</h4>
+      </div>
+    </div>
+
+    @if (resumenHorario().length) {
+      <div class="summary-list">
+        @for (linea of resumenHorario(); track linea) {
+          <p class="summary-line">{{ linea }}</p>
+        }
+      </div>
+    } @else {
+      <p class="summary-empty">Horario no configurado</p>
+    }
+  </section>
+
+  @if (errorMensaje()) {
+    <div class="feedback feedback--error" role="alert">{{ errorMensaje() }}</div>
+  }
+
+  @if (exitoMensaje()) {
+    <div class="feedback feedback--ok" role="status">{{ exitoMensaje() }}</div>
+  }
+
+  <div class="horario-actions">
+    <button
+      type="button"
+      class="save-btn"
+      [disabled]="guardando()"
+      (click)="guardarHorario()"
+    >
+      {{ guardando() ? 'Guardando…' : 'Guardar horario' }}
+    </button>
+  </div>
+</div>

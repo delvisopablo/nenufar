@@ -26,7 +26,7 @@
 
     <div class="dashboard-actions">
       <a class="ghost-btn" [routerLink]="['/mi-negocio']">Volver al perfil</a>
-      <a class="primary-btn" [routerLink]="['/mi-negocio/reservas']">Ver reservas</a>
+      <a class="primary-btn" [routerLink]="['/mi-negocio']" [queryParams]="{ modal: 'reservas' }">Ver reservas</a>
     </div>
   </header>
 
@@ -101,12 +101,24 @@
               {{ resumen()?.tieneHorario ? 'Sí' : 'No' }}
             </strong>
           </div>
+          <div class="status-row">
+            <span>Intervalo de reserva</span>
+            <strong [class.ok]="negocio()?.intervaloReserva" [class.warn]="!negocio()?.intervaloReserva">
+              {{ negocio()?.intervaloReserva ? negocio()?.intervaloReserva + ' min' : 'Sin definir' }}
+            </strong>
+          </div>
         </div>
 
         @if (!resumen()?.tieneHorario) {
           <p class="inline-warning">
             Configura primero tu horario para gestionar reservas con normalidad.
           </p>
+        } @else if (horarioResumen().length) {
+          <div class="dashboard-horario-list">
+            @for (linea of horarioResumen(); track linea) {
+              <p class="dashboard-horario-line">{{ linea }}</p>
+            }
+          </div>
         }
       </article>
     </section>

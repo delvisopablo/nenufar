@@ -8,7 +8,7 @@
       @if (esPerfilPropio()) {
         <div class="topbar-actions">
           <button class="edit-btn" type="button" (click)="modoEdicion.set(!modoEdicion())">
-            {{ modoEdicion() ? 'Cerrar' : 'Menúditar' }}
+            {{ modoEdicion() ? 'Cerrar' : 'NENUditar' }}
           </button>
 
           <button
@@ -169,8 +169,17 @@
                 <time class="review-date">{{ (resena.fecha || resena.creadoEn) | date:'d MMM yyyy' }}</time>
               </header>
 
-              @if (getReviewProductLabel(resena); as productoNombre) {
-                <span class="review-product-chip">{{ productoNombre }}</span>
+              @if (getReviewProductLabels(resena); as productosResena) {
+                @if (productosResena.length || getReviewPendingProductLabels(resena).length) {
+                  <div class="review-product-list">
+                    @for (productoNombre of productosResena; track productoNombre + '-' + $index) {
+                      <span class="review-product-chip">{{ productoNombre }}</span>
+                    }
+                    @for (productoPendiente of getReviewPendingProductLabels(resena); track productoPendiente + '-' + $index) {
+                      <span class="review-product-chip review-product-chip--pending">{{ productoPendiente }}</span>
+                    }
+                  </div>
+                }
               }
               <p class="review-text">{{ resena.comentario || resena.contenido || 'Sin comentario' }}</p>
 
@@ -247,6 +256,25 @@
     }
   </div>
 </div>
+
+@if (esPerfilPropio()) {
+  <button
+    type="button"
+    class="profile-flower-btn"
+    [class.is-spinning]="profileFlowerSpinning()"
+    (click)="onProfileFlowerClick()"
+    aria-label="NENUditar perfil"
+  >
+    <img
+      class="profile-flower-btn__flower"
+      src="assets/imagenes/flor_logo.png"
+      alt=""
+      aria-hidden="true"
+      width="84"
+      height="84"
+    >
+  </button>
+}
 
 <app-access-required-modal
   [open]="accessModalAbierto()"

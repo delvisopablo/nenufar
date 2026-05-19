@@ -1,0 +1,41 @@
+:host {
+  display: block;
+}
+
+.horario-resumen {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 224, 168, 0.18);
+  background: rgba(255, 248, 240, 0.08);
+}
+
+.horario-resumen__head {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.horario-resumen__head span {
+  color: #f7fff9;
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.horario-resumen__head small {
+  color: rgba(255, 224, 168, 0.82);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.horario-resumen__list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.horario-resumen__list p {
+  margin: 0;
+  color: rgba(236, 247, 242, 0.82);
+  font-size: 0.82rem;
+  line-height: 1.42;
+}

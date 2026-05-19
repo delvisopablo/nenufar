@@ -27,12 +27,11 @@
     @for (lily of actionableLilies(); track lily.id) {
       <div
         class="lily-action"
-        [class.is-business]="lily.id === 'negocio'"
         [style.left.px]="lily.state.x"
         [style.top.px]="lily.state.y - (lily.radius * 0.58)"
       >
         <button type="button" class="lily-action__button" (click)="seleccionarTipoRegistro(lily.id)">
-          {{ lily.id === 'usuario' ? 'Registrar usuario' : 'Registrar negocio' }}
+          {{ lily.id === 'usuario' ? 'Entrar como rana' : 'Entrar como nenúfar' }}
         </button>
       </div>
     }
@@ -40,11 +39,11 @@
 
   <div class="page-shell">
     <article class="choice-card" #card>
-      <p class="eyebrow">Registro</p>
-      <h1>Elige tu nenúfar</h1>
+      <p class="eyebrow">Nenúfarte</p>
+      <h1>NENÚFATE</h1>
       <p class="choice-copy">
-        Cada camino empieza distinto. Toca el nenúfar que más te llame y te enseñamos su
-        recorrido antes de entrar al registro real.
+        Cada camino empieza distinto. Toca el nenúfar que más te llame y te enseñamos primero
+        qué podrías hacer dentro antes de entrar al registro real.
       </p>
 
       <div class="choice-summary">
@@ -54,7 +53,7 @@
         </section>
 
         <section class="choice-note">
-          <h2>Como negocio</h2>
+          <h2>Como nenúfar</h2>
           <p>Prepara tu perfil, activa horarios, mueve promociones y abre hueco a nuevas reservas.</p>
         </section>
       </div>

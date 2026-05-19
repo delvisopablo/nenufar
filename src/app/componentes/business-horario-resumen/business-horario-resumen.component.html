@@ -1,0 +1,16 @@
+@if (tieneHorarioReal) {
+  <section class="horario-resumen" aria-label="Horario del negocio">
+    <div class="horario-resumen__head">
+      <span>Horario</span>
+      @if (reservasActivas === false) {
+        <small>Reservas online desactivadas</small>
+      }
+    </div>
+
+    <div class="horario-resumen__list">
+      @for (linea of lineas; track linea) {
+        <p>{{ linea }}</p>
+      }
+    </div>
+  </section>
+}

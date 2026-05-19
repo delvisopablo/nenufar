@@ -36,11 +36,11 @@ type OnboardingSlide = {
   titulo: string;
 };
 
-// ── 6 slides para el track de usuario ──────────────────────────────────────
+// ── 5 slides para el track de usuario ──────────────────────────────────────
 const SLIDES_USUARIO: OnboardingSlide[] = [
   {
     badge: '01',
-    descripcion: 'El estanque tiene personalidad propia. Cada nenúfar que ves es un negocio del barrio esperando que lo descubras.',
+    descripcion: 'Cada nenúfar ofrece una cosa nueva.',
     gradiente: 'linear-gradient(135deg, rgba(23, 77, 61, 0.98), rgba(9, 34, 28, 0.94))',
     kicker: 'Bienvenida',
     puntos: [],
@@ -48,18 +48,6 @@ const SLIDES_USUARIO: OnboardingSlide[] = [
   },
   {
     badge: '02',
-    descripcion: 'Muévete por Nenúfar con calma, descubre sitios con personalidad y guarda los que más te laten.',
-    gradiente: 'linear-gradient(135deg, rgba(38, 95, 74, 0.98), rgba(16, 51, 40, 0.94))',
-    kicker: 'Explora',
-    puntos: [
-      'Explora negocios locales sin perderte en listados fríos.',
-      'Guarda favoritos y sigue lo que te interesa de verdad.',
-      'Empieza a conocer el estanque a tu ritmo.'
-    ],
-    titulo: 'Descubre el estanque'
-  },
-  {
-    badge: '03',
     descripcion: 'Reserva cuando te venga bien y deja que el movimiento del estanque te acompañe sin fricciones.',
     gradiente: 'linear-gradient(135deg, rgba(23, 77, 61, 0.98), rgba(9, 34, 28, 0.94))',
     kicker: 'Reservas',
@@ -67,7 +55,7 @@ const SLIDES_USUARIO: OnboardingSlide[] = [
     titulo: 'Reserva con ligereza'
   },
   {
-    badge: '04',
+    badge: '03',
     descripcion: 'Tu voz ayuda a que el ecosistema tenga memoria. Cada reseña deja una pequeña onda en el agua.',
     gradiente: 'linear-gradient(135deg, rgba(74, 34, 69, 0.98), rgba(33, 12, 31, 0.94))',
     kicker: 'Comunidad',
@@ -75,7 +63,7 @@ const SLIDES_USUARIO: OnboardingSlide[] = [
     titulo: 'Participa y deja huella'
   },
   {
-    badge: '05',
+    badge: '04',
     descripcion: 'Sigue negocios y vuelve a encontrarlos cuando quieras. Haz que lo que vives dentro de Nenúfar también cuente.',
     gradiente: 'linear-gradient(135deg, rgba(38, 95, 74, 0.98), rgba(16, 51, 40, 0.94))',
     kicker: 'Conexión',
@@ -87,7 +75,7 @@ const SLIDES_USUARIO: OnboardingSlide[] = [
     titulo: 'Sigue y conecta'
   },
   {
-    badge: '06',
+    badge: '05',
     descripcion: 'Nenúfar premia el movimiento bonito: cuanto más participas, más vivo se vuelve tu recorrido.',
     gradiente: 'linear-gradient(135deg, rgba(160, 78, 54, 0.98), rgba(95, 37, 23, 0.94))',
     kicker: 'Pétalos',
@@ -186,9 +174,9 @@ export class OnboardingComponent implements OnChanges {
 
     if (modo === 'usuario') {
       if (idx === 0) return 'nenufar-pond';     // Bienvenida
-      if (idx === 2) return 'reserva';           // Reserva con ligereza
-      if (idx === 3) return 'publicar-resena';   // Participa y deja huella
-      if (idx === 5) return 'logro';             // Haz crecer tu camino
+      if (idx === 1) return 'reserva';           // Reserva con ligereza
+      if (idx === 2) return 'publicar-resena';   // Participa y deja huella
+      if (idx === 4) return 'logro';             // Haz crecer tu camino
     }
 
     if (modo === 'negocio') {
@@ -204,14 +192,14 @@ export class OnboardingComponent implements OnChanges {
   readonly cabecera = computed(() => (
     this.modoActual() === 'usuario'
       ? {
-          descripcion: 'Así se mueve Nenúfar si entras como rana. Puedes volver o seguir hacia tu registro real cuando quieras.',
+          descripcion: 'Así se mueve el nenúfar si entras como rana: puedes volver o seguir hacia tu registro real cuando quieras.',
           kicker: 'Camino rana',
           titulo: 'Tu salto empieza aquí'
         }
       : {
-          descripcion: 'Así florece tu presencia dentro del estanque si entras como negocio. Mira el recorrido y sigue solo si te encaja.',
-          kicker: 'Camino negocio',
-          titulo: 'Tu negocio entra al estanque'
+          descripcion: 'Así florece tu presencia dentro del estanque si entras como nenúfar. Mira el recorrido y sigue solo si te encaja.',
+          kicker: 'Camino nenúfar',
+          titulo: 'Tu nenúfar entra al estanque'
         }
   ));
 

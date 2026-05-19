@@ -1,6 +1,5 @@
 <div class="dash-card">
   <div class="dash-header">
-    <span class="dash-icono">📊</span>
     <span class="dash-titulo">Dashboard</span>
     <span class="dash-periodo">Esta semana</span>
   </div>
@@ -12,7 +11,6 @@
         [style.border-color]="m.color + '33'"
         [style.background]="m.fondo"
       >
-        <span class="m-icono">{{ m.icono }}</span>
         <div class="m-valor" [style.color]="m.color">
           {{ m.prefijo }}{{ formatValor(m) }}{{ m.sufijo }}
         </div>
@@ -45,7 +43,7 @@
       <div class="reserva-item">
         <span class="r-hora">{{ r.hora }}</span>
         <span class="r-nombre">{{ r.nombre }}</span>
-        <span class="r-personas">👥 {{ r.personas }}</span>
+        <span class="r-personas">{{ r.personas }}p</span>
         <span class="r-estado">Pendiente</span>
       </div>
     }

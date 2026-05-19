@@ -23,7 +23,8 @@
 }
 
 .reservas-shell.is-embedded {
-  margin-top: 1rem;
+  margin-top: 0;
+  gap: 0.85rem;
   --bg: transparent;
   --paper: rgba(8, 31, 41, 0.88);
   --ink: #f3fffa;
@@ -36,6 +37,30 @@
   --bubble: #f3a9c9;
   --leaf: #3c9b8a;
   --shadow: 0 18px 38px rgba(2, 10, 15, 0.22);
+}
+
+.reservas-shell.is-embedded .stats-grid {
+  display: none;
+}
+
+.reservas-shell.is-embedded .embedded-header,
+.reservas-shell.is-embedded .panel-card,
+.reservas-shell.is-embedded .feedback-card,
+.reservas-shell.is-embedded .summary-card {
+  padding: 1rem;
+  border-radius: 1.1rem;
+}
+
+.reservas-shell.is-embedded .booking-list {
+  max-height: 16rem;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+.reservas-shell.is-embedded .slots-grid--owner {
+  max-height: 13rem;
+  overflow: auto;
+  padding-right: 0.15rem;
 }
 
 .reservas-header,

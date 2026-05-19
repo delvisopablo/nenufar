@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../servicios/authService/auth.service';
 import { buildApiUrl } from '../../../config/api.config';
+import { ReviewProductMetaService } from '../../../servicios/reviewProductMeta/review-product-meta.service';
 
 interface Reseña {
   id?: number;
@@ -11,6 +12,8 @@ interface Reseña {
   negocioId: number;
   fecha: string;
   productoNombre?: string | null;
+  productos?: Array<{ id?: number | null; nombre: string }>;
+  productosSugeridos?: Array<{ localId?: string; nombre: string; estado?: string | null }>;
   precioProducto?: number | null;
   producto?: {
     id?: number;
@@ -29,6 +32,7 @@ export class PortalReseñasComponent implements OnInit {
   // ✅ Dependencias
   http = inject(HttpClient);
   auth = inject(AuthService);
+  reviewProductMeta = inject(ReviewProductMetaService);
   @Input() refrescar: number = 0;
   @Input() resenas: any[] = [];
 
@@ -55,7 +59,7 @@ export class PortalReseñasComponent implements OnInit {
 
     const url = buildApiUrl('/resena/ultimas');
     this.http.get<Reseña[]>(url).subscribe({
-      next: (data) => this.reseñas.set(data),
+      next: (data) => this.reseñas.set(this.reviewProductMeta.mergeReviews(data)),
       error: (err) => console.error('❌ Error cargando reseñas:', err)
     });
   } catch (err) {
@@ -67,7 +71,7 @@ cargarReseñasGlobales() {
     this.http.get(buildApiUrl('/resena/ultimas'))
       .subscribe({
         next: (res: any) => {
-          this.reseñas.set(res);
+          this.reseñas.set(this.reviewProductMeta.mergeReviews(Array.isArray(res) ? res : []));
         },
         error: (err) => {
           console.error('❌ Error cargando reseñas globales:', err);
@@ -86,15 +90,12 @@ cargarReseñasGlobales() {
     return '★'.repeat(Math.max(0, Math.min(5, Math.round(Number(puntuacion) || 0))));
   }
 
-  getReviewProductLabel(resena: Reseña | null | undefined): string | null {
-    const productoNombre =
-      resena?.producto?.nombre ??
-      resena?.productoNombre ??
-      (resena as { nombreProducto?: string | null } | null)?.nombreProducto ??
-      (resena as { servicioNombre?: string | null } | null)?.servicioNombre;
+  getReviewProductLabels(resena: Reseña | null | undefined): string[] {
+    return this.reviewProductMeta.getProductLabels(resena);
+  }
 
-    const normalized = String(productoNombre ?? '').trim();
-    return normalized || null;
+  getReviewPendingProductLabels(resena: Reseña | null | undefined): string[] {
+    return this.reviewProductMeta.getPendingSuggestionLabels(resena);
   }
 
   // ✅ Navegación

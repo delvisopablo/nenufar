@@ -110,6 +110,7 @@
 
 .business-card__media {
   display: grid;
+  gap: 0.5rem;
   place-items: center;
 }
 
@@ -125,6 +126,45 @@
   display: grid;
   gap: 0.6rem;
   min-width: 0;
+}
+
+.business-card__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  min-width: 0;
+}
+
+.business-card__content--with-summary {
+  grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.54fr);
+}
+
+.business-card__summary {
+  min-width: 0;
+}
+
+.petalos-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-weight: 850;
+}
+
+.petalos-chip {
+  gap: 0.28rem;
+  padding: 0.34rem 0.68rem;
+  border: 1px solid rgba(240, 145, 183, 0.24);
+  background: rgba(240, 145, 183, 0.14);
+  color: #ffe4ef;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.petalos-chip::before {
+  content: "🌸";
 }
 
 .business-name {
@@ -310,8 +350,9 @@
 
 .action-btn--primary {
   border: 0;
-  background: linear-gradient(135deg, #f05c9c, #ef7d57);
-  color: #fff;
+  background: linear-gradient(135deg, #ef4d97, #d9367f);
+  color: #fafff9;
+  box-shadow: 0 12px 24px rgba(217, 54, 127, 0.24);
 }
 
 .nenufar-active-card {
@@ -365,6 +406,10 @@
   margin-bottom: 0.75rem;
 }
 
+.section-head--inline {
+  margin-bottom: 0.45rem;
+}
+
 .section-title {
   margin: 0;
   color: #f7fff9;
@@ -390,9 +435,30 @@
   gap: 0.35rem;
 }
 
+.schedule-status {
+  margin: 0 0 0.7rem;
+  color: #ffe0a8;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .schedule-line {
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.section-chip-btn {
+  padding: 0.46rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 224, 168, 0.24);
+  background: rgba(255, 224, 168, 0.12);
+  color: #fff1d0;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .reviews-section {
@@ -414,6 +480,19 @@
   border-radius: 1.2rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(247, 255, 249, 0.08);
+}
+
+.review-item--clickable {
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.review-item--clickable:hover,
+.review-item--clickable:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(124, 217, 181, 0.24);
+  background: rgba(255, 255, 255, 0.075);
+  outline: none;
 }
 
 .review-avatar {
@@ -465,6 +544,12 @@ a.review-author:hover {
   font-size: 0.78rem;
 }
 
+.review-product-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
 .review-product-chip {
   width: fit-content;
   display: inline-flex;
@@ -476,6 +561,12 @@ a.review-author:hover {
   color: #fff2cc;
   font-size: 0.74rem;
   font-weight: 800;
+}
+
+.review-product-chip--pending {
+  background: rgba(240, 145, 183, 0.12);
+  border-color: rgba(240, 145, 183, 0.24);
+  color: #ffe4ef;
 }
 
 .review-text {
@@ -563,6 +654,14 @@ a.review-author:hover {
   padding: 1.2rem;
 }
 
+.profile-modal--compact {
+  width: min(100%, 54rem);
+}
+
+.profile-modal--wide {
+  width: min(100%, 68rem);
+}
+
 .profile-modal__close {
   position: absolute;
   top: 0.8rem;
@@ -593,18 +692,56 @@ a.review-author:hover {
 
 .btn-flotante {
   position: fixed;
-  right: 1.2rem;
-  bottom: 1.2rem;
+  right: calc(1rem + env(safe-area-inset-right));
+  bottom: calc(1rem + env(safe-area-inset-bottom));
   z-index: 15;
-  width: 3.5rem;
-  height: 3.5rem;
+  width: clamp(4rem, 6.2vw, 5.2rem);
+  height: clamp(4rem, 6.2vw, 5.2rem);
+  display: grid;
+  place-items: center;
   border: 0;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #f05c9c, #ef7d57);
-  color: #fff;
-  font-size: 1.7rem;
-  box-shadow: 0 18px 28px rgba(240, 92, 156, 0.24);
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
+  transform-origin: center center;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.btn-flotante:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.btn-flotante__flower {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.14)) saturate(1.03);
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.btn-flotante.is-spinning .btn-flotante__flower {
+  animation: review-flower-spin 380ms cubic-bezier(0.25, 0.8, 0.3, 1);
+}
+
+.btn-flotante.is-spinning,
+.btn-flotante.is-spinning:hover {
+  transform: none;
+}
+
+@keyframes review-flower-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  55% {
+    transform: rotate(108deg) scale(1.04);
+  }
+
+  100% {
+    transform: rotate(180deg) scale(1);
+  }
 }
 
 app-reservas,
@@ -632,6 +769,11 @@ app-nenufar-selector {
   .business-card {
     grid-template-columns: 1fr;
     justify-items: start;
+  }
+
+  .business-card__content {
+    grid-template-columns: 1fr;
+    width: 100%;
   }
 
   .business-avatar {

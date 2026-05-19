@@ -1,7 +1,9 @@
 import {
   Component,
+  EventEmitter,
   Input,
   OnChanges,
+  Output,
   SimpleChanges,
   computed,
   inject,
@@ -29,6 +31,7 @@ import {
   PromocionService,
   TipoDescuento,
 } from '../../../servicios/promocionServicio/promocionService.service';
+import { PondBusinessSnapshot } from '../../../servicios/estanqueFeed/estanque-feed.service';
 
 type PromocionVisualState =
   | 'Programada'
@@ -91,6 +94,8 @@ function descuentoValidator(): ValidatorFn {
 })
 export class PromocionComponent implements OnChanges {
   @Input() negocioId!: number;
+  @Input() negocio: PondBusinessSnapshot | null = null;
+  @Output() promocionGuardada = new EventEmitter<Promocion>();
 
   private readonly fb = inject(FormBuilder);
   private readonly promocionService = inject(PromocionService);
@@ -279,12 +284,13 @@ export class PromocionComponent implements OnChanges {
         finalize(() => this.guardando.set(false)),
       )
       .subscribe({
-        next: () => {
+        next: (saved) => {
           this.exitoMensaje.set(
             promocionId
               ? 'Promoción actualizada correctamente.'
               : 'Promoción creada correctamente.',
           );
+          this.promocionGuardada.emit(this.attachBusinessSnapshot(saved));
           this.cancelarEdicion();
           this.cargarPromociones();
         },
@@ -471,6 +477,12 @@ export class PromocionComponent implements OnChanges {
       .subscribe({
         next: (updated) => {
           this.exitoMensaje.set(successMessage);
+          this.promocionGuardada.emit(this.attachBusinessSnapshot({
+            ...promocion,
+            ...updated,
+            activa,
+            estado: updated.estado ?? estado,
+          }));
           this.promociones.update((items) =>
             items.map((item) =>
               item.id === promocion.id
@@ -555,5 +567,31 @@ export class PromocionComponent implements OnChanges {
     const date = new Date(value);
     const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
     return local.toISOString().slice(0, 16);
+  }
+
+  private attachBusinessSnapshot(promocion: Promocion): Promocion {
+    return {
+      ...promocion,
+      negocioId: Number(promocion.negocioId ?? this.negocioId),
+      negocio:
+        promocion.negocio ??
+        (this.negocio
+          ? {
+              id: this.negocio.id,
+              nombre: this.negocio.nombre ?? `Negocio ${this.negocio.id}`,
+              slug: this.negocio.slug ?? null,
+              nickname: this.negocio.nickname ?? null,
+              duenoId: this.negocio.duenoId ?? null,
+              categoria: this.negocio.categoria ?? null,
+              fotoPerfil: this.negocio.fotoPerfil ?? null,
+              imagenNenufar: this.negocio.imagenNenufar ?? null,
+              nenufarActivo: this.negocio.nenufarActivo ?? null,
+              assetNenufar: this.negocio.assetNenufar ?? null,
+              nenufarColor: this.negocio.nenufarColor ?? null,
+              nenufarKey: this.negocio.nenufarKey ?? null,
+              nenufarAsset: this.negocio.nenufarAsset ?? null,
+            }
+          : null),
+    };
   }
 }

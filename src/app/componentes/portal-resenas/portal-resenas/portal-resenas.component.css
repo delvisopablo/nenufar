@@ -82,7 +82,6 @@ button:disabled {
   width: fit-content;
   display: inline-flex;
   align-items: center;
-  margin-top: 0.6rem;
   padding: 0.24rem 0.6rem;
   border-radius: 999px;
   background: rgba(255, 224, 168, 0.12);
@@ -90,6 +89,19 @@ button:disabled {
   color: var(--text-primary);
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.producto-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.producto-chip--pending {
+  background: rgba(240, 145, 183, 0.12);
+  border-color: rgba(240, 145, 183, 0.24);
+  color: #ffe4ef;
 }
 
 .empty-state {

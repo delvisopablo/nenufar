@@ -80,6 +80,19 @@ export class RegistroNegocioComponent implements OnInit {
   readonly registrando = signal(false);
   readonly errorMensaje = signal('');
 
+  readonly tieneHorario = signal<boolean | null>(null);
+  readonly horarioLV = signal({ apertura: '10:00', cierre: '20:00' });
+  readonly horarioSabado = signal({ abierto: false, apertura: '10:00', cierre: '14:00' });
+  readonly horarioDomingo = signal({ abierto: false, apertura: '10:00', cierre: '14:00' });
+  readonly intervaloReservaValue = signal(30);
+  readonly intervalosReserva = [
+    { value: 15, label: '15 min' },
+    { value: 20, label: '20 min' },
+    { value: 30, label: '30 min' },
+    { value: 45, label: '45 min' },
+    { value: 60, label: '1 hora' },
+  ];
+
   readonly negocioForm = this.fb.group(
     {
       nombreDueno: ['', [Validators.required, Validators.minLength(2)]],
@@ -95,6 +108,7 @@ export class RegistroNegocioComponent implements OnInit {
       codigoNenufarizacion: [''],
       direccion: [''],
       historia: ['', [Validators.maxLength(320)]],
+      descripcionCorta: ['', [Validators.maxLength(160)]],
     },
     { validators: this.passwordMatchValidator }
   );
@@ -122,6 +136,8 @@ export class RegistroNegocioComponent implements OnInit {
     const direccion = this.normalizarTextoOpcional(datos.direccion);
     const historia = this.normalizarTextoOpcional(datos.historia);
     const nenufarActivo = this.normalizarTextoOpcional(datos.nenufarActivo);
+    const descripcionCorta = this.normalizarTextoOpcional(datos['descripcionCorta'] as string | null);
+    const horario = this.buildHorarioJson();
 
     if (!categoriaId) {
       this.negocioForm.get('categoriaId')?.markAsTouched();
@@ -152,8 +168,10 @@ export class RegistroNegocioComponent implements OnInit {
       ...(direccion ? { direccion } : {}),
       ...(fechaFundacion ? { fechaFundacion } : {}),
       ...(historia ? { historia } : {}),
+      ...(descripcionCorta ? { descripcionCorta } : {}),
       ...(codigoNenufarizacion ? { codigoNenufarizacion } : {}),
       nenufarActivo,
+      ...(horario ? { horario, intervaloReserva: this.intervaloReservaValue() } : {}),
     };
 
     this.registrando.set(true);
@@ -192,6 +210,46 @@ export class RegistroNegocioComponent implements OnInit {
     if (!siguienteEstado && !this.normalizarTextoOpcional(this.negocioForm.get('codigoNenufarizacion')?.value)) {
       this.codigoEstado.set('idle');
     }
+  }
+
+  setTieneHorario(value: boolean): void {
+    this.tieneHorario.set(value);
+  }
+
+  onLVApertura(event: Event): void {
+    this.horarioLV.update(h => ({ ...h, apertura: (event.target as HTMLInputElement).value }));
+  }
+
+  onLVCierre(event: Event): void {
+    this.horarioLV.update(h => ({ ...h, cierre: (event.target as HTMLInputElement).value }));
+  }
+
+  onSabadoToggle(event: Event): void {
+    this.horarioSabado.update(h => ({ ...h, abierto: (event.target as HTMLInputElement).checked }));
+  }
+
+  onSabApertura(event: Event): void {
+    this.horarioSabado.update(h => ({ ...h, apertura: (event.target as HTMLInputElement).value }));
+  }
+
+  onSabCierre(event: Event): void {
+    this.horarioSabado.update(h => ({ ...h, cierre: (event.target as HTMLInputElement).value }));
+  }
+
+  onDomingoToggle(event: Event): void {
+    this.horarioDomingo.update(h => ({ ...h, abierto: (event.target as HTMLInputElement).checked }));
+  }
+
+  onDomApertura(event: Event): void {
+    this.horarioDomingo.update(h => ({ ...h, apertura: (event.target as HTMLInputElement).value }));
+  }
+
+  onDomCierre(event: Event): void {
+    this.horarioDomingo.update(h => ({ ...h, cierre: (event.target as HTMLInputElement).value }));
+  }
+
+  onIntervaloChange(event: Event): void {
+    this.intervaloReservaValue.set(Number((event.target as HTMLSelectElement).value));
   }
 
   volverAOpciones(): void {
@@ -401,5 +459,29 @@ export class RegistroNegocioComponent implements OnInit {
     }
 
     return normalized;
+  }
+
+  private buildHorarioJson(): object | null {
+    if (!this.tieneHorario()) {
+      return null;
+    }
+
+    const lv = this.horarioLV();
+    const sat = this.horarioSabado();
+    const sun = this.horarioDomingo();
+    const daySlot: string[][] = [[lv.apertura, lv.cierre]];
+
+    return {
+      weekly: {
+        mon: daySlot,
+        tue: daySlot,
+        wed: daySlot,
+        thu: daySlot,
+        fri: daySlot,
+        sat: sat.abierto ? [[sat.apertura, sat.cierre]] : [],
+        sun: sun.abierto ? [[sun.apertura, sun.cierre]] : [],
+      },
+      exceptions: {}
+    };
   }
 }

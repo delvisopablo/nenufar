@@ -1,0 +1,301 @@
+:host {
+  display: block;
+}
+
+.horario-shell {
+  --panel-bg: rgba(9, 36, 46, 0.88);
+  --panel-line: rgba(189, 231, 214, 0.12);
+  --ink: #f2fff8;
+  --ink-soft: rgba(226, 242, 235, 0.72);
+  --accent: #f3ab4f;
+  --accent-2: #ef7d57;
+  --bubble: rgba(240, 92, 156, 0.18);
+  --mint: rgba(124, 217, 181, 0.18);
+
+  display: grid;
+  gap: 0.9rem;
+  color: var(--ink);
+}
+
+.horario-summary-card,
+.horario-panel,
+.feedback {
+  border-radius: 1.4rem;
+  border: 1px solid var(--panel-line);
+  background:
+    linear-gradient(180deg, rgba(9, 40, 52, 0.96), rgba(9, 33, 43, 0.94)),
+    radial-gradient(circle at top right, rgba(246, 195, 109, 0.08), transparent 18rem);
+  box-shadow: 0 18px 38px rgba(2, 10, 15, 0.22);
+}
+
+.horario-summary-card,
+.horario-panel {
+  padding: 1rem;
+}
+
+.horario-summary-card,
+.panel-head,
+.horario-actions,
+.quick-actions,
+.template-grid,
+.day-hours {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.horario-summary-card,
+.panel-head,
+.horario-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.horario-summary-card h3,
+.panel-head h4 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: -0.03em;
+}
+
+.panel-head {
+  margin-bottom: 0.9rem;
+}
+
+.horario-kicker {
+  margin: 0 0 0.18rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.reservas-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(189, 231, 214, 0.1);
+  cursor: pointer;
+}
+
+.reservas-toggle input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: #3c9b8a;
+}
+
+.reservas-toggle span {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.reservas-toggle strong {
+  font-size: 0.88rem;
+}
+
+.reservas-toggle small,
+.field span,
+.summary-line,
+.summary-empty {
+  color: var(--ink-soft);
+}
+
+.template-grid {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.34rem;
+  min-width: 10rem;
+}
+
+.field span {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+.field input {
+  border: 1px solid rgba(189, 231, 214, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  border-radius: 0.95rem;
+  padding: 0.8rem 0.9rem;
+  font: inherit;
+}
+
+.interval-chips,
+.quick-actions,
+.summary-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.interval-chip,
+.quick-btn,
+.save-btn {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  transition: transform 0.16s ease, opacity 0.16s ease, background 0.16s ease;
+}
+
+.interval-chip,
+.quick-btn {
+  padding: 0.62rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  border: 1px solid rgba(189, 231, 214, 0.1);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.interval-chip--active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #fff;
+}
+
+.quick-btn--ghost {
+  background: rgba(240, 92, 156, 0.12);
+  color: #ffd6ea;
+}
+
+.interval-chip:hover,
+.quick-btn:hover,
+.save-btn:hover {
+  transform: translateY(-1px);
+}
+
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.day-card {
+  border-radius: 1.2rem;
+  border: 1px solid rgba(189, 231, 214, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.day-card--active {
+  border-color: rgba(246, 195, 109, 0.24);
+  background:
+    linear-gradient(135deg, rgba(246, 195, 109, 0.08), rgba(255, 255, 255, 0.04)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.day-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.6rem;
+  align-items: center;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+}
+
+.day-toggle__name {
+  font-weight: 800;
+}
+
+.day-toggle__short {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff1d0;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.day-toggle__state {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+.day-hours {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.summary-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.summary-line,
+.summary-empty {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.feedback {
+  padding: 0.85rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.feedback--error {
+  border-color: rgba(240, 145, 183, 0.26);
+  background: rgba(240, 145, 183, 0.12);
+  color: #ffd6ea;
+}
+
+.feedback--ok {
+  border-color: rgba(124, 217, 181, 0.26);
+  background: rgba(124, 217, 181, 0.12);
+  color: #d1ffec;
+}
+
+.save-btn {
+  padding: 0.82rem 1.2rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f05c9c, #ef7d57);
+  color: #fff;
+  font-weight: 800;
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .horario-summary-card,
+  .panel-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .days-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .day-hours {
+    grid-template-columns: 1fr;
+  }
+}

@@ -6,7 +6,7 @@
     <button type="button" class="back-btn" (click)="volver()">← Volver</button>
     <div class="editor-topbar__title">
       <span class="editor-kicker">Tu negocio</span>
-      <h1>Nenúditar</h1>
+      <h1>NENUditar</h1>
     </div>
   </nav>
 
@@ -24,9 +24,12 @@
       <div class="editor-feedback editor-feedback--ok" role="status">{{ exitoMensaje }}</div>
     }
 
+    @if (avisoMensaje) {
+      <div class="editor-feedback editor-feedback--info" role="status">{{ avisoMensaje }}</div>
+    }
+
     <form [formGroup]="negocioForm" (ngSubmit)="guardarCambios()" class="editor-form" novalidate>
 
-      <!-- ── Sección 1: Identidad ───────────────────────────────────── -->
       <div class="editor-section" [class.is-open]="esSeccionAbierta('perfil')">
         <button type="button" class="editor-section__head" (click)="abrirSeccion('perfil')">
           <span class="editor-section__title">Identidad del negocio</span>
@@ -45,9 +48,9 @@
               </label>
 
               <label class="field">
-                <span>Menú usuario</span>
+                <span>Ruta pública</span>
                 <input formControlName="slug" placeholder="cafe-nenufar" />
-                <small class="field-hint">Aparecerá en la URL pública: /tu-menu</small>
+                <small class="field-hint">Se usará en la URL pública del negocio cuando exista.</small>
               </label>
             </div>
 
@@ -85,14 +88,23 @@
               <label class="field">
                 <span>Categoría</span>
                 <input formControlName="categoria" placeholder="Hostelería, Retail…" readonly class="field--readonly" />
-                <small class="field-hint">Editable desde el registro. Contacta con soporte para cambiarla.</small>
               </label>
+            </div>
+
+            <div class="field-row field-row--2">
+              <label class="field">
+                <span>Subcategoría</span>
+                <input formControlName="subcategoria" placeholder="Cafetería, brunch…" readonly class="field--readonly" />
+              </label>
+              <div class="field field--inline-info">
+                <span>Identidad visual</span>
+                <small class="field-hint">Categoría y subcategoría se mantienen aquí como referencia visual mientras preparamos una edición más fina.</small>
+              </div>
             </div>
           </div>
         }
       </div>
 
-      <!-- ── Sección 2: Contacto ────────────────────────────────────── -->
       <div class="editor-section" [class.is-open]="esSeccionAbierta('contacto')">
         <button type="button" class="editor-section__head" (click)="abrirSeccion('contacto')">
           <span class="editor-section__title">Contacto y redes</span>
@@ -128,7 +140,6 @@
         }
       </div>
 
-      <!-- ── Sección 3: Imagen visual ──────────────────────────────── -->
       <div class="editor-section" [class.is-open]="esSeccionAbierta('visual')">
         <button type="button" class="editor-section__head" (click)="abrirSeccion('visual')">
           <span class="editor-section__title">Imágenes y nenúfar</span>
@@ -137,23 +148,72 @@
 
         @if (esSeccionAbierta('visual')) {
           <div class="editor-section__body">
-            <div class="field-row">
-              <label class="field">
-                <span>Foto de perfil (URL)</span>
-                <input formControlName="fotoPerfil" placeholder="https://…imagen.jpg" />
-                <small class="field-hint">
-                  <!-- TODO: Sustituir por subida de imagen cuando el backend lo soporte -->
-                  Por ahora, pega una URL directa de imagen.
-                </small>
-              </label>
-              <label class="field">
-                <span>Foto de portada (URL)</span>
-                <input formControlName="fotoPortada" placeholder="https://…portada.jpg" />
-                <small class="field-hint">
-                  <!-- TODO: Sustituir por subida de imagen cuando el backend lo soporte -->
-                  Imagen de fondo del perfil.
-                </small>
-              </label>
+            <div class="image-grid">
+              <article class="image-card">
+                <div class="image-card__head">
+                  <div>
+                    <h3>Foto de perfil</h3>
+                    <p>URL actual o previsualización local</p>
+                  </div>
+                  <label class="upload-chip">
+                    <input type="file" accept="image/*" (change)="onImageFileSelected('fotoPerfil', $event)" />
+                    <span>Elegir archivo</span>
+                  </label>
+                </div>
+
+                @if (getImagePreview('fotoPerfil'); as previewPerfil) {
+                  <div class="image-preview-wrap">
+                    <img class="image-preview image-preview--avatar" [src]="previewPerfil" alt="Previsualización de la foto de perfil">
+                  </div>
+                } @else {
+                  <div class="image-preview-wrap image-preview-wrap--empty">
+                    <span>Sin imagen de perfil</span>
+                  </div>
+                }
+
+                <label class="field">
+                  <span>URL de perfil</span>
+                  <input formControlName="fotoPerfil" placeholder="https://…imagen.jpg" />
+                  <small class="field-hint">El backend actual guarda URL. La selección local queda lista como preview.</small>
+                </label>
+
+                <button type="button" class="link-btn" (click)="clearLocalPreview('fotoPerfil')">
+                  Volver a la imagen guardada
+                </button>
+              </article>
+
+              <article class="image-card">
+                <div class="image-card__head">
+                  <div>
+                    <h3>Foto de portada</h3>
+                    <p>Imagen principal del perfil</p>
+                  </div>
+                  <label class="upload-chip">
+                    <input type="file" accept="image/*" (change)="onImageFileSelected('fotoPortada', $event)" />
+                    <span>Elegir archivo</span>
+                  </label>
+                </div>
+
+                @if (getImagePreview('fotoPortada'); as previewPortada) {
+                  <div class="image-preview-wrap image-preview-wrap--cover">
+                    <img class="image-preview image-preview--cover" [src]="previewPortada" alt="Previsualización de la foto de portada">
+                  </div>
+                } @else {
+                  <div class="image-preview-wrap image-preview-wrap--empty image-preview-wrap--cover">
+                    <span>Sin portada configurada</span>
+                  </div>
+                }
+
+                <label class="field">
+                  <span>URL de portada</span>
+                  <input formControlName="fotoPortada" placeholder="https://…portada.jpg" />
+                  <small class="field-hint">Puedes mantener el guardado actual por URL mientras conectamos subida real de archivos.</small>
+                </label>
+
+                <button type="button" class="link-btn" (click)="clearLocalPreview('fotoPortada')">
+                  Volver a la imagen guardada
+                </button>
+              </article>
             </div>
 
             <div class="nenufar-section-wrap">
@@ -167,68 +227,6 @@
           </div>
         }
       </div>
-
-      <!-- ── Sección 4: Horario y reservas ─────────────────────────── -->
-      <div class="editor-section" [class.is-open]="esSeccionAbierta('horario')">
-        <button type="button" class="editor-section__head" (click)="abrirSeccion('horario')">
-          <span class="editor-section__title">Horario y reservas</span>
-          <span class="editor-section__arrow">{{ esSeccionAbierta('horario') ? '▲' : '▼' }}</span>
-        </button>
-
-        @if (esSeccionAbierta('horario')) {
-          <div class="editor-section__body">
-            <label class="toggle-field">
-              <input type="checkbox" formControlName="aceptaReservas" />
-              <span class="toggle-label">Activar reservas online</span>
-            </label>
-
-            @if (negocioForm.get('aceptaReservas')?.value) {
-              <div class="horario-config" formGroupName="horario">
-                <div class="field-row">
-                  <label class="field">
-                    <span>Hora de apertura</span>
-                    <input type="time" formControlName="apertura" />
-                  </label>
-                  <label class="field">
-                    <span>Hora de cierre</span>
-                    <input type="time" formControlName="cierre" />
-                  </label>
-                </div>
-
-                <div class="field">
-                  <span class="field-label-standalone">Días abiertos</span>
-                  <div class="dias-chips">
-                    @for (dia of diasSemana; track dia) {
-                      <button
-                        type="button"
-                        class="dia-chip"
-                        [class.dia-chip--active]="isDiaActivo(dia)"
-                        (click)="toggleDia(dia)"
-                      >{{ dia.slice(0, 2) }}</button>
-                    }
-                  </div>
-                </div>
-              </div>
-
-              <label class="field">
-                <span>Intervalo de reserva (minutos)</span>
-                <div class="interval-chips">
-                  @for (min of intervalosReserva; track min) {
-                    <button
-                      type="button"
-                      class="interval-chip"
-                      [class.interval-chip--active]="negocioForm.get('intervaloReserva')?.value === min"
-                      (click)="negocioForm.get('intervaloReserva')?.setValue(min)"
-                    >{{ min }}'</button>
-                  }
-                </div>
-              </label>
-            }
-          </div>
-        }
-      </div>
-
-      <!-- ── Botón guardar ─────────────────────────────────────────── -->
       <div class="editor-actions">
         <button type="button" class="btn-secondary" (click)="volver()">Cancelar</button>
         <button type="submit" class="btn-primary" [disabled]="guardando">
@@ -237,8 +235,6 @@
       </div>
 
     </form>
-
-    <!-- ── Zona de peligro ──────────────────────────────────────────── -->
     <div class="editor-section danger-zone">
       <button type="button" class="editor-section__head danger-head" (click)="abrirSeccion('peligro')">
         <span class="editor-section__title danger-title">Zona de peligro</span>

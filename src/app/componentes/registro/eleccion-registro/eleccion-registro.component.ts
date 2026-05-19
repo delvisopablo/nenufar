@@ -100,7 +100,7 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
   readonly popupInfoUsuario = signal(false);
   readonly popupInfoNegocio = signal(false);
   readonly contextHint = signal(
-    'Elige el nenúfar que mejor te encaja. Al tocarlo te enseñamos primero qué podrás hacer dentro de Nenúfar.',
+    'Pulsa cualquier nenúfar para ver su recorrido antes de registrarte.',
   );
   readonly actionableLilies = computed(() =>
     this.lilies().filter((lily) => lily.id === 'usuario' || lily.id === 'negocio'),

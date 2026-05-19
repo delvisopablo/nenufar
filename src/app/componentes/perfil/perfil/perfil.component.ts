@@ -6,9 +6,16 @@ import { catchError, finalize, forkJoin, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../../core/errors/error-parser';
 import { AccessRequiredModalComponent } from '../../../components/shared/access-required-modal/access-required-modal.component';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
-import { AuthService, AuthUser } from '../../../servicios/authService/auth.service';
+import {
+  AuthService,
+  AuthUser,
+  resolveOwnedBusinessId,
+  resolvePrivateProfileRoute,
+} from '../../../servicios/authService/auth.service';
 import { Logro, LogroServiceService } from '../../../servicios/logroServicio/logroService.service';
+import { resolveNegocioRouteCommands } from '../../../servicios/negocioService/negocio.service';
 import { ReservaService } from '../../../servicios/reservaService/reserva.service';
+import { ReviewProductMetaService } from '../../../servicios/reviewProductMeta/review-product-meta.service';
 import { ResenaService } from '../../../servicios/reviewServicio/resena.service';
 import { NenufarizarService } from '../../../services/nenufarizar.service';
 import {
@@ -33,9 +40,23 @@ type UserReview = {
     nombre?: string;
     precio?: number | null;
   } | null;
+  productos?: Array<{
+    id?: number | null;
+    nombre: string;
+  }>;
+  productoIds?: number[];
+  productosSugeridos?: Array<{
+    localId?: string;
+    nombre: string;
+    precioSugerido?: number | null;
+    descripcion?: string | null;
+    estado?: string | null;
+  }>;
   negocio?: {
     id?: number;
     nombre?: string;
+    slug?: string | null;
+    nickname?: string | null;
   };
 };
 
@@ -55,6 +76,7 @@ export class PerfilComponent implements OnInit {
   private readonly resenaService = inject(ResenaService);
   private readonly reservaService = inject(ReservaService);
   private readonly logroService = inject(LogroServiceService);
+  private readonly reviewProductMeta = inject(ReviewProductMetaService);
   readonly nenufarizar = inject(NenufarizarService);
 
   readonly cargando = signal(true);
@@ -74,6 +96,7 @@ export class PerfilComponent implements OnInit {
   readonly accionCopiada = signal<CopiaReferidoAccion>('');
   readonly nenufarizarError = signal('');
   readonly mostrarCodigoPanel = signal(false);
+  readonly profileFlowerSpinning = signal(false);
 
   nuevaBio = '';
   private copyFeedbackTimerId: number | null = null;
@@ -110,7 +133,7 @@ export class PerfilComponent implements OnInit {
 
           this.usuarioActual.set(actual);
           this.error.set('');
-          this.modoEdicion.set(false);
+          this.modoEdicion.set(this.shouldOpenNENUditar());
 
           return this.usuarioService.getById(actual.id).pipe(
             switchMap((perfil) => {
@@ -170,7 +193,7 @@ export class PerfilComponent implements OnInit {
       )
       .subscribe((result) => {
         if (result) {
-          this.resenas.set(result.resenas);
+          this.resenas.set(this.reviewProductMeta.mergeReviews(result.resenas));
           this.logros.set(result.logros);
           this.reservas.set(result.reservas);
         }
@@ -183,15 +206,12 @@ export class PerfilComponent implements OnInit {
     return '★'.repeat(Math.max(0, Math.min(5, Math.round(n))));
   }
 
-  getReviewProductLabel(review: UserReview | null | undefined): string | null {
-    const productoNombre =
-      review?.producto?.nombre ??
-      review?.productoNombre ??
-      (review as { nombreProducto?: string | null } | null)?.nombreProducto ??
-      (review as { servicioNombre?: string | null } | null)?.servicioNombre;
+  getReviewProductLabels(review: UserReview | null | undefined): string[] {
+    return this.reviewProductMeta.getProductLabels(review);
+  }
 
-    const normalized = String(productoNombre ?? '').trim();
-    return normalized || null;
+  getReviewPendingProductLabels(review: UserReview | null | undefined): string[] {
+    return this.reviewProductMeta.getPendingSuggestionLabels(review);
   }
 
   getCoverImage(): string | null {
@@ -250,7 +270,17 @@ export class PerfilComponent implements OnInit {
 
   getBusinessRoute(negocio: UserReview['negocio'] | undefined): (string | number)[] | null {
     const negocioId = Number(negocio?.id);
-    return Number.isFinite(negocioId) && negocioId > 0 ? ['/negocio', negocioId] : null;
+    const negocioPropioId = resolveOwnedBusinessId(this.usuarioActual());
+
+    if (
+      Number.isFinite(negocioId) &&
+      negocioId > 0 &&
+      negocioPropioId === negocioId
+    ) {
+      return resolvePrivateProfileRoute(this.usuarioActual());
+    }
+
+    return resolveNegocioRouteCommands(negocio);
   }
 
   getReferidoInitial(nickname: string | null | undefined): string {
@@ -340,6 +370,16 @@ export class PerfilComponent implements OnInit {
   irALogin(): void {
     this.accessModalAbierto.set(false);
     void this.router.navigate(['/estanque']);
+  }
+
+  onProfileFlowerClick(): void {
+    this.profileFlowerSpinning.set(true);
+    this.modoEdicion.update((value) => !value);
+    window.setTimeout(() => this.profileFlowerSpinning.set(false), 380);
+  }
+
+  private shouldOpenNENUditar(): boolean {
+    return /\/NENUditar(?:[/?#]|$)/.test(this.router.url);
   }
 
   private async copiarTexto(

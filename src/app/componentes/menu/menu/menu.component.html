@@ -16,10 +16,11 @@
 
 
   <ul *ngIf="resultados?.length">
-    <li *ngFor="let negocio of resultados" (click)="irANegocio(negocio.id)">
+    <li *ngFor="let negocio of resultados" (click)="irANegocio(negocio)">
       {{ negocio.nombre }}
     </li>
   </ul>
+  <small *ngIf="errorMensaje">{{ errorMensaje }}</small>
 </div>
 
 </nav>

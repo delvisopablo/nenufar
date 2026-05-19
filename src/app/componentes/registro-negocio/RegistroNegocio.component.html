@@ -4,7 +4,6 @@
   <div class="page-shell">
     <article class="auth-card">
       <header class="card-header">
-        <p class="eyebrow">Cuenta de negocio</p>
         <h1>Nénúfate con tu negocio</h1>
         <p class="auth-copy">
           Prepara tu perfil para compartir promociones, recibir reseñas y abrir tu negocio dentro
@@ -178,10 +177,23 @@
             </label>
 
             <label class="field">
+              <span>Descripción corta</span>
+              <input
+                type="text"
+                formControlName="descripcionCorta"
+                maxlength="160"
+                placeholder="Ej: Pastelería artesanal con dulces de temporada"
+              >
+              @if (campoInvalido('descripcionCorta')) {
+                <small class="field-error">{{ getErrorCampo('descripcionCorta') }}</small>
+              }
+            </label>
+
+            <label class="field">
               <span>Historia breve</span>
               <textarea
                 formControlName="historia"
-                rows="4"
+                rows="3"
                 maxlength="320"
                 placeholder="Cuéntanos qué hace especial a tu negocio."
               ></textarea>
@@ -192,6 +204,85 @@
           </section>
         </div>
 
+        <section class="horario-section">
+          <div class="section-head">
+            <h2>¿Tienes horario?</h2>
+          </div>
+
+          <div class="horario-toggle-group">
+            <button
+              type="button"
+              class="horario-opcion"
+              [class.horario-opcion--activo]="tieneHorario() === true"
+              (click)="setTieneHorario(true)"
+            >
+              Sí, lo configuro ahora
+            </button>
+            <button
+              type="button"
+              class="horario-opcion"
+              [class.horario-opcion--activo]="tieneHorario() === false"
+              (click)="setTieneHorario(false)"
+            >
+              Lo haré más tarde
+            </button>
+          </div>
+
+          @if (tieneHorario()) {
+            <div class="horario-config">
+              <div class="horario-row">
+                <span class="horario-dia-label">Lunes — Viernes</span>
+                <div class="horario-horas-pair">
+                  <input type="time" class="horario-time" [value]="horarioLV().apertura" (change)="onLVApertura($event)">
+                  <span class="horario-sep">→</span>
+                  <input type="time" class="horario-time" [value]="horarioLV().cierre" (change)="onLVCierre($event)">
+                </div>
+              </div>
+
+              <div class="horario-row">
+                <label class="horario-check">
+                  <input type="checkbox" [checked]="horarioSabado().abierto" (change)="onSabadoToggle($event)">
+                  <span class="horario-dia-label">Sábado</span>
+                </label>
+                @if (horarioSabado().abierto) {
+                  <div class="horario-horas-pair">
+                    <input type="time" class="horario-time" [value]="horarioSabado().apertura" (change)="onSabApertura($event)">
+                    <span class="horario-sep">→</span>
+                    <input type="time" class="horario-time" [value]="horarioSabado().cierre" (change)="onSabCierre($event)">
+                  </div>
+                } @else {
+                  <span class="horario-cerrado">Cerrado</span>
+                }
+              </div>
+
+              <div class="horario-row">
+                <label class="horario-check">
+                  <input type="checkbox" [checked]="horarioDomingo().abierto" (change)="onDomingoToggle($event)">
+                  <span class="horario-dia-label">Domingo</span>
+                </label>
+                @if (horarioDomingo().abierto) {
+                  <div class="horario-horas-pair">
+                    <input type="time" class="horario-time" [value]="horarioDomingo().apertura" (change)="onDomApertura($event)">
+                    <span class="horario-sep">→</span>
+                    <input type="time" class="horario-time" [value]="horarioDomingo().cierre" (change)="onDomCierre($event)">
+                  </div>
+                } @else {
+                  <span class="horario-cerrado">Cerrado</span>
+                }
+              </div>
+
+              <label class="field">
+                <span>Intervalo de reservas</span>
+                <select class="field-select" (change)="onIntervaloChange($event)">
+                  @for (opt of intervalosReserva; track opt.value) {
+                    <option [value]="opt.value" [selected]="opt.value === intervaloReservaValue()">{{ opt.label }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          }
+        </section>
+
         <section class="nenufar-panel">
           <div class="nenufar-panel-head">
             <button
@@ -200,7 +291,11 @@
               (click)="toggleSelectorNenufar()"
               [attr.aria-expanded]="mostrarSelectorNenufar()"
             >
-              Elegir nenúfar
+              @if (nenufarSeleccionadoLabel) {
+                Cambiar nenúfar
+              } @else {
+                Elige tu nenúfar
+              }
             </button>
 
             @if (nenufarSeleccionadoLabel) {
@@ -258,7 +353,7 @@
 
         <div class="form-actions">
           <button type="submit" class="primary-btn" [disabled]="registrando()">
-            {{ registrando() ? 'Nenufarizando...' : 'Nenufarizar' }}
+            {{ registrando() ? 'Nenúfándote...' : 'Nenúfate como negocio' }}
           </button>
         </div>
       </form>

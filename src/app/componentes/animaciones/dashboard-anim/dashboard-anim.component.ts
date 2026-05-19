@@ -33,10 +33,10 @@ interface ReservaItem {
 export class DashboardAnimComponent implements OnInit {
 
   metricas = signal<Metrica[]>([
-    { icono: '💰', label: 'Ventas',     valorFinal: 2840, prefijo: '€', sufijo: '',   color: '#d97706', fondo: '#fefce8', valorActual: 0 },
-    { icono: '📅', label: 'Reservas',   valorFinal: 47,   prefijo: '',  sufijo: '',   color: '#1d4ed8', fondo: '#eff6ff', valorActual: 0 },
-    { icono: '⭐', label: 'Reseñas',    valorFinal: 23,   prefijo: '',  sufijo: '',   color: '#7c3aed', fondo: '#f5f3ff', valorActual: 0 },
-    { icono: '📊', label: 'Nota media', valorFinal: 47,   prefijo: '',  sufijo: '★',  color: '#059669', fondo: '#f0fdf4', valorActual: 0 },
+    { icono: '', label: 'Ventas',     valorFinal: 2840, prefijo: '€', sufijo: '',   color: '#f45c9c', fondo: 'rgba(244,92,156,0.1)',  valorActual: 0 },
+    { icono: '', label: 'Reservas',   valorFinal: 47,   prefijo: '',  sufijo: '',   color: '#ee8d54', fondo: 'rgba(238,141,84,0.1)',  valorActual: 0 },
+    { icono: '', label: 'Reseñas',    valorFinal: 23,   prefijo: '',  sufijo: '',   color: '#ffd4e8', fondo: 'rgba(255,212,232,0.08)', valorActual: 0 },
+    { icono: '', label: 'Nota media', valorFinal: 47,   prefijo: '',  sufijo: '★',  color: '#a8f0c8', fondo: 'rgba(168,240,200,0.08)', valorActual: 0 },
   ]);
 
   barras = signal<BarraDia[]>([

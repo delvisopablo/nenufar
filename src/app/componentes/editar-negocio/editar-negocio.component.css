@@ -104,6 +104,12 @@
   border: 1px solid rgba(124, 217, 181, 0.28);
 }
 
+.editor-feedback--info {
+  background: rgba(246, 195, 109, 0.14);
+  color: #fff0c2;
+  border: 1px solid rgba(246, 195, 109, 0.24);
+}
+
 /* ── Formulario ─────────────────────────────────────────────────────────── */
 
 .editor-form {
@@ -196,6 +202,9 @@
 
 .field textarea { resize: vertical; }
 .field--readonly { background: rgba(255, 255, 255, 0.03); color: rgba(225, 239, 234, 0.56); cursor: not-allowed; }
+.field--inline-info {
+  justify-content: flex-end;
+}
 
 .field-hint  { font-size: 0.75rem; color: rgba(225, 239, 234, 0.6); margin: 0; }
 .field-error { font-size: 0.75rem; color: #ffd0df; font-weight: 600; }
@@ -204,45 +213,109 @@
 .field-row--3 { grid-template-columns: repeat(3, 1fr); }
 .field-row--2 { grid-template-columns: repeat(2, 1fr); }
 
-/* ── Horario ────────────────────────────────────────────────────────────── */
+/* ── Imágenes y nenúfar ─────────────────────────────────────────────────── */
 
-.horario-config { display: flex; flex-direction: column; gap: 0.9rem; }
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
 
-.toggle-field {
+.image-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(189, 231, 214, 0.08);
+}
+
+.image-card__head {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.image-card__head h3 {
+  margin: 0 0 0.15rem;
+  color: #f4fffa;
+  font-size: 0.95rem;
+}
+
+.image-card__head p {
+  margin: 0;
+  color: rgba(225, 239, 234, 0.6);
+  font-size: 0.78rem;
+}
+
+.upload-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(246, 195, 109, 0.14);
+  border: 1px solid rgba(246, 195, 109, 0.24);
+  color: #fff0c2;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.upload-chip input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
   cursor: pointer;
 }
 
-.toggle-field input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: #16a34a; cursor: pointer; }
+.image-preview-wrap {
+  min-height: 9rem;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  border: 1px dashed rgba(189, 231, 214, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
 
-.toggle-label { font-size: 0.9rem; font-weight: 600; color: #f4fffa; }
+.image-preview-wrap--cover {
+  min-height: 11rem;
+}
 
-.dias-chips,
-.interval-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.3rem; }
+.image-preview-wrap--empty span {
+  color: rgba(225, 239, 234, 0.58);
+  font-size: 0.84rem;
+}
 
-.dia-chip,
-.interval-chip {
-  padding: 0.35rem 0.7rem;
-  border: 1.5px solid rgba(189, 231, 214, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
+.image-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-preview--avatar {
+  width: 8.5rem;
+  height: 8.5rem;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 2px solid rgba(189, 231, 214, 0.16);
+}
+
+.link-btn {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ffe0a8;
   font: inherit;
   font-size: 0.8rem;
   font-weight: 700;
-  color: rgba(241, 248, 245, 0.78);
   cursor: pointer;
-  transition: all 150ms;
 }
-
-.dia-chip--active   { background: #12856a; border-color: #12856a; color: #fff; }
-.interval-chip--active { background: #f05c9c; border-color: #f05c9c; color: #fff; }
-
-.dia-chip:not(.dia-chip--active):hover,
-.interval-chip:not(.interval-chip--active):hover { border-color: rgba(189, 231, 214, 0.24); }
-
-/* ── Nenúfar ─────────────────────────────────────────────────────────────── */
 
 .nenufar-section-wrap { display: flex; flex-direction: column; gap: 0.5rem; }
 
@@ -351,6 +424,10 @@
   .field-row,
   .field-row--3,
   .field-row--2 { grid-template-columns: 1fr; }
+
+  .image-grid {
+    grid-template-columns: 1fr;
+  }
 
   .editor-actions { flex-direction: column-reverse; }
 

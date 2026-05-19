@@ -23,11 +23,18 @@ interface Pad {
   mass: number;
 }
 
+interface Ripple {
+  x: number;
+  y: number;
+  r: number;
+  alpha: number;
+}
+
 const VARIANTS = [
-  { pad: '#2d8a52', flower: '#e91e8c' },
-  { pad: '#b0708a', flower: '#f5e0b8' },
-  { pad: '#1a3a80', flower: '#7fffd0' },
-  { pad: '#5c7040', flower: '#111111' },
+  { pad: '#1a6644', flower: '#f45c9c' },
+  { pad: '#2d8a60', flower: '#ffd4e8' },
+  { pad: '#145c38', flower: '#ee8d54' },
+  { pad: '#3a7a55', flower: '#ffb8d8' },
 ];
 
 const DAMPING = 0.993;
@@ -47,6 +54,9 @@ export class NenufarPondComponent implements AfterViewInit, OnDestroy {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private pads: Pad[] = [];
+  private ripples: Ripple[] = [];
+  private nenImages: HTMLImageElement[] = [];
+  private imagesLoaded = false;
   private raf = 0;
   private tick = 0;
   private mx = -999;
@@ -64,6 +74,7 @@ export class NenufarPondComponent implements AfterViewInit, OnDestroy {
     this.canvas = this.canvasRef.nativeElement;
     this.ctx = this.canvas.getContext('2d')!;
     this.resize();
+    this.loadImages();
     this.initPads();
     this.canvas.addEventListener('mousemove', this.onMove.bind(this));
     this.canvas.addEventListener('click', this.onClickCanvas.bind(this));
@@ -143,6 +154,19 @@ export class NenufarPondComponent implements AfterViewInit, OnDestroy {
 
     this.collide();
     this.updateHover();
+
+    // Ambient ripples — subtle frog-in-water effect
+    if (t % 140 === 0) {
+      this.ripples.push({
+        x: 24 + Math.random() * (w - 48),
+        y: 24 + Math.random() * (h - 48),
+        r: 5,
+        alpha: 0.38
+      });
+    }
+    this.ripples = this.ripples
+      .map(r => ({ ...r, r: r.r + 0.7, alpha: r.alpha - 0.011 }))
+      .filter(r => r.alpha > 0);
   }
 
   private collide(): void {
@@ -194,7 +218,7 @@ export class NenufarPondComponent implements AfterViewInit, OnDestroy {
     }
     this.zone.run(() => {
       if (found) {
-        this.hoverLabel.set(found.tipo === 'resena' ? 'Reseña' : 'Promoción');
+        this.hoverLabel.set('Nenúfar');
         this.labelPos.set({ x: found.x, y: found.y });
       } else {
         this.hoverLabel.set(null);
@@ -206,32 +230,92 @@ export class NenufarPondComponent implements AfterViewInit, OnDestroy {
     const ctx = this.ctx;
     const { width: w, height: h } = this.canvas;
     this.drawWater(ctx, w, h);
+    this.drawRipples(ctx);
     for (const p of this.pads) this.drawPad(ctx, p);
   }
 
   private drawWater(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     const t = this.tick * 0.001;
     const g = ctx.createLinearGradient(0, 0, w, h);
-    g.addColorStop(0,   `hsl(${197 + Math.sin(t) * 4},56%,17%)`);
-    g.addColorStop(0.5, `hsl(${207 + Math.cos(t * .7) * 4},50%,13%)`);
-    g.addColorStop(1,   `hsl(${202 + Math.sin(t * 1.3) * 3},53%,11%)`);
+    g.addColorStop(0,   `hsl(${155 + Math.sin(t) * 4},46%,14%)`);
+    g.addColorStop(0.5, `hsl(${162 + Math.cos(t * .7) * 4},42%,11%)`);
+    g.addColorStop(1,   `hsl(${150 + Math.sin(t * 1.3) * 3},50%,9%)`);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.025)';
-    ctx.lineWidth = 1.2;
-    for (let i = 0; i < 5; i++) {
-      const y = ((h * i / 5) + this.tick * 0.25 + i * 35) % h;
+    ctx.strokeStyle = 'rgba(244,92,156,0.04)';
+    ctx.lineWidth = 1.4;
+    for (let i = 0; i < 4; i++) {
+      const y = ((h * i / 4) + this.tick * 0.2 + i * 42) % h;
       ctx.beginPath();
       ctx.moveTo(0, y);
       for (let x = 0; x <= w; x += 6) {
-        ctx.lineTo(x, y + Math.sin(x * 0.006 + t * 2 + i) * 5);
+        ctx.lineTo(x, y + Math.sin(x * 0.005 + t * 1.8 + i) * 4);
+      }
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.018)';
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 3; i++) {
+      const y = ((h * i / 3 + h * 0.16) + this.tick * 0.14 + i * 28) % h;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      for (let x = 0; x <= w; x += 8) {
+        ctx.lineTo(x, y + Math.sin(x * 0.009 + t * 2.4 + i * 1.3) * 3);
       }
       ctx.stroke();
     }
   }
 
+  private drawRipples(ctx: CanvasRenderingContext2D): void {
+    for (const r of this.ripples) {
+      ctx.beginPath();
+      ctx.ellipse(r.x, r.y, r.r, r.r * 0.42, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,255,255,${r.alpha})`;
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+    }
+  }
+
+  private loadImages(): void {
+    const paths = [
+      'assets/nenufares_colores/nenufar_var1.png',
+      'assets/nenufares_colores/nenufar_var3.png',
+      'assets/nenufares_colores/nenufar_var5.png',
+      'assets/nenufares_colores/nenufar_var7.png',
+      'assets/nenufares_colores/nenufar_var9.png',
+      'assets/nenufares_colores/nenufar_var11.png',
+      'assets/nenufares_colores/nenufar_var13.png',
+    ];
+    let loaded = 0;
+    this.nenImages = paths.map(path => {
+      const img = new Image();
+      img.onload = () => { loaded++; if (loaded === paths.length) this.imagesLoaded = true; };
+      img.src = path;
+      return img;
+    });
+  }
+
   private drawPad(ctx: CanvasRenderingContext2D, p: Pad): void {
+    const imgIdx = p.variant % this.nenImages.length;
+    if (this.imagesLoaded && this.nenImages[imgIdx]?.complete) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.globalAlpha = 0.9;
+      ctx.shadowColor = 'rgba(0,0,0,0.4)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 5;
+      ctx.drawImage(this.nenImages[imgIdx], -p.r, -p.r, p.r * 2, p.r * 2);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      return;
+    }
+    this.drawPadFallback(ctx, p);
+  }
+
+  private drawPadFallback(ctx: CanvasRenderingContext2D, p: Pad): void {
     const v = VARIANTS[p.variant];
     ctx.save();
     ctx.translate(p.x, p.y);
@@ -310,6 +394,7 @@ export class NenufarPondComponent implements AfterViewInit, OnDestroy {
 
   private onClickCanvas(e: MouseEvent): void {
     const { x: mx, y: my } = this.toCanvas(e);
+    this.ripples.push({ x: mx, y: my, r: 5, alpha: 0.52 });
     for (const p of this.pads) {
       const dx = mx - p.x; const dy = my - p.y;
       const dist = Math.hypot(dx, dy);

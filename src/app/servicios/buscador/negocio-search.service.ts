@@ -10,11 +10,19 @@ import {
 } from 'rxjs';
 import { normalizeSearchText } from '../../core/search/trie';
 import {
+  ReviewProductChip,
+  SuggestedReviewProduct,
+  extractReviewProductChips,
+  extractSuggestedReviewProducts,
+  getPrimaryReviewProductLabel,
+} from '../../core/reviews/review-products';
+import {
   NegocioFollowersResponse,
   NegocioService,
   NegocioSummary,
   resolveNegocioRouteKey,
 } from '../negocioService/negocio.service';
+import { ReviewProductMetaService } from '../reviewProductMeta/review-product-meta.service';
 import { Resena, ResenaService } from '../reviewServicio/resena.service';
 
 export type NegocioReviewSnippet = {
@@ -23,10 +31,16 @@ export type NegocioReviewSnippet = {
   contenido: string;
   contenidoCorto: string;
   fechaISO: string;
+  postId?: number | null;
+  likesCount?: number;
+  likedByMe?: boolean;
+  comentariosCount?: number;
   puntuacion: number;
   selloNenufar: boolean;
   productoNombre?: string;
   precioProducto?: number;
+  productos?: ReviewProductChip[];
+  productosSugeridos?: SuggestedReviewProduct[];
   usuarioNickname?: string;
   usuarioFoto?: string;
 };
@@ -37,7 +51,8 @@ export type NegocioLite = {
   slug?: string;
   nickname?: string;
   duenoId?: number;
-  categoria?: { nombre: string };
+  categoria?: { id?: number; nombre: string };
+  subcategoria?: { id?: number; nombre: string };
   ciudad?: string;
   provincia?: string;
   foto?: string;
@@ -60,12 +75,17 @@ export type NegocioLite = {
 };
 
 type ReviewsByBusiness = Map<number, NegocioReviewSnippet[]>;
+export type NegocioSearchFilters = {
+  categoriaId?: number | null;
+  subcategoriaId?: number | null;
+};
 
 @Injectable({ providedIn: 'root' })
 export class NegocioSearchService {
   private readonly negocioService = inject(NegocioService);
   private readonly resenaService = inject(ResenaService);
-  private readonly resultLimit = 6;
+  private readonly reviewProductMeta = inject(ReviewProductMetaService);
+  private readonly resultLimit = 30;
   private readonly showcaseLimit = 8;
   private readonly detailCache = new Map<number, Observable<NegocioSummary | null>>();
 
@@ -75,20 +95,26 @@ export class NegocioSearchService {
   );
 
   private readonly reviewsByBusiness$ = this.resenaService.todas().pipe(
-    map((reviews) => this.groupReviewsByBusiness(reviews)),
+    map((reviews) => this.groupReviewsByBusiness(this.reviewProductMeta.mergeReviews(reviews))),
     catchError(() => of(new Map<number, NegocioReviewSnippet[]>())),
     shareReplay(1),
   );
 
-  search(prefix: string): Observable<NegocioLite[]> {
+  search(prefix: string, filters: NegocioSearchFilters = {}): Observable<NegocioLite[]> {
     const normalized = normalizeSearchText(prefix);
+    const hasFilters = this.hasFilters(filters);
 
-    if (!normalized) {
+    if (!normalized && !hasFilters) {
       return of([]);
     }
 
-    return this.catalogo$.pipe(
-      map((items) => items.filter((item) => this.matches(item, normalized)).slice(0, this.resultLimit)),
+    return this.getFilteredCatalog(filters).pipe(
+      map((items) =>
+        items
+          .filter((item) => this.matchesFilters(item, filters))
+          .filter((item) => !normalized || this.matches(item, normalized))
+          .slice(0, this.resultLimit),
+      ),
       switchMap((items) => this.enrichSummaries(items)),
     );
   }
@@ -165,6 +191,10 @@ export class NegocioSearchService {
         contenido: review.contenido,
         contenidoCorto: review.contenidoCorto,
         fechaISO: review.fechaISO,
+        ...(Number.isFinite(Number(review.postId)) ? { postId: Number(review.postId) } : {}),
+        ...(typeof review.likesCount === 'number' ? { likesCount: review.likesCount } : {}),
+        ...(typeof review.likedByMe === 'boolean' ? { likedByMe: review.likedByMe } : {}),
+        ...(typeof review.comentariosCount === 'number' ? { comentariosCount: review.comentariosCount } : {}),
         puntuacion: review.puntuacion,
         selloNenufar: review.selloNenufar,
         ...(review.productoNombre ? { productoNombre: review.productoNombre } : {}),
@@ -207,16 +237,14 @@ export class NegocioSearchService {
         }
       | null;
     const productoNombre =
-      producto?.nombre?.trim() ||
-      String(
-        review['productoNombre'] ??
-          review['nombreProducto'] ??
-          review['servicioNombre'] ??
-          '',
-      ).trim();
+      getPrimaryReviewProductLabel(review) ??
+      producto?.nombre?.trim() ??
+      '';
     const precioProductoRaw = Number(
       review['precioProducto'] ?? producto?.precio ?? NaN,
     );
+    const productos = extractReviewProductChips(review);
+    const productosSugeridos = extractSuggestedReviewProducts(review);
 
     return {
       negocioId,
@@ -225,10 +253,16 @@ export class NegocioSearchService {
       contenido,
       contenidoCorto: contenido.length > 132 ? `${contenido.slice(0, 129)}...` : contenido,
       fechaISO,
+      ...(Number.isFinite(Number(review.postId)) ? { postId: Number(review.postId) } : {}),
+      ...(typeof review.likesCount === 'number' ? { likesCount: review.likesCount } : {}),
+      ...(typeof review.likedByMe === 'boolean' ? { likedByMe: review.likedByMe } : {}),
+      ...(typeof review.comentariosCount === 'number' ? { comentariosCount: review.comentariosCount } : {}),
       puntuacion: Number(review.puntuacion ?? 0) || 0,
       selloNenufar: Boolean(review.selloNenufar),
       ...(productoNombre ? { productoNombre } : {}),
       ...(Number.isFinite(precioProductoRaw) ? { precioProducto: precioProductoRaw } : {}),
+      ...(productos.length ? { productos } : {}),
+      ...(productosSugeridos.length ? { productosSugeridos } : {}),
       ...(usuario?.nickname?.trim() ? { usuarioNickname: usuario.nickname.trim() } : {}),
       ...(usuario?.foto?.trim() ? { usuarioFoto: usuario.foto.trim() } : {}),
     };
@@ -237,6 +271,8 @@ export class NegocioSearchService {
   private matches(item: NegocioSummary, normalized: string): boolean {
     const categoriaNombre =
       typeof item.categoria === 'string' ? item.categoria : item.categoria?.nombre;
+    const subcategoriaNombre =
+      typeof item.subcategoria === 'string' ? item.subcategoria : item.subcategoria?.nombre;
 
     return [
       item.nombre,
@@ -246,10 +282,46 @@ export class NegocioSearchService {
       item.ciudad,
       item.provincia,
       categoriaNombre,
+      subcategoriaNombre,
       item.direccion,
     ]
       .map((value) => normalizeSearchText(value ?? ''))
       .some((value) => value.includes(normalized));
+  }
+
+  private getFilteredCatalog(filters: NegocioSearchFilters): Observable<NegocioSummary[]> {
+    if (!this.hasFilters(filters)) {
+      return this.catalogo$;
+    }
+
+    return this.negocioService
+      .list({
+        ...(filters.categoriaId ? { categoriaId: filters.categoriaId } : {}),
+        ...(filters.subcategoriaId ? { subcategoriaId: filters.subcategoriaId } : {}),
+        limit: 500,
+      })
+      .pipe(catchError(() => this.catalogo$));
+  }
+
+  private hasFilters(filters: NegocioSearchFilters): boolean {
+    return Boolean(filters.categoriaId || filters.subcategoriaId);
+  }
+
+  private matchesFilters(item: NegocioSummary, filters: NegocioSearchFilters): boolean {
+    const categoriaId =
+      typeof item.categoria === 'string' ? null : Number(item.categoria?.id ?? 0);
+    const subcategoriaId =
+      typeof item.subcategoria === 'string' ? null : Number(item.subcategoria?.id ?? 0);
+
+    if (filters.categoriaId && categoriaId !== filters.categoriaId) {
+      return false;
+    }
+
+    if (filters.subcategoriaId && subcategoriaId !== filters.subcategoriaId) {
+      return false;
+    }
+
+    return true;
   }
 
   private emptyFollowers(item: NegocioSummary): NegocioFollowersResponse {
@@ -272,6 +344,12 @@ export class NegocioSearchService {
   ): NegocioLite {
     const categoriaNombre =
       typeof item.categoria === 'string' ? item.categoria : item.categoria?.nombre;
+    const categoriaId =
+      typeof item.categoria === 'string' ? 0 : Number(item.categoria?.id ?? 0);
+    const subcategoriaNombre =
+      typeof item.subcategoria === 'string' ? item.subcategoria : item.subcategoria?.nombre;
+    const subcategoriaId =
+      typeof item.subcategoria === 'string' ? 0 : Number(item.subcategoria?.id ?? 0);
     const averageRating =
       typeof item.mediaResenas === 'number'
         ? item.mediaResenas
@@ -289,7 +367,22 @@ export class NegocioSearchService {
       ...(item.ciudad?.trim() ? { ciudad: item.ciudad.trim() } : {}),
       ...(item.provincia?.trim() ? { provincia: item.provincia.trim() } : {}),
       ...(Number.isFinite(Number(item.duenoId)) ? { duenoId: Number(item.duenoId) } : {}),
-      ...(categoriaNombre?.trim() ? { categoria: { nombre: categoriaNombre.trim() } } : {}),
+      ...(categoriaNombre?.trim()
+        ? {
+            categoria: {
+              ...(Number.isFinite(categoriaId) && categoriaId > 0 ? { id: categoriaId } : {}),
+              nombre: categoriaNombre.trim(),
+            },
+          }
+        : {}),
+      ...(subcategoriaNombre?.trim()
+        ? {
+            subcategoria: {
+              ...(Number.isFinite(subcategoriaId) && subcategoriaId > 0 ? { id: subcategoriaId } : {}),
+              nombre: subcategoriaNombre.trim(),
+            },
+          }
+        : {}),
       ...(item.descripcionCorta?.trim()
         ? { descripcion: item.descripcionCorta.trim() }
         : item.descripcion?.trim()

@@ -26,13 +26,20 @@ import { NenunInfoComponent } from '../../nenun-info/nenun-info.component';
 import {
   AuthService,
   AuthUser,
+  resolveOwnedBusinessId,
   resolvePrivateProfileRoute,
 } from '../../../servicios/authService/auth.service';
 import {
   NegocioService,
+  resolveNegocioRouteCommands,
   resolveNegocioRouteKey,
 } from '../../../servicios/negocioService/negocio.service';
 import { NegocioLite, NegocioSearchService } from '../../../servicios/buscador/negocio-search.service';
+import {
+  Categoria,
+  CategoriaServiceService,
+  Subcategoria,
+} from '../../../servicios/categoriaServicio/categoriaService.service';
 
 type SearchStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
@@ -48,6 +55,7 @@ export class HeaderComponent implements OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly negocioSearchService = inject(NegocioSearchService);
   private readonly negocioService = inject(NegocioService);
+  private readonly categoriaService = inject(CategoriaServiceService);
 
   readonly logoSrc = 'assets/imagenes/logo_nenufar_small.png';
   readonly flowerSrc = 'assets/imagenes/flor_logo.png';
@@ -55,9 +63,17 @@ export class HeaderComponent implements OnDestroy {
   readonly busquedaEstado = signal<SearchStatus>('idle');
   readonly resultadosBusqueda = signal<NegocioLite[]>([]);
   readonly currentQuery = signal('');
+  readonly categorias = signal<Categoria[]>([]);
+  readonly subcategorias = signal<Subcategoria[]>([]);
+  readonly filtrosAbiertos = signal(false);
+  readonly filtrosCargando = signal(false);
+  readonly subcategoriasCargando = signal(false);
+  readonly categoriaSeleccionadaId = signal<number | null>(null);
+  readonly subcategoriaSeleccionadaId = signal<number | null>(null);
   readonly nenunInfoAbierto = signal(false);
   readonly accessModalAbierto = signal(false);
   readonly accessModalMessage = signal('Necesitas iniciar sesion para seguir negocios y guardar tus favoritos.');
+  readonly navigationError = signal('');
   readonly usuarioActual = signal<AuthUser | null>(this.authService.obtenerUsuario());
   readonly mostrarMiPerfil = computed(() => this.authService.isAuthenticated());
   readonly mostrarAccesoAdmin = computed(
@@ -65,9 +81,28 @@ export class HeaderComponent implements OnDestroy {
   );
   readonly sinResultadosBusqueda = computed(
     () =>
-      normalizeSearchText(this.currentQuery()).length >= 2 &&
+      (normalizeSearchText(this.currentQuery()).length >= 2 || this.hayFiltrosActivos()) &&
       (this.busquedaEstado() === 'empty' || this.busquedaEstado() === 'error')
   );
+  readonly hayFiltrosActivos = computed(
+    () => Boolean(this.categoriaSeleccionadaId() || this.subcategoriaSeleccionadaId()),
+  );
+  readonly categoriaSeleccionada = computed(
+    () => this.categorias().find((item) => item.id === this.categoriaSeleccionadaId()) ?? null,
+  );
+  readonly subcategoriaSeleccionada = computed(
+    () => this.subcategorias().find((item) => item.id === this.subcategoriaSeleccionadaId()) ?? null,
+  );
+  readonly resumenFiltros = computed(() => {
+    const categoria = this.categoriaSeleccionada()?.nombre;
+    const subcategoria = this.subcategoriaSeleccionada()?.nombre;
+
+    if (categoria && subcategoria) {
+      return `${categoria} · ${subcategoria}`;
+    }
+
+    return categoria || 'Filtros';
+  });
 
   private readonly searchSubscription: Subscription;
   private readonly routerSubscription: Subscription;
@@ -78,11 +113,14 @@ export class HeaderComponent implements OnDestroy {
         startWith(this.searchControl.value),
         tap((value) => {
           this.currentQuery.set(value);
+          this.navigationError.set('');
 
           const normalized = normalizeSearchText(value);
-          this.busquedaEstado.set(normalized.length >= 2 ? 'loading' : 'idle');
+          this.busquedaEstado.set(
+            normalized.length >= 2 || this.hayFiltrosActivos() ? 'loading' : 'idle',
+          );
 
-          if (!normalized) {
+          if (!normalized && !this.hayFiltrosActivos()) {
             this.resultadosBusqueda.set([]);
           }
         }),
@@ -91,9 +129,9 @@ export class HeaderComponent implements OnDestroy {
         switchMap((value) => this.searchWithState(value))
       )
       .subscribe(({ normalized, results, status }) => {
-        this.resultadosBusqueda.set(results.slice(0, 6));
+        this.resultadosBusqueda.set(results);
 
-        if (!normalized) {
+        if (!normalized && !this.hayFiltrosActivos()) {
           this.busquedaEstado.set('idle');
           return;
         }
@@ -107,6 +145,7 @@ export class HeaderComponent implements OnDestroy {
       });
 
     this.syncUsuarioActual();
+    this.cargarCategorias();
     this.routerSubscription = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe(() => this.syncUsuarioActual());
@@ -118,6 +157,11 @@ export class HeaderComponent implements OnDestroy {
   }
 
   async buscarPrimerNegocio(): Promise<void> {
+    if (this.hayFiltrosActivos()) {
+      await this.ejecutarBusquedaActual();
+      return;
+    }
+
     const primerResultado = this.resultadosBusqueda()[0];
     if (primerResultado) {
       this.seleccionarNegocio(primerResultado);
@@ -132,7 +176,7 @@ export class HeaderComponent implements OnDestroy {
     this.busquedaEstado.set('loading');
 
     try {
-      const results = await firstValueFrom(this.negocioSearchService.search(normalized));
+      const results = await firstValueFrom(this.negocioSearchService.search(normalized, this.getFiltrosBusqueda()));
       const firstMatch = results[0];
 
       if (firstMatch) {
@@ -151,12 +195,25 @@ export class HeaderComponent implements OnDestroy {
   seleccionarNegocio(negocio: NegocioLite): void {
     this.searchControl.setValue(negocio.nombre, { emitEvent: false });
     this.currentQuery.set(negocio.nombre);
+    this.navigationError.set('');
+
+    const negocioRoute = this.getNegocioRoute(negocio);
+    if (!negocioRoute) {
+      this.navigationError.set('No hemos podido abrir ese negocio todavía.');
+      return;
+    }
+
     this.resetearBusqueda(false);
-    void this.router.navigate(this.getNegocioRoute(negocio));
+    void this.router.navigate(negocioRoute);
   }
 
   irAInicio(): void {
     this.resetearBusqueda();
+    if (this.router.url.split('?')[0].split('#')[0] === '/inicio') {
+      window.location.reload();
+      return;
+    }
+
     void this.router.navigate(['/inicio']);
   }
 
@@ -178,20 +235,36 @@ export class HeaderComponent implements OnDestroy {
     return negocio.categoria?.nombre || 'Negocio local';
   }
 
+  getSubcategoriaNombre(negocio: NegocioLite): string {
+    return negocio.subcategoria?.nombre || '';
+  }
+
   getSearchMeta(negocio: NegocioLite): string {
     const publicHandle = resolveNegocioRouteKey(negocio);
     const parts = [
       publicHandle ? `@${publicHandle}` : '',
       this.getCategoriaNombre(negocio),
+      this.getSubcategoriaNombre(negocio),
       negocio.ciudad || negocio.provincia || '',
     ].filter(Boolean);
 
     return parts.join(' · ');
   }
 
-  private getNegocioRoute(negocio: NegocioLite): (string | number)[] {
-    const routeKey = resolveNegocioRouteKey(negocio);
-    return routeKey ? ['/', routeKey] : ['/negocio', negocio.id];
+  private getNegocioRoute(negocio: NegocioLite): (string | number)[] | null {
+    const negocioId = Number(negocio.id ?? 0);
+    const negocioDuenoId = Number(negocio.duenoId ?? 0);
+    const ownedBusinessId = resolveOwnedBusinessId(this.usuarioActual());
+    const usuarioActualId = Number(this.usuarioActual()?.id ?? 0);
+    const esMiNegocio =
+      (Number.isFinite(negocioId) && negocioId > 0 && ownedBusinessId === negocioId) ||
+      (Number.isFinite(negocioDuenoId) && negocioDuenoId > 0 && negocioDuenoId === usuarioActualId);
+
+    if (esMiNegocio) {
+      return resolvePrivateProfileRoute(this.usuarioActual());
+    }
+
+    return resolveNegocioRouteCommands(negocio);
   }
 
   getNenufarNegocio(negocio: NegocioLite): string {
@@ -248,6 +321,34 @@ export class HeaderComponent implements OnDestroy {
     });
   }
 
+  toggleFiltros(): void {
+    this.filtrosAbiertos.update((open) => !open);
+  }
+
+  seleccionarCategoria(categoria: Categoria | null): void {
+    this.categoriaSeleccionadaId.set(categoria?.id ?? null);
+    this.subcategoriaSeleccionadaId.set(null);
+    this.subcategorias.set([]);
+    this.navigationError.set('');
+
+    if (categoria) {
+      this.cargarSubcategorias(categoria.id);
+    }
+  }
+
+  seleccionarSubcategoria(subcategoria: Subcategoria | null): void {
+    this.subcategoriaSeleccionadaId.set(subcategoria?.id ?? null);
+    this.navigationError.set('');
+  }
+
+  limpiarFiltros(): void {
+    this.categoriaSeleccionadaId.set(null);
+    this.subcategoriaSeleccionadaId.set(null);
+    this.subcategorias.set([]);
+    this.filtrosAbiertos.set(false);
+    void this.ejecutarBusquedaActual();
+  }
+
   irALogin(): void {
     this.accessModalAbierto.set(false);
     void this.router.navigate(['/estanque']);
@@ -270,8 +371,9 @@ export class HeaderComponent implements OnDestroy {
 
   private searchWithState(value: string) {
     const normalized = normalizeSearchText(value);
+    const filters = this.getFiltrosBusqueda();
 
-    if (!normalized) {
+    if (!normalized && !this.hayFiltrosActivos()) {
       return of({
         normalized,
         results: [] as NegocioLite[],
@@ -279,7 +381,7 @@ export class HeaderComponent implements OnDestroy {
       });
     }
 
-    return this.negocioSearchService.search(normalized).pipe(
+    return this.negocioSearchService.search(normalized, filters).pipe(
       map((results) => ({
         normalized,
         results,
@@ -301,11 +403,64 @@ export class HeaderComponent implements OnDestroy {
       this.currentQuery.set('');
     }
 
+    this.navigationError.set('');
     this.resultadosBusqueda.set([]);
     this.busquedaEstado.set('idle');
+    this.filtrosAbiertos.set(false);
   }
 
   private syncUsuarioActual(): void {
     this.usuarioActual.set(this.authService.obtenerUsuario());
+  }
+
+  private getFiltrosBusqueda(): { categoriaId?: number; subcategoriaId?: number } {
+    return {
+      ...(this.categoriaSeleccionadaId() ? { categoriaId: this.categoriaSeleccionadaId() ?? undefined } : {}),
+      ...(this.subcategoriaSeleccionadaId() ? { subcategoriaId: this.subcategoriaSeleccionadaId() ?? undefined } : {}),
+    };
+  }
+
+  private cargarCategorias(): void {
+    this.filtrosCargando.set(true);
+    this.categoriaService.list().pipe(
+      catchError(() => of([] as Categoria[])),
+    ).subscribe((categorias) => {
+      this.categorias.set(categorias);
+      this.filtrosCargando.set(false);
+    });
+  }
+
+  private cargarSubcategorias(categoriaId: number): void {
+    this.subcategoriasCargando.set(true);
+    this.categoriaService.listSubcategorias(categoriaId).pipe(
+      catchError(() => of([] as Subcategoria[])),
+    ).subscribe((subcategorias) => {
+      this.subcategorias.set(subcategorias.filter((item) => item.activo !== false));
+      this.subcategoriasCargando.set(false);
+    });
+  }
+
+  private async ejecutarBusquedaActual(): Promise<void> {
+    const normalized = normalizeSearchText(this.searchControl.value);
+
+    if (!normalized && !this.hayFiltrosActivos()) {
+      this.resultadosBusqueda.set([]);
+      this.busquedaEstado.set('idle');
+      return;
+    }
+
+    this.busquedaEstado.set('loading');
+
+    try {
+      const results = await firstValueFrom(
+        this.negocioSearchService.search(normalized, this.getFiltrosBusqueda()),
+      );
+      this.resultadosBusqueda.set(results);
+      this.busquedaEstado.set(results.length ? 'ready' : 'empty');
+      this.filtrosAbiertos.set(false);
+    } catch {
+      this.resultadosBusqueda.set([]);
+      this.busquedaEstado.set('error');
+    }
   }
 }

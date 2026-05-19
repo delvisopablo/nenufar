@@ -41,6 +41,7 @@ export interface DashboardNegocio {
   nenufarAsset?: string;
   nenufarKey?: string;
   aceptaReservas: boolean;
+  intervaloReserva?: number | null;
   categoria?: {
     nombre?: string;
   };
@@ -280,6 +281,7 @@ export class DashboardService {
       nenufarAsset: raw['nenufarAsset'] ?? undefined,
       nenufarKey: raw['nenufarKey'] ?? undefined,
       aceptaReservas: Boolean(raw['aceptaReservas']),
+      intervaloReserva: Number(raw['intervaloReserva'] ?? horario?.intervalo ?? 0) || null,
       categoria: raw['categoria'] ?? undefined,
       horario: horario ?? undefined
     };

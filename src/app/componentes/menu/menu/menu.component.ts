@@ -1,8 +1,10 @@
 import { Component, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { NegocioService } from '../../../servicios/negocioService/negocio.service';
+import {
+  NegocioService,
+  resolveNegocioRouteCommands,
+} from '../../../servicios/negocioService/negocio.service';
 
 @Component({
   selector: 'app-menu',
@@ -13,14 +15,15 @@ import { NegocioService } from '../../../servicios/negocioService/negocio.servic
 })
 export class MenuComponent {
   negocioService = inject(NegocioService);
+  private readonly router = inject(Router);
 
   resultados: any[] = [];
-
-constructor(private http: HttpClient, private router: Router) {}
+  errorMensaje = '';
 
   
   filtrarNegocios(event: Event) {
     const valor = (event.target as HTMLInputElement).value;
+    this.errorMensaje = '';
     console.log('Filtrando negocios con:', valor);
     this.negocioService.buscarNegocios(valor).subscribe({
       next: (res: any) => {
@@ -33,8 +36,15 @@ constructor(private http: HttpClient, private router: Router) {}
   }
 
 
-  irANegocio(id: number) {
-    void this.router.navigate(['/negocio', id]);
+  irANegocio(negocio: { id?: number | null; slug?: string | null; nickname?: string | null }) {
+    const negocioRoute = resolveNegocioRouteCommands(negocio);
+    if (!negocioRoute) {
+      this.errorMensaje = 'No hemos podido abrir ese negocio todavía.';
+      return;
+    }
+
+    this.errorMensaje = '';
+    void this.router.navigate(negocioRoute);
     this.resultados = [];
   }
 

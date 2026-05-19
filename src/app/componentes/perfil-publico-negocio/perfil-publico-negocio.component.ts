@@ -5,8 +5,15 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
+import {
+  ResenaLikeCambiadoEvent,
+  ResenaDetalleModalComponent,
+} from '../resena-detalle-modal/resena-detalle-modal.component';
 import { ReservasComponent } from '../reservas/reservas.component';
 import { PromocionComponent } from '../promocion/promocion/promocion.component';
+import { HorarioNegocioModalComponent } from '../horario-negocio-modal/horario-negocio-modal.component';
+import { CatalogoNegocioModalComponent } from '../catalogo-negocio-modal/catalogo-negocio-modal.component';
+import { BusinessHorarioResumenComponent } from '../business-horario-resumen/business-horario-resumen.component';
 import {
   NenufarSelectorComponent,
 } from '../../components/shared/nenufar-selector/nenufar-selector.component';
@@ -21,11 +28,18 @@ import {
   resolveNenufarAsset,
   resolveNenufarKey,
 } from '../../core/negocio/negocio-visuals';
+import { buildHorarioSummaryLines, hasHorarioConfigurado } from '../../core/negocio/negocio-horario';
 import {
   AuthService,
   resolveOwnedBusinessId,
 } from '../../servicios/authService/auth.service';
+import {
+  EstanqueFeedService,
+  PondPromotionAnnouncement,
+  PondReviewAnnouncement,
+} from '../../servicios/estanqueFeed/estanque-feed.service';
 import { NegocioService } from '../../servicios/negocioService/negocio.service';
+import { ReviewProductMetaService } from '../../servicios/reviewProductMeta/review-product-meta.service';
 import { ReservaService } from '../../servicios/reservaService/reserva.service';
 import { AccessRequiredModalComponent } from '../../components/shared/access-required-modal/access-required-modal.component';
 
@@ -41,9 +55,13 @@ type AvailabilityResponse = {
   imports: [
     CommonModule,
     CrearResenaModalComponent,
+    ResenaDetalleModalComponent,
     RouterLink,
     ReservasComponent,
     PromocionComponent,
+    HorarioNegocioModalComponent,
+    CatalogoNegocioModalComponent,
+    BusinessHorarioResumenComponent,
     NenufarSelectorComponent,
     EstanqueBackgroundComponent,
     AccessRequiredModalComponent,
@@ -57,6 +75,8 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   private readonly reservaService = inject(ReservaService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly estanqueFeed = inject(EstanqueFeedService);
+  private readonly reviewProductMeta = inject(ReviewProductMetaService);
 
   @ViewChild(NenufarSelectorComponent)
   private readonly nenufarSelector?: NenufarSelectorComponent;
@@ -67,6 +87,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   usuarioActual: any = this.authService.obtenerUsuario();
   mediaPuntuacion = 0;
   resenas: any[] = [];
+  resenaDetalleAbierta: any | null = null;
   negocioId = 0;
   errorMensaje = '';
   reservaError = '';
@@ -88,7 +109,8 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   readonly seccionReservar = signal(false);
   readonly seccionResenas  = signal(false);
   readonly seccionPromos   = signal(false);
-  readonly modalActiva = signal<'nenufar' | 'reservas' | 'promociones' | null>(null);
+  readonly modalActiva = signal<'nenufar' | 'horario' | 'reservas' | 'promociones' | 'catalogo' | null>(null);
+  readonly reviewFlowerSpinning = signal(false);
 
   toggleSeccion(seccion: 'horario' | 'reservar' | 'resenas' | 'promos'): void {
     if (seccion === 'horario')  this.seccionHorario.update(v => !v);
@@ -129,57 +151,37 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     return '★'.repeat(Math.max(0, Math.min(5, Math.round(n))));
   }
 
-  getReviewProductLabel(review: any): string | null {
-    const productoNombre =
-      review?.producto?.nombre ??
-      review?.productoNombre ??
-      review?.nombreProducto ??
-      review?.servicioNombre;
+  getReviewProductLabels(review: unknown): string[] {
+    return this.reviewProductMeta.getProductLabels(review);
+  }
 
-    const normalized = String(productoNombre ?? '').trim();
-    return normalized || null;
+  getReviewPendingProductLabels(review: unknown): string[] {
+    return this.reviewProductMeta.getPendingSuggestionLabels(review);
   }
 
   getHorarioLineas(): string[] {
-    const h = this.negocio?.horario;
-    if (!h) return [];
+    return buildHorarioSummaryLines(
+      this.negocio?.horario ?? null,
+      this.negocio?.intervaloReserva,
+    );
+  }
 
-    if (h.weekly && typeof h.weekly === 'object') {
-      const labelByDay: Record<string, string> = {
-        mon: 'Lunes',
-        tue: 'Martes',
-        wed: 'Miércoles',
-        thu: 'Jueves',
-        fri: 'Viernes',
-        sat: 'Sábado',
-        sun: 'Domingo',
-      };
+  getHorarioEstadoLabel(): string {
+    return this.negocio?.aceptaReservas
+      ? 'Reservas online activadas'
+      : 'Reservas online desactivadas';
+  }
 
-      const orderedDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-      return orderedDays
-        .map((dayKey) => {
-          const ranges = Array.isArray(h.weekly?.[dayKey]) ? h.weekly[dayKey] : [];
-          const formatted = ranges
-            .map((range: unknown) => {
-              if (!Array.isArray(range) || range.length < 2) {
-                return '';
-              }
+  getPetalosPerfil(): number {
+    const value =
+      this.negocio?.petalosSaldo ??
+      this.negocio?.petalos ??
+      this.negocio?.petalosTotal ??
+      this.negocio?.balancePetalos ??
+      this.negocio?.petalosBalance;
 
-              return `${range[0]} – ${range[1]}`;
-            })
-            .filter(Boolean)
-            .join(' · ');
-
-          return formatted ? `${labelByDay[dayKey]}: ${formatted}` : `${labelByDay[dayKey]}: Cerrado`;
-        })
-        .filter(Boolean);
-    }
-
-    if (h.apertura && h.cierre) {
-      return [`Horario general: ${h.apertura} – ${h.cierre}`];
-    }
-
-    return ['Consultar horario directamente'];
+    const parsed = Number(value ?? 0);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
   }
 
   getMapsUrl(): string {
@@ -229,7 +231,6 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     const nickname =
       this.negocio?.nickname ??
       this.negocio?.slug ??
-      this.negocio?.dueno?.nickname ??
       (this.negocioId ? String(this.negocioId) : null);
 
     return nickname ? `@${String(nickname).trim()}` : '@negocio';
@@ -330,6 +331,14 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     this.modalActiva.set('promociones');
   }
 
+  abrirCatalogo(): void {
+    this.modalActiva.set('catalogo');
+  }
+
+  abrirHorario(): void {
+    this.modalActiva.set('horario');
+  }
+
   abrirReservas(): void {
     this.modalActiva.set('reservas');
   }
@@ -424,13 +433,57 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   }
 
   tieneHorarioConfigurado(): boolean {
-    const horario = this.negocio?.horario;
-    if (!horario) return false;
-    if (horario.apertura && horario.cierre) return true;
-    return Object.values(horario.weekly ?? {}).flat().length > 0;
+    return hasHorarioConfigurado(this.negocio?.horario ?? null);
   }
 
   abrirModalResena(): void { this.modalAbierto = true; }
+
+  abrirDetalleResena(resena: any): void {
+    this.resenaDetalleAbierta = resena;
+  }
+
+  cerrarDetalleResena(): void {
+    this.resenaDetalleAbierta = null;
+  }
+
+  onFloatingReviewClick(): void {
+    this.reviewFlowerSpinning.set(true);
+    this.abrirModalResena();
+    window.setTimeout(() => this.reviewFlowerSpinning.set(false), 380);
+  }
+
+  manejarResenaCreada(resena: unknown): void {
+    this.refrescarResenas();
+    this.estanqueFeed.announceReview(this.buildReviewAnnouncement(resena));
+  }
+
+  manejarComentarioResenaCreado(): void {
+    this.refrescarResenas();
+  }
+
+  manejarLikeResenaCambiado(event: ResenaLikeCambiadoEvent): void {
+    this.resenas = this.resenas.map((resena) =>
+      Number(resena?.id ?? 0) === event.resenaId
+        ? {
+            ...resena,
+            likedByMe: event.likedByMe,
+            likesCount: event.likesCount,
+          }
+        : resena,
+    );
+
+    if (Number(this.resenaDetalleAbierta?.id ?? 0) === event.resenaId) {
+      this.resenaDetalleAbierta = {
+        ...this.resenaDetalleAbierta,
+        likedByMe: event.likedByMe,
+        likesCount: event.likesCount,
+      };
+    }
+  }
+
+  manejarPromocionGuardada(promocion: unknown): void {
+    this.estanqueFeed.announcePromotion(this.buildPromotionAnnouncement(promocion));
+  }
 
   getUsuarioRoute(usuario: { id?: number | null } | null | undefined): (string | number)[] | null {
     const usuarioId = Number(usuario?.id);
@@ -438,7 +491,13 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   }
 
   private cargarNegocioPorSlug(slug: string): void {
-    this.negocioService.resolveNegocioFromRouteParam(slug).subscribe({
+    const normalizedSlug = this.negocioService.normalizeRouteParam(slug);
+    if (!normalizedSlug) {
+      this.errorMensaje = 'No hemos podido identificar el negocio.';
+      return;
+    }
+
+    this.negocioService.resolveNegocioFromRouteParam(normalizedSlug).subscribe({
       next: (data: any) => {
         if (!data?.id) {
           this.errorMensaje = 'No hemos encontrado ningún negocio con esa dirección.';
@@ -481,7 +540,9 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     if (!this.negocioId) return;
     this.negocioService.getResenasNegocio(this.negocioId).subscribe({
       next: (res) => {
-        const reviews = Array.isArray(res) ? (res as Array<{ puntuacion?: number }>) : [];
+        const reviews = Array.isArray(res)
+          ? this.reviewProductMeta.mergeReviews(res as Array<{ puntuacion?: number }>)
+          : [];
         this.resenas = reviews;
         if (reviews.length > 0) {
           const suma = reviews.reduce((acc, review) => acc + (review.puntuacion || 0), 0);
@@ -588,7 +649,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   }
 
   irAEditarNegocio(): void {
-    void this.router.navigate(['/mi-negocio/editar']);
+    void this.router.navigate(['/mi-negocio/NENUditar']);
   }
 
   irADashboardNegocio(): void {
@@ -596,7 +657,13 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   }
 
   irAReservasNegocio(): void {
-    void this.router.navigate(['/mi-negocio/reservas']);
+    this.abrirReservas();
+  }
+
+  manejarHorarioGuardado(negocioActualizado: unknown): void {
+    this.negocio = negocioActualizado;
+    this.generarHorasDisponibles();
+    this.recargarReservas();
   }
 
   private actualizarRelacionConNegocio(): void {
@@ -622,5 +689,57 @@ export class PerfilPublicoNegocioComponent implements OnInit {
 
   private prettifyNenufarLabel(label: string): string {
     return label.replace(/^Nenufar\b/, 'Nenúfar');
+  }
+
+  private buildReviewAnnouncement(resena: unknown): PondReviewAnnouncement {
+    const payload = (resena && typeof resena === 'object' ? resena : {}) as Record<string, unknown>;
+    const mergedPayload = this.reviewProductMeta.mergeReview(payload);
+
+    return {
+      id: Number(payload['id'] ?? Date.now()),
+      negocioId: Number(payload['negocioId'] ?? this.negocioId),
+      contenido: String(payload['contenido'] ?? ''),
+      puntuacion: Number(payload['puntuacion'] ?? 0),
+      selloNenufar: Boolean(payload['selloNenufar']),
+      fechaISO: String(payload['fechaISO'] ?? new Date().toISOString()),
+      autorNombre: typeof payload['autorNombre'] === 'string' ? payload['autorNombre'] : undefined,
+      usuarioNickname:
+        typeof payload['usuarioNickname'] === 'string' ? payload['usuarioNickname'] : undefined,
+      usuarioFoto: typeof payload['usuarioFoto'] === 'string' ? payload['usuarioFoto'] : null,
+      productoNombre: this.reviewProductMeta.getPrimaryProductLabel(mergedPayload),
+      productos:
+        (mergedPayload as { productos?: PondReviewAnnouncement['productos'] }).productos ?? [],
+      productosSugeridos:
+        (mergedPayload as { productosSugeridos?: PondReviewAnnouncement['productosSugeridos'] }).productosSugeridos ?? [],
+      negocio: (payload['negocio'] as PondReviewAnnouncement['negocio']) ?? this.negocio,
+    };
+  }
+
+  private buildPromotionAnnouncement(promocion: unknown): PondPromotionAnnouncement {
+    const payload = (promocion && typeof promocion === 'object' ? promocion : {}) as Record<string, unknown>;
+
+    return {
+      id: Number(payload['id'] ?? Date.now()),
+      negocioId: Number(payload['negocioId'] ?? this.negocioId),
+      titulo: String(payload['titulo'] ?? 'Promoción activa'),
+      descripcion: typeof payload['descripcion'] === 'string' ? payload['descripcion'] : null,
+      descuento: Number(payload['descuento'] ?? 0),
+      tipoDescuento: typeof payload['tipoDescuento'] === 'string' ? payload['tipoDescuento'] : undefined,
+      fechaInicio: typeof payload['fechaInicio'] === 'string' ? payload['fechaInicio'] : null,
+      fechaCaducidad:
+        typeof payload['fechaCaducidad'] === 'string' ? payload['fechaCaducidad'] : null,
+      activa: payload['activa'] !== false,
+      estado: typeof payload['estado'] === 'string' ? payload['estado'] : null,
+      codigo: typeof payload['codigo'] === 'string' ? payload['codigo'] : null,
+      creadoEnISO:
+        typeof payload['creadoEnISO'] === 'string'
+          ? payload['creadoEnISO']
+          : new Date().toISOString(),
+      negocioNombre:
+        typeof payload['negocioNombre'] === 'string'
+          ? payload['negocioNombre']
+          : this.negocio?.nombre,
+      negocio: (payload['negocio'] as PondPromotionAnnouncement['negocio']) ?? this.negocio,
+    };
   }
 }

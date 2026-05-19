@@ -36,7 +36,16 @@ export interface PostComentario {
   usuarioId?: number;
   contenido: string;
   creadoEn?: string;
+  usuario?: {
+    id?: number;
+    nombre?: string;
+  };
   [key: string]: unknown;
+}
+
+export interface PostLikesResponse {
+  count: number;
+  likes: PostLike[];
 }
 
 export interface QueryPostOptions {
@@ -87,8 +96,11 @@ export class PostService {
   }
 
   /** POST /api/posts/:id/like */
-  like(id: number): Observable<PostLike> {
-    return this.http.post<PostLike>(buildApiUrl(`/posts/${id}/like`), {});
+  like(id: number): Observable<PostLike | { ok: boolean; postId: number; usuarioId: number; liked: boolean }> {
+    return this.http.post<PostLike | { ok: boolean; postId: number; usuarioId: number; liked: boolean }>(
+      buildApiUrl(`/posts/${id}/like`),
+      {},
+    );
   }
 
   /** DELETE /api/posts/:id/like */
@@ -97,12 +109,24 @@ export class PostService {
   }
 
   /** GET /api/posts/:id/likes */
-  listLikes(id: number): Observable<PostLike[]> {
+  listLikes(id: number): Observable<PostLikesResponse> {
     return this.http
-      .get<PostLike[] | ApiListResponse<PostLike>>(
+      .get<PostLike[] | ApiListResponse<PostLike> | PostLikesResponse>(
         buildApiUrl(`/posts/${id}/likes`),
       )
-      .pipe(map((response) => extractItems(response)));
+      .pipe(
+        map((response) => {
+          if (response && !Array.isArray(response) && 'likes' in response) {
+            return {
+              count: Number(response.count ?? response.likes.length) || 0,
+              likes: response.likes,
+            };
+          }
+
+          const likes = extractItems(response);
+          return { count: likes.length, likes };
+        }),
+      );
   }
 
   /** GET /api/posts/:id/comentarios */

@@ -3,6 +3,10 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, catchError } from 'rxjs';
 import { ApiListResponse, buildApiUrl, extractItems } from '../../config/api.config';
 import { map } from 'rxjs/operators';
+import {
+  ReviewProductChip,
+  SuggestedReviewProduct,
+} from '../../core/reviews/review-products';
 
 export interface PerfilUsuarioResponse {
   id: number;
@@ -47,6 +51,9 @@ export interface PerfilUsuarioResponse {
       nombre?: string;
       precio?: number | null;
     } | null;
+    productos?: ReviewProductChip[];
+    productoIds?: number[];
+    productosSugeridos?: SuggestedReviewProduct[];
     negocio?: {
       id: number;
       nombre: string;

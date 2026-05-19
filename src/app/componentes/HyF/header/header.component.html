@@ -32,6 +32,17 @@
 
       <div class="search-shell">
         <form class="searchbar" (ngSubmit)="buscarPrimerNegocio()">
+          <button
+            type="button"
+            class="filter-btn"
+            [class.filter-btn--active]="hayFiltrosActivos()"
+            (click)="toggleFiltros()"
+            aria-haspopup="true"
+            [attr.aria-expanded]="filtrosAbiertos()"
+          >
+            {{ resumenFiltros() }}
+          </button>
+
           <label class="searchbar-field" for="header-business-search">
             <input
               id="header-business-search"
@@ -45,6 +56,75 @@
 
           <button type="submit" class="search-btn">Buscar</button>
         </form>
+
+        @if (filtrosAbiertos()) {
+          <div class="filter-panel">
+            <div class="filter-column">
+              <p class="filter-title">Categoría</p>
+              <button
+                type="button"
+                class="filter-option"
+                [class.filter-option--active]="!categoriaSeleccionadaId()"
+                (click)="seleccionarCategoria(null)"
+              >
+                Todas las categorías
+              </button>
+
+              @if (filtrosCargando()) {
+                <span class="filter-status">Cargando categorías...</span>
+              } @else {
+                @for (categoria of categorias(); track categoria.id) {
+                  <button
+                    type="button"
+                    class="filter-option"
+                    [class.filter-option--active]="categoriaSeleccionadaId() === categoria.id"
+                    (click)="seleccionarCategoria(categoria)"
+                  >
+                    {{ categoria.nombre }}
+                  </button>
+                }
+              }
+            </div>
+
+            <div class="filter-column">
+              <p class="filter-title">Subcategoría</p>
+              <button
+                type="button"
+                class="filter-option"
+                [class.filter-option--active]="!subcategoriaSeleccionadaId()"
+                [disabled]="!categoriaSeleccionadaId()"
+                (click)="seleccionarSubcategoria(null)"
+              >
+                Todas las subcategorías
+              </button>
+
+              @if (!categoriaSeleccionadaId()) {
+                <span class="filter-status">Elige una categoría primero.</span>
+              } @else if (subcategoriasCargando()) {
+                <span class="filter-status">Cargando subcategorías...</span>
+              } @else if (!subcategorias().length) {
+                <span class="filter-status">Sin subcategorías disponibles.</span>
+              } @else {
+                @for (subcategoria of subcategorias(); track subcategoria.id) {
+                  <button
+                    type="button"
+                    class="filter-option"
+                    [class.filter-option--active]="subcategoriaSeleccionadaId() === subcategoria.id"
+                    (click)="seleccionarSubcategoria(subcategoria)"
+                  >
+                    {{ subcategoria.nombre }}
+                  </button>
+                }
+              }
+            </div>
+
+            @if (hayFiltrosActivos()) {
+              <button type="button" class="filter-clear" (click)="limpiarFiltros()">
+                Quitar filtros
+              </button>
+            }
+          </div>
+        }
 
         @if (resultadosBusqueda().length) {
           <div class="search-results" role="list">
@@ -90,6 +170,10 @@
           <div class="search-empty">Buscando negocios...</div>
         } @else if (sinResultadosBusqueda()) {
           <div class="search-empty">Sin resultados.</div>
+        }
+
+        @if (navigationError()) {
+          <div class="search-empty" role="status">{{ navigationError() }}</div>
         }
       </div>
 

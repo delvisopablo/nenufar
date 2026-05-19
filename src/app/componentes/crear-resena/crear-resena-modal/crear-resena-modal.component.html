@@ -35,50 +35,140 @@
         }
 
         <label class="field">
-          <span>¿Qué probaste o hiciste?</span>
-          <input
-            type="text"
-            placeholder="Ej: Corte de pelo, café con leche, menú del día…"
-            formControlName="producto"
-            (input)="onProductoInput()"
-            (focus)="mostrarListaProductos.set(true)"
-            (blur)="ocultarListaProductosConRetraso()"
-          />
-          <small class="field-hint">{{ getProductoHint() }}</small>
-        </label>
-
-        @if (mostrarListaProductos() && sugerenciasProducto().length) {
-          <ul class="sugerencias">
-            @for (producto of sugerenciasProducto(); track producto.id) {
-              <li (click)="seleccionarProducto(producto)">
-                <span class="sugerencia-copy">
-                  <strong>{{ producto.nombre }}</strong>
-                  @if (producto.precio != null) {
-                    <small>{{ producto.precio | number:'1.2-2' }} €</small>
-                  }
-                </span>
-              </li>
-            }
-          </ul>
-        }
-
-        <label class="field">
-          <span>Precio aproximado</span>
-          <input
-            type="number"
-            inputmode="decimal"
-            min="0"
-            step="0.01"
-            placeholder="Opcional"
-            formControlName="precioAproximado"
-          />
-          <small class="field-hint">Opcional. No tiene por qué mostrarse públicamente.</small>
-        </label>
-
-        <label class="field">
           <span>Comentario</span>
           <textarea placeholder="Tu comentario..." formControlName="comentario"></textarea>
         </label>
+
+        <div class="product-disclosure">
+          <div class="product-disclosure__head">
+            <button
+              type="button"
+              class="product-disclosure__toggle"
+              (click)="toggleSelectorProductos()"
+            >
+              Añadir producto
+              @if (productosSeleccionados().length || productosSugeridos().length) {
+                <span class="product-disclosure__count">
+                  {{ productosSeleccionados().length + productosSugeridos().length }}
+                </span>
+              }
+            </button>
+            <small class="field-hint">
+              Opcional: vincula uno o varios productos del catálogo o sugiere uno nuevo.
+            </small>
+          </div>
+
+          @if (selectorProductosAbierto()) {
+            <section class="product-panel">
+              @if (!negocioIdSeleccionado) {
+                <p class="field-hint">
+                  Selecciona primero un negocio para cargar su catálogo.
+                </p>
+              } @else {
+                <label class="field field--compact">
+                  <span>Buscar producto</span>
+                  <input
+                    type="text"
+                    [value]="productoBusqueda()"
+                    (input)="actualizarBusquedaProducto($any($event.target).value)"
+                    placeholder="Corte, tinte, peinado..."
+                  />
+                </label>
+
+                @if (productosSeleccionados().length || productosSugeridos().length) {
+                  <div class="product-chip-group">
+                    @for (producto of productosSeleccionados(); track producto.id ?? producto.nombre) {
+                      <button
+                        type="button"
+                        class="product-chip"
+                        (click)="quitarProductoSeleccionado(producto.id)"
+                      >
+                        {{ producto.nombre }} ×
+                      </button>
+                    }
+                    @for (producto of productosSugeridos(); track producto.localId ?? producto.nombre) {
+                      <button
+                        type="button"
+                        class="product-chip product-chip--pending"
+                        (click)="quitarProductoSugerido(producto.localId)"
+                      >
+                        {{ producto.nombre }} · pendiente ×
+                      </button>
+                    }
+                  </div>
+                }
+
+                @if (cargandoProductos()) {
+                  <p class="field-hint">Cargando productos del negocio...</p>
+                } @else if (errorProductos()) {
+                  <p class="form-feedback" role="alert">{{ errorProductos() }}</p>
+                } @else if (productosFiltrados().length) {
+                  <div class="product-results">
+                    @for (producto of productosFiltrados(); track producto.id) {
+                      <button
+                        type="button"
+                        class="product-result"
+                        [class.product-result--active]="productoSeleccionado(producto.id)"
+                        (click)="alternarProducto(producto)"
+                      >
+                        <span>{{ producto.nombre }}</span>
+                        <small>
+                          {{ producto.precio | number:'1.2-2' }} €
+                          @if (producto.descripcion) {
+                            · {{ producto.descripcion }}
+                          }
+                        </small>
+                      </button>
+                    }
+                  </div>
+                } @else {
+                  <p class="field-hint">No hemos encontrado coincidencias en el catálogo.</p>
+                }
+
+                @if (puedeSugerirProducto()) {
+                  <button
+                    type="button"
+                    class="product-link-btn"
+                    (click)="abrirFormularioSugerencia()"
+                  >
+                    Sugerir producto
+                  </button>
+                }
+
+                @if (sugerirProductoAbierto()) {
+                  <div class="product-suggestion-form">
+                    <label class="field">
+                      <span>Nombre sugerido</span>
+                      <input type="text" [formControl]="sugerenciaNombreControl" />
+                      @if (sugerenciaNombreControl.invalid && (sugerenciaNombreControl.dirty || sugerenciaNombreControl.touched)) {
+                        <small class="field-error">El nombre es obligatorio.</small>
+                      }
+                    </label>
+
+                    <label class="field">
+                      <span>Precio sugerido</span>
+                      <input type="number" [formControl]="sugerenciaPrecioControl" min="0" step="0.01" />
+                    </label>
+
+                    <label class="field field--full">
+                      <span>Descripción opcional</span>
+                      <textarea rows="2" [formControl]="sugerenciaDescripcionControl"></textarea>
+                    </label>
+
+                    <div class="product-suggestion-form__actions">
+                      <button type="button" class="primary-btn primary-btn--small" (click)="guardarProductoSugerido()">
+                        Guardar sugerencia
+                      </button>
+                      <button type="button" class="secondary-btn secondary-btn--small" (click)="cancelarSugerenciaProducto()">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                }
+              }
+            </section>
+          }
+        </div>
 
         <div class="field">
           <span>Valoración</span>

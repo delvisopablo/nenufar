@@ -244,6 +244,20 @@
   color: var(--text-secondary);
 }
 
+.dashboard-horario-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.dashboard-horario-line {
+  margin: 0;
+  padding: 0.8rem 0.95rem;
+  border-radius: 16px;
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
 .booking-list {
   display: grid;
   gap: 0.8rem;
