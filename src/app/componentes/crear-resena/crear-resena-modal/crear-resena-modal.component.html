@@ -227,3 +227,10 @@
     </div>
   </div>
 }
+
+<app-nenufar-burst
+  [active]="burstActivo()"
+  [nenufarSrc]="burstNenufarSrc()"
+  message="Tu reseña ha sido publicada"
+  (finished)="onBurstFinished()"
+></app-nenufar-burst>

@@ -97,7 +97,7 @@
         @if (esDueno) {
           <div class="action-rail">
             <button class="action-btn action-btn--primary" type="button" (click)="irAEditarNegocio()">
-              NENUditar
+              Nenúditar
             </button>
             <button class="action-btn" type="button" (click)="irADashboardNegocio()">Dashboard</button>
             <button class="action-btn" type="button" (click)="abrirHorario()">Horario</button>
@@ -110,6 +110,7 @@
             <button class="action-btn action-btn--primary" type="button" (click)="abrirReservas()">
               Reservar
             </button>
+            <button class="action-btn" type="button" (click)="abrirCatalogo()">Catálogo</button>
           </div>
         }
 
@@ -281,12 +282,18 @@
           @if (modalActiva() === 'catalogo') {
             <div class="profile-modal__head">
               <h2>Catálogo</h2>
-              <p>Gestiona productos y sugerencias sin salir del perfil.</p>
+              <p>
+                {{ esDueno
+                  ? 'Gestiona productos y sugerencias sin salir del perfil.'
+                  : 'Consulta los productos y servicios disponibles del negocio.' }}
+              </p>
             </div>
 
             <app-catalogo-negocio-modal
               [negocioId]="negocioId"
               [negocio]="negocio"
+              [puedeGestionar]="esDueno"
+              [mostrarSugerencias]="esDueno"
             />
           }
         </section>

@@ -87,7 +87,12 @@ export class NegocioSearchService {
   private readonly reviewProductMeta = inject(ReviewProductMetaService);
   private readonly resultLimit = 30;
   private readonly showcaseLimit = 8;
+  private readonly followersCacheTtlMs = 2 * 60 * 1000;
   private readonly detailCache = new Map<number, Observable<NegocioSummary | null>>();
+  private readonly followersCache = new Map<
+    number,
+    { expiresAt: number; request$: Observable<NegocioFollowersResponse> }
+  >();
 
   private readonly catalogo$ = this.negocioService.getNegocios().pipe(
     catchError(() => of([])),
@@ -167,9 +172,21 @@ export class NegocioSearchService {
   }
 
   private getFollowers(item: NegocioSummary): Observable<NegocioFollowersResponse> {
-    return this.negocioService.getSeguidoresNegocio(item.id).pipe(
+    const now = Date.now();
+    const cached = this.followersCache.get(item.id);
+    if (cached && cached.expiresAt > now) {
+      return cached.request$;
+    }
+
+    const request$ = this.negocioService.getSeguidoresNegocio(item.id).pipe(
       catchError(() => of(this.emptyFollowers(item))),
+      shareReplay(1),
     );
+    this.followersCache.set(item.id, {
+      expiresAt: now + this.followersCacheTtlMs,
+      request$,
+    });
+    return request$;
   }
 
   private groupReviewsByBusiness(reviews: Resena[]): ReviewsByBusiness {

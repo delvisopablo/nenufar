@@ -48,11 +48,13 @@ import {
 } from '../../servicios/buscador/negocio-search.service';
 import {
   DEFAULT_NENUFAR_SMALL_ASSET,
+  DEFAULT_NENUFAR_FALLBACK_ASSET,
   NegocioVisualData,
   addUnsplashParams,
   buildUnsplashSrcset,
   resolveBusinessNenufarAsset,
 } from '../../core/negocio/negocio-visuals';
+import { NenufarPerformanceService } from '../../core/performance/nenufar-performance.service';
 import {
   Promocion,
   PromocionService,
@@ -253,9 +255,11 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly postService = inject(PostService);
   private readonly estanqueFeed = inject(EstanqueFeedService);
   private readonly reviewProductMeta = inject(ReviewProductMetaService);
+  private readonly performanceService = inject(NenufarPerformanceService);
 
   readonly freshLilyImageSrc = DEFAULT_NENUFAR_SMALL_ASSET;
   readonly mustioLilyImageSrc = 'assets/imagenes/nenufar_mustio_small.png';
+  readonly performanceProfile = this.performanceService.getProfile();
 
   readonly crearResenaAbierto = signal(false);
   readonly hoveredTooltip = signal<HoverTooltip | null>(null);
@@ -293,11 +297,15 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private promoSpawnCursor = 0;
   private profileSpawnCursor = 0;
   private createSpawnCursor = 0;
+  private physicsFrameCounter = 0;
   private sessionHydrationSubscription?: Subscription;
   private syncFrameId = 0;
   private viewReady = false;
   private hoveredTarget: HoveredLilyTarget | null = null;
   private reviewButtonSpinTimerId: number | null = null;
+  private readonly dataLoadTimerIds = new Set<number>();
+  private readonly startupAt = performance.now();
+  private firstPondPaintLogged = false;
   private readonly tooltipSyncCadenceMs = 84;
   private readonly tooltipViewportPadding = 12;
   private readonly zoneRuntimes = new Map<ZoneKey, ZoneRuntime>();
@@ -344,10 +352,14 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.title.setTitle('Inicio');
+    this.logPerformance('inicio:init', this.performanceProfile);
     this.hidratarSesionPersistida();
     this.seedZoneLilies();
     this.cargarPromocionesInicio();
-    this.cargarNegociosDestacados();
+    this.scheduleDataLoad(
+      () => this.cargarNegociosDestacados(),
+      this.performanceProfile.secondaryDataDelayMs,
+    );
   }
 
   ngAfterViewInit(): void {
@@ -389,6 +401,9 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       window.clearTimeout(this.reviewButtonSpinTimerId);
       this.reviewButtonSpinTimerId = null;
     }
+
+    this.dataLoadTimerIds.forEach((timerId) => window.clearTimeout(timerId));
+    this.dataLoadTimerIds.clear();
 
     this.resizeObserver?.disconnect();
     this.hoveredTarget = null;
@@ -471,11 +486,14 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getLilyImageSrc(item: LilyView): string {
-    return addUnsplashParams(this.getLilyImage(item), 320);
+    return addUnsplashParams(this.getPerformanceAwareLilyImage(item), 320);
   }
 
   getLilyImageSrcset(item: LilyView): string {
-    return buildUnsplashSrcset(this.getLilyImage(item), [160, 320, 480]);
+    const image = this.getPerformanceAwareLilyImage(item);
+    return this.performanceProfile.preferSmallLocalAssets && image.startsWith('assets/')
+      ? ''
+      : buildUnsplashSrcset(image, [160, 320, 480]);
   }
 
   getPopupBusinessSrc(negocio: NegocioLite | NegocioVisualData | null | undefined): string {
@@ -756,8 +774,12 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private cargarNegociosDestacados(): void {
-    this.negocioSearchService.showcase(24).subscribe({
+    this.negocioSearchService.showcase(this.performanceProfile.showcaseLimit).subscribe({
       next: (items) => {
+        this.logPerformance('inicio:negocios-listos', {
+          negocios: items.length,
+          ms: Math.round(performance.now() - this.startupAt),
+        });
         this.negociosDestacados.update((current) => this.mergeBusinesses(current, items));
         this.reconcileZonePopulation('resenas');
         this.reconcileZonePopulation('promos');
@@ -774,6 +796,24 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  private scheduleDataLoad(task: () => void, delayMs: number): void {
+    if (delayMs <= 0) {
+      task();
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      this.dataLoadTimerIds.delete(timerId);
+      task();
+    }, delayMs);
+
+    this.dataLoadTimerIds.add(timerId);
+  }
+
+  private logPerformance(label: string, payload?: unknown): void {
+    this.performanceService.logDev(label, payload);
+  }
+
   private cargarPromocionesInicio(): void {
     this.promocionService.findActivas()
       .pipe(
@@ -786,6 +826,10 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       )
       .subscribe({
         next: (items) => {
+          this.logPerformance('inicio:promos-listas', {
+            promociones: items.length,
+            ms: Math.round(performance.now() - this.startupAt),
+          });
           this.promociones.update((current) => this.mergePromotions(current, items));
           this.reconcileZonePopulation('promos');
           this.queueZoneSync();
@@ -1261,16 +1305,36 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     const width =
       this.sceneRef?.nativeElement.clientWidth ??
       (typeof window !== 'undefined' ? window.innerWidth : 1280);
+    const profile = this.performanceService.getProfile(width);
 
     switch (zone) {
       case 'resenas':
-        return width <= 640 ? 9 : width <= 960 ? 16 : 24;
+        return profile.reviewLilyCount;
       case 'promos':
-        return width <= 640 ? 3 : width <= 960 ? 5 : 8;
+        return profile.promoLilyCount;
       case 'perfil':
       case 'crear':
         return 0;
     }
+  }
+
+  private getZonePhysicsConfig(zone: ZoneKey): ZonePhysicsConfig {
+    const width =
+      this.sceneRef?.nativeElement.clientWidth ??
+      (typeof window !== 'undefined' ? window.innerWidth : 1280);
+    const profile = this.performanceService.getProfile(width);
+    const base = this.zoneConfigs[zone];
+
+    return {
+      ...base,
+      targetCount: this.getZoneTargetCount(zone),
+      maxSpeed: base.maxSpeed * profile.motionSpeedMultiplier,
+      minSpeed: base.minSpeed * profile.motionSpeedMultiplier,
+      damping:
+        profile.mode === 'full'
+          ? base.damping
+          : Math.min(0.997, base.damping + (profile.mode === 'lite' ? 0.004 : 0.002)),
+    };
   }
 
   private reconcileZonePopulation(zone: ZoneKey): void {
@@ -1663,13 +1727,40 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private animate = (timestamp: number): void => {
+    const frameIntervalMs = this.performanceProfile.frameIntervalMs;
+    if (this.lastFrameTime && timestamp - this.lastFrameTime < frameIntervalMs) {
+      this.animationFrameId = requestAnimationFrame(this.animate);
+      return;
+    }
+
     const dt = this.lastFrameTime ? Math.min((timestamp - this.lastFrameTime) / 1000, 0.032) : 0.016;
     const elapsed = timestamp * 0.001;
     this.lastFrameTime = timestamp;
 
-    this.zoneRuntimes.forEach((runtime) => this.updateZone(runtime, dt, elapsed));
-    this.applySharedPondCollisions(elapsed);
+    const profile = this.performanceProfile;
+    this.physicsFrameCounter += 1;
+    const runLocalCollisions =
+      this.physicsFrameCounter % Math.max(1, profile.localCollisionEveryNFrames) === 0;
+    const runSharedCollisions =
+      profile.enableSharedCollisions &&
+      this.physicsFrameCounter % Math.max(1, profile.sharedCollisionEveryNFrames) === 0;
+
+    this.zoneRuntimes.forEach((runtime) =>
+      this.updateZone(runtime, dt, elapsed, runLocalCollisions),
+    );
+    if (runSharedCollisions) {
+      this.applySharedPondCollisions(elapsed);
+    }
     this.syncTooltipFromHoveredTarget(false, timestamp);
+
+    if (!this.firstPondPaintLogged && this.zoneRuntimes.size) {
+      this.firstPondPaintLogged = true;
+      this.logPerformance('inicio:estanque-pintado', {
+        activeLilies: this.reviewLilies().length + this.promoLilies().length,
+        ms: Math.round(performance.now() - this.startupAt),
+      });
+    }
+
     this.animationFrameId = requestAnimationFrame(this.animate);
   };
 
@@ -1687,8 +1778,9 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     const nx = dx / safeDistance;
     const ny = dy / safeDistance;
     const dNorm = this.clamp(distance / Math.max(body.r, 1), 0, 1);
-    const minForce = 120;
-    const maxForce = 310;
+    const impulseMultiplier = this.performanceProfile.impulseMultiplier;
+    const minForce = 120 * impulseMultiplier;
+    const maxForce = 310 * impulseMultiplier;
     const force = this.lerp(minForce, maxForce, dNorm);
     const torque = ((impactX - body.x) * ny - (impactY - body.y) * nx) / Math.max(body.r, 1);
 
@@ -2101,6 +2193,27 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     return item.tone === 'mustio' ? this.mustioLilyImageSrc : this.freshLilyImageSrc;
   }
 
+  private getPerformanceAwareLilyImage(item: LilyView): string {
+    const image = this.getLilyImage(item);
+    if (!this.performanceProfile.preferSmallLocalAssets) {
+      return image;
+    }
+
+    if (image.includes('/nenufares_colores/') || image.endsWith('/nenufar.png')) {
+      return item.tone === 'mustio' ? this.mustioLilyImageSrc : DEFAULT_NENUFAR_SMALL_ASSET;
+    }
+
+    if (image.endsWith('/nenufar_mustio.png')) {
+      return this.mustioLilyImageSrc;
+    }
+
+    if (image === DEFAULT_NENUFAR_FALLBACK_ASSET) {
+      return DEFAULT_NENUFAR_SMALL_ASSET;
+    }
+
+    return image;
+  }
+
   private getPromoBusiness(promo: HomePromo): NegocioVisualData | null {
     const negocioRelacionado = this.negociosDestacados().find((item) => item.id === promo.negocioId) ?? null;
 
@@ -2285,7 +2398,16 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private emitRipple(clientX: number, clientY: number, strength: number): void {
-    this.backgroundRef?.triggerRippleAtClientPoint(clientX, clientY, strength);
+    const profile = this.performanceProfile;
+    if (!profile.enableRipples) {
+      return;
+    }
+
+    this.backgroundRef?.triggerRippleAtClientPoint(
+      clientX,
+      clientY,
+      strength * profile.impulseMultiplier,
+    );
   }
 
   private fallbackRadiusForZone(zone: ZoneKey): number {
@@ -2658,10 +2780,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const items = this.getSignalForZone(zoneKey)();
-    const config = {
-      ...this.zoneConfigs[zoneKey],
-      targetCount: this.getZoneTargetCount(zoneKey),
-    };
+    const config = this.getZonePhysicsConfig(zoneKey);
     const existing = this.zoneRuntimes.get(zoneKey);
 
     if (!existing) {
@@ -2735,7 +2854,12 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     return nextItems;
   }
 
-  private updateZone(runtime: ZoneRuntime, dt: number, elapsed: number): void {
+  private updateZone(
+    runtime: ZoneRuntime,
+    dt: number,
+    elapsed: number,
+    runCollisions: boolean,
+  ): void {
     const frameScale = dt * 60;
     const escapedIds: string[] = [];
 
@@ -2765,9 +2889,11 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    for (let i = 0; i < runtime.bodies.length; i += 1) {
-      for (let j = i + 1; j < runtime.bodies.length; j += 1) {
-        this.resolveCircleCollision(runtime.bodies[i], runtime.bodies[j], runtime.config.restitution);
+    if (runCollisions) {
+      for (let i = 0; i < runtime.bodies.length; i += 1) {
+        for (let j = i + 1; j < runtime.bodies.length; j += 1) {
+          this.resolveCircleCollision(runtime.bodies[i], runtime.bodies[j], runtime.config.restitution);
+        }
       }
     }
 

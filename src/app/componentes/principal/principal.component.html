@@ -1,4 +1,10 @@
-<div class="home-shell inicio-root" #scene (pointerdown)="onScenePointerDown($event)">
+<div
+  class="home-shell inicio-root"
+  [class.performance-lite]="performanceProfile.mode === 'lite'"
+  [class.performance-balanced]="performanceProfile.mode === 'balanced'"
+  #scene
+  (pointerdown)="onScenePointerDown($event)"
+>
   <app-estanque-background class="pond-background"></app-estanque-background>
 
   <div class="pond-stage">
@@ -79,7 +85,7 @@
   >
     <img
       class="floating-review-btn__flower"
-      src="assets/imagenes/flor_logo.png"
+      src="assets/imagenes/flor_logo.ico"
       alt=""
       aria-hidden="true"
       width="84"

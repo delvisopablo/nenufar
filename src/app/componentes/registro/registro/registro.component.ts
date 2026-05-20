@@ -310,8 +310,18 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
         next: () => {
           localStorage.setItem('accesoPermitido', 'true');
           localStorage.removeItem('guestMode');
-          this.registrando.set(false);
-          void this.router.navigate(['/inicio']);
+          // Verify session via HttpOnly cookie before navigating to ensure
+          // the profile guard finds an authenticated user immediately
+          this.auth.me().subscribe({
+            next: () => {
+              this.registrando.set(false);
+              void this.router.navigate(['/inicio']);
+            },
+            error: () => {
+              this.registrando.set(false);
+              void this.router.navigate(['/inicio']);
+            }
+          });
         },
         error: (error: unknown) => {
           this.registrando.set(false);

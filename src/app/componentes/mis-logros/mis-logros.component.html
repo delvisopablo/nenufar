@@ -1,63 +1,293 @@
-<section class="logros-shell">
-  <header class="logros-head">
-    <p class="kicker">Logros</p>
-    <h1>Tu progreso</h1>
-    <p class="lead">Sube de nivel desbloqueando logros con cada acción que apoya al barrio.</p>
+<section class="logros-page">
+
+  <!-- ── HERO / RESUMEN ─────────────────────────────────────── -->
+  <header class="hero">
+    <div class="hero-texto">
+      <span class="kicker">Mis logros</span>
+      <h1>Tu camino en Nenúfar</h1>
+      <p class="hero-lead">
+        Los pétalos son la moneda de Nenúfar. Reflejan tu implicación dentro de la
+        plataforma y se consiguen participando, explorando y completando acciones.
+      </p>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat petalos-stat">
+        <img src="assets/imagenes/nenufar_small.png" alt="pétalo" class="stat-icon" />
+        <span class="stat-valor">{{ saldoPetalos() }}</span>
+        <span class="stat-etiqueta">pétalos</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-valor">{{ totalDesbloqueados() }}</span>
+        <span class="stat-etiqueta">logros</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <span class="stat-valor">{{ progresoTotal() }}%</span>
+        <span class="stat-etiqueta">completado</span>
+      </div>
+    </div>
   </header>
 
+  <!-- ── ERROR ──────────────────────────────────────────────── -->
   @if (errorMensaje()) {
-    <div class="alert-error" role="alert">{{ errorMensaje() }}</div>
+    <div class="alerta-error" role="alert">{{ errorMensaje() }}</div>
   }
 
+  <!-- ── CARGANDO ────────────────────────────────────────────── -->
   @if (cargando()) {
-    <p class="status">Cargando logros...</p>
-  } @else if (!escaleras().length) {
-    <div class="empty-state">
-      <h2>Todavía no hay progreso visible</h2>
-      <p>Cuando empieces a reseñar, comprar, reservar o seguir negocios, lo verás aquí.</p>
+    <div class="estado-carga">
+      <div class="spinner"></div>
+      <p>Cargando tus logros...</p>
     </div>
   } @else {
-    <div class="escaleras-grid">
-      @for (esc of escaleras(); track esc.accion) {
-        <article class="escalera">
-          <div class="escalera-head">
-            <h2>{{ tituloAccion(esc.accion) }}</h2>
-            <span class="contador">{{ esc.contador }} {{ esc.accionLabel }}</span>
+
+    <!-- ── LOGROS RECIENTES ──────────────────────────────────── -->
+    @if (logrosRecientes().length) {
+      <section class="bloque">
+        <div class="bloque-cabecera">
+          <span class="bloque-icono">🏅</span>
+          <h2>Últimos logros desbloqueados</h2>
+          <span class="badge-count">{{ totalDesbloqueados() }}</span>
+        </div>
+        <div class="recientes-fila">
+          @for (ml of logrosRecientes(); track ml.id) {
+            <div class="reciente-item">
+              <img
+                src="assets/nenufares_colores/nenufar_var{{ (ml.id % 17) + 1 }}.png"
+                alt="nenúfar"
+                class="reciente-nenufar"
+              />
+              <span class="reciente-titulo">{{ ml.logro.titulo }}</span>
+              <span class="reciente-fecha">{{ formatFecha(ml.conseguidoEn) }}</span>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- ── CATEGORÍAS DE LOGROS ──────────────────────────────── -->
+    @for (cat of categorias; track cat.id) {
+      @if (escalerasDe(cat).length) {
+        <section class="bloque">
+          <div class="bloque-cabecera">
+            <span class="bloque-icono">{{ cat.icono }}</span>
+            <h2>{{ cat.nombre }}</h2>
           </div>
 
-          <ol class="niveles">
-            @for (n of esc.niveles; track n.id) {
-              <li
-                class="nivel"
-                [class.desbloqueado]="n.desbloqueado"
-                [class.actual]="esNivelActual(esc, n)"
-              >
-                <div class="nivel-medalla">
-                  @if (n.desbloqueado) {
-                    <span>✓</span>
-                  } @else {
-                    <span class="lock">🔒</span>
+          <div class="escaleras-lista">
+            @for (esc of escalerasDe(cat); track esc.accion) {
+              <div class="escalera">
+                <div class="escalera-info">
+                  <h3 class="escalera-titulo">{{ tituloAccion(esc.accion) }}</h3>
+                  <span class="escalera-contador">{{ esc.contador }} {{ esc.accionLabel }}</span>
+                </div>
+
+                <div class="barra-wrap">
+                  <div class="barra">
+                    <div class="barra-fill" [style.width.%]="porcentaje(esc)"></div>
+                  </div>
+                </div>
+
+                <ol class="niveles">
+                  @for (n of esc.niveles; track n.id) {
+                    <li
+                      class="nivel"
+                      [class.desbloqueado]="n.desbloqueado"
+                      [class.actual]="esNivelActual(esc, n)"
+                      (click)="abrirDetalleNivel(esc, n)"
+                      role="button"
+                      [attr.aria-label]="n.titulo"
+                      tabindex="0"
+                      (keydown.enter)="abrirDetalleNivel(esc, n)"
+                    >
+                      <div class="nivel-medalla">
+                        @if (n.desbloqueado) {
+                          <img
+                            src="assets/nenufares_colores/nenufar_var{{ (n.id % 17) + 1 }}.png"
+                            alt="logro"
+                            class="nenufar-img"
+                          />
+                        } @else {
+                          <span class="nivel-lock">🔒</span>
+                        }
+                      </div>
+                      <div class="nivel-datos">
+                        <strong class="nivel-titulo">{{ n.titulo }}</strong>
+                        <small class="nivel-meta">Meta: {{ n.umbral }} {{ esc.accionLabel }}</small>
+                        <span class="nivel-pts">+{{ n.recompensaPuntos }} pétalos</span>
+                      </div>
+                    </li>
                   }
-                </div>
-
-                <div class="nivel-info">
-                  <strong>{{ n.titulo }}</strong>
-                  <small>Llega a {{ n.umbral }} para conseguirlo</small>
-                  <span class="recompensa">+{{ n.recompensaPuntos }} pétalos</span>
-                </div>
-              </li>
+                </ol>
+              </div>
             }
-          </ol>
-
-          <div class="progreso-bar">
-            <div class="progreso-fill" [style.width.%]="porcentajeAlSiguiente(esc)"></div>
           </div>
-
-          <p class="progreso-text">
-            {{ siguienteUmbralLabel(esc) }}
-          </p>
-        </article>
+        </section>
       }
-    </div>
+    }
+
+    <!-- ── LOGROS OCULTOS ────────────────────────────────────── -->
+    <section class="bloque">
+      <div class="bloque-cabecera">
+        <span class="bloque-icono">🌑</span>
+        <h2>Logros ocultos</h2>
+        <span class="bloque-subtitulo">Secretos y Easter Eggs</span>
+      </div>
+
+      <div class="ocultos-grid">
+        @for (lo of logrosOcultos; track lo.id) {
+          <article
+            class="oculto-card"
+            [class.desbloqueado]="lo.desbloqueado"
+            [class.easter-egg]="lo.esEasterEgg"
+            [class.maestro]="lo.esMaestro"
+            (click)="abrirDetalleOculto(lo)"
+            role="button"
+            tabindex="0"
+            (keydown.enter)="abrirDetalleOculto(lo)"
+          >
+            <div class="oculto-icono">
+              @if (lo.esMaestro) {
+                <img src="assets/imagenes/nenufar.png" alt="nenúfar maestro" class="oculto-nenufar" />
+              } @else if (lo.esEasterEgg) {
+                <span class="oculto-signo">✨</span>
+              } @else if (lo.desbloqueado) {
+                <span class="oculto-signo">🌸</span>
+              } @else {
+                <span class="oculto-signo">❓</span>
+              }
+            </div>
+            <div class="oculto-info">
+              <strong class="oculto-titulo">
+                {{ lo.desbloqueado ? lo.titulo : '???' }}
+              </strong>
+              <small class="oculto-pista">{{ lo.desbloqueado ? lo.descripcion : lo.pista }}</small>
+              <span class="nivel-pts">+{{ lo.recompensa }} pétalos</span>
+            </div>
+            @if (!lo.desbloqueado) {
+              <div class="oculto-candado">🔒</div>
+            }
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- ── PROGRESO HACIA SIGUIENTES ─────────────────────────── -->
+    @if (proximosLogros().length) {
+      <section class="bloque">
+        <div class="bloque-cabecera">
+          <span class="bloque-icono">🎯</span>
+          <h2>Próximos logros</h2>
+        </div>
+
+        <div class="proximos-lista">
+          @for (p of proximosLogros(); track p.label) {
+            <div class="proximo-item">
+              <div class="proximo-texto">
+                <span class="proximo-label">{{ p.label }}</span>
+                <span class="proximo-meta">{{ p.texto }}</span>
+              </div>
+              <div class="proximo-barra-wrap">
+                <div class="proximo-barra">
+                  <div class="proximo-fill" [style.width.%]="p.porcentaje"></div>
+                </div>
+                <span class="proximo-pct">{{ p.porcentaje }}%</span>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- ── SISTEMA DE PÉTALOS ────────────────────────────────── -->
+    <section class="bloque petalos-bloque">
+      <div class="bloque-cabecera">
+        <span class="bloque-icono">🌸</span>
+        <h2>Sistema de pétalos</h2>
+      </div>
+
+      <div class="petalos-contenido">
+        <div class="petalos-saldo-panel">
+          <img src="assets/imagenes/nenufar_small.png" alt="pétalo" class="petalos-logo" />
+          <div>
+            <p class="petalos-saldo-num">{{ saldoPetalos() }}</p>
+            <p class="petalos-saldo-label">pétalos actuales</p>
+          </div>
+        </div>
+
+        <div class="petalos-formas">
+          <h3>¿Cómo conseguir pétalos?</h3>
+          <ul class="formas-lista">
+            <li><span class="forma-icono">⭐</span> Publicar reseñas</li>
+            <li><span class="forma-icono">🤝</span> Seguir negocios y perfiles</li>
+            <li><span class="forma-icono">👤</span> Completar tu perfil</li>
+            <li><span class="forma-icono">🏪</span> Configurar tu negocio</li>
+            <li><span class="forma-icono">🗺️</span> Explorar negocios y categorías</li>
+            <li><span class="forma-icono">🏅</span> Desbloquear logros</li>
+          </ul>
+        </div>
+
+        <div class="petalos-intercambio">
+          <h3>Intercambio de beneficios</h3>
+          <p class="intercambio-placeholder">
+            Pronto podrás canjear tus pétalos por beneficios exclusivos dentro de Nenúfar.
+          </p>
+        </div>
+      </div>
+    </section>
+
   }
 </section>
+
+<!-- ── MODAL DETALLE ──────────────────────────────────────────── -->
+@if (detalleAbierto()) {
+  <div class="modal-overlay" (click)="cerrarDetalle()" role="dialog" aria-modal="true">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <button class="modal-cerrar" (click)="cerrarDetalle()" aria-label="Cerrar">✕</button>
+
+      <div class="modal-estado" [class.desbloqueado]="detalleAbierto()!.desbloqueado">
+        @if (detalleAbierto()!.desbloqueado) {
+          <img src="assets/imagenes/nenufar_small.png" alt="desbloqueado" class="modal-nenufar" />
+          <span class="modal-estado-texto desbloqueado">Desbloqueado</span>
+        } @else {
+          <span class="modal-lock">🔒</span>
+          <span class="modal-estado-texto bloqueado">No desbloqueado</span>
+        }
+      </div>
+
+      <h2 class="modal-titulo">{{ detalleAbierto()!.titulo }}</h2>
+      <p class="modal-descripcion">{{ detalleAbierto()!.descripcion }}</p>
+
+      <div class="modal-chips">
+        <span class="chip cat">{{ detalleAbierto()!.categoria }}</span>
+        <span class="chip petalos">+{{ detalleAbierto()!.recompensa }} pétalos</span>
+      </div>
+
+      @if (detalleAbierto()!.meta) {
+        <div class="modal-progreso">
+          <div class="modal-barra">
+            <div
+              class="modal-fill"
+              [style.width.%]="
+                detalleAbierto()!.desbloqueado
+                  ? 100
+                  : (detalleAbierto()!.progreso! / detalleAbierto()!.meta!) * 100
+              "
+            ></div>
+          </div>
+          <span class="modal-prog-texto">
+            {{ detalleAbierto()!.progreso }} / {{ detalleAbierto()!.meta }}
+          </span>
+        </div>
+      }
+
+      @if (detalleAbierto()!.conseguidoEn) {
+        <p class="modal-fecha">
+          Conseguido el {{ formatFecha(detalleAbierto()!.conseguidoEn) }}
+        </p>
+      }
+    </div>
+  </div>
+}

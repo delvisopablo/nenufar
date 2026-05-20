@@ -14,6 +14,7 @@ import {
 } from '../../core/reviews/review-products';
 
 export interface PendingProductSuggestionRequest extends SuggestedReviewProduct {
+  id?: number | string;
   localId: string;
   reviewId: number;
   negocioId: number;
@@ -21,7 +22,7 @@ export interface PendingProductSuggestionRequest extends SuggestedReviewProduct 
   reviewContenido?: string | null;
   usuarioId?: number | null;
   usuarioNombre?: string | null;
-  source: 'local';
+  source: 'local' | 'backend';
 }
 
 interface StoredReviewProductMeta {

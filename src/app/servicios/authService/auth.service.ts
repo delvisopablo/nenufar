@@ -226,6 +226,10 @@ export class AuthService {
       data.descripcion?.trim() ||
       data.biografia?.trim() ||
       '';
+    const descripcionCorta =
+      typeof data['descripcionCorta'] === 'string'
+        ? (data['descripcionCorta'] as string).trim()
+        : '';
     const codigoNenufarizacion =
       typeof data.codigoNenufarizacion === 'string'
         ? data.codigoNenufarizacion.trim().toUpperCase()
@@ -233,7 +237,7 @@ export class AuthService {
     const nenufarActivo =
       typeof data.nenufarActivo === 'string' ? data.nenufarActivo.trim() : '';
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       nombreDueno:
         data.nombreDueno?.trim() ||
         data.nombreDueño?.trim() ||
@@ -250,17 +254,14 @@ export class AuthService {
       ...(direccion ? { direccion } : {}),
       ...(fechaFundacion ? { fechaFundacion } : {}),
       ...(historia ? { historia } : {}),
+      ...(descripcionCorta ? { descripcionCorta } : {}),
       ...(codigoNenufarizacion ? { codigoNenufarizacion } : {}),
       nenufarActivo: nenufarActivo || null,
+      ...(data.horario ? { horario: data.horario, intervaloReserva: data.intervaloReserva ?? 30 } : {}),
     };
 
-    console.log('Payload registro negocio:', payload);
-
     return this.http
-      .post<AuthResponse>(
-        buildApiUrl('/auth/registro-negocio'),
-        payload
-      )
+      .post<AuthResponse>(buildApiUrl('/auth/registro-negocio'), payload)
       .pipe(
         tap((response) => this.persistirUsuarioDesdeRespuesta(response))
       );

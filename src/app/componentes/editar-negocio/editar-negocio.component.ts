@@ -119,7 +119,7 @@ export class EditarNegocioComponent implements OnInit, OnDestroy {
       next: (negocio) => {
         if (!negocio?.id) {
           this.cargando = false;
-          this.errorMensaje = 'No hemos podido identificar el negocio para NENUditar.';
+          this.errorMensaje = 'No hemos podido identificar el negocio para Nenúditar.';
           return;
         }
         this.negocioId = negocio.id;

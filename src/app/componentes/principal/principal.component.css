@@ -170,6 +170,26 @@
     drop-shadow(0 8px 12px rgba(0, 0, 0, 0.16));
 }
 
+.performance-balanced .zone-lily,
+.performance-lite .zone-lily {
+  will-change: auto;
+}
+
+.performance-balanced .zone-lily__img,
+.performance-lite .zone-lily__img {
+  filter: saturate(1.02) contrast(1.01) drop-shadow(0 7px 10px rgba(0, 0, 0, 0.14));
+}
+
+.performance-lite .pond-stage::before {
+  opacity: 0.42;
+}
+
+.performance-lite .hover-tooltip,
+.performance-lite .popup-overlay {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .zone-lily--arrival .zone-lily__img {
   animation: pond-lily-burst 920ms cubic-bezier(0.2, 0.88, 0.28, 1.18);
 }
@@ -209,6 +229,11 @@
     saturate(1.03);
   transform-origin: 50% 50%;
   will-change: transform;
+}
+
+.performance-lite .floating-review-btn__flower {
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.14));
+  will-change: auto;
 }
 
 .floating-review-btn.is-spinning .floating-review-btn__flower {
@@ -280,6 +305,18 @@
   100% {
     transform: scale(1);
     filter: brightness(1.02) saturate(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zone-lily--arrival .zone-lily__img,
+  .zone-lily--highlight .zone-lily__img,
+  .floating-review-btn.is-spinning .floating-review-btn__flower {
+    animation: none;
+  }
+
+  .floating-review-btn {
+    transition: none;
   }
 }
 

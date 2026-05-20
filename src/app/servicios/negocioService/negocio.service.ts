@@ -5,7 +5,7 @@ import {
   HttpErrorResponse,
   HttpParams,
 } from '@angular/common/http';
-import { Observable, catchError, map, of, switchMap } from 'rxjs';
+import { Observable, catchError, map, of, shareReplay, switchMap, tap } from 'rxjs';
 import {
   ApiListResponse,
   buildApiUrl,
@@ -282,6 +282,9 @@ export interface QueryNegociosOptions {
 
 @Injectable({ providedIn: 'root' })
 export class NegocioService {
+  private readonly negociosCacheTtlMs = 3 * 60 * 1000;
+  private negociosCache: { expiresAt: number; request$: Observable<NegocioSummary[]> } | null = null;
+
   private readonly silentLookupContext = new HttpContext().set(
     SKIP_HTTP_ERROR_HANDLING,
     true,
@@ -376,7 +379,22 @@ export class NegocioService {
   }
 
   getNegocios(): Observable<NegocioSummary[]> {
-    return this.list({ limit: 500 }).pipe(catchError(() => of([])));
+    const now = Date.now();
+    if (this.negociosCache && this.negociosCache.expiresAt > now) {
+      return this.negociosCache.request$;
+    }
+
+    const request$ = this.list({ limit: 500 }).pipe(
+      catchError(() => of([])),
+      shareReplay(1),
+    );
+
+    this.negociosCache = {
+      expiresAt: now + this.negociosCacheTtlMs,
+      request$,
+    };
+
+    return request$;
   }
 
   searchNegocios(query: string): Observable<NegocioSummary[]> {
@@ -588,19 +606,31 @@ export class NegocioService {
   create(payload: CreateNegocioPayload): Observable<NegocioSummary> {
     return this.http
       .post<unknown>(buildApiUrl('/negocios'), payload)
-      .pipe(map((response) => this.requireNegocioSummary(response, payload.nombre)));
+      .pipe(
+        map((response) => this.requireNegocioSummary(response, payload.nombre)),
+        tap(() => this.invalidateNegociosCache()),
+      );
   }
 
   /** PATCH /api/negocios/:id */
   update(id: number, payload: UpdateNegocioPayload): Observable<NegocioSummary> {
     return this.http
       .patch<unknown>(buildApiUrl(`/negocios/${id}`), payload)
-      .pipe(map((response) => this.requireNegocioSummary(response, String(id))));
+      .pipe(
+        map((response) => this.requireNegocioSummary(response, String(id))),
+        tap(() => this.invalidateNegociosCache()),
+      );
   }
 
   /** DELETE /api/negocios/:id */
   remove(id: number): Observable<unknown> {
-    return this.http.delete<unknown>(buildApiUrl(`/negocios/${id}`));
+    return this.http
+      .delete<unknown>(buildApiUrl(`/negocios/${id}`))
+      .pipe(tap(() => this.invalidateNegociosCache()));
+  }
+
+  private invalidateNegociosCache(): void {
+    this.negociosCache = null;
   }
 
   /** GET /api/negocios/me/siguiendo/negocios — negocios que sigue el usuario autenticado */

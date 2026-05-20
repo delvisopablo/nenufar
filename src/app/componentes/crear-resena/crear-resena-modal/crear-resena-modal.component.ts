@@ -21,7 +21,8 @@ import {
 } from '../../../config/api.config';
 import { getUserErrorMessage } from '../../../core/errors/error-parser';
 import { SKIP_HTTP_ERROR_HANDLING } from '../../../core/errors/http-error.interceptor';
-import { resolveBusinessImage } from '../../../core/negocio/negocio-visuals';
+import { resolveBusinessImage, resolveNenufarAsset, NENUFAR_OPTIONS } from '../../../core/negocio/negocio-visuals';
+import { NenufarBurstComponent } from '../../shared/nenufar-burst/nenufar-burst.component';
 import {
   ReviewProductChip,
   SuggestedReviewProduct,
@@ -72,7 +73,7 @@ interface CrearResenaPayload {
 @Component({
   selector: 'app-crear-resena-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, NenufarBurstComponent],
   templateUrl: './crear-resena-modal.component.html',
   styleUrl: './crear-resena-modal.component.css'
 })
@@ -104,6 +105,8 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
   errorMensaje = signal('');
   errorProductos = signal('');
   enviando = signal(false);
+  burstActivo = signal(false);
+  burstNenufarSrc = signal('assets/imagenes/nenufar.png');
   mostrarTooltipSello = signal(false);
   selectorProductosAbierto = signal(false);
   sugerirProductoAbierto = signal(false);
@@ -207,6 +210,11 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
     this.mostrarLista.set(false);
   }
 
+  onBurstFinished(): void {
+    this.burstActivo.set(false);
+    this.cerrar();
+  }
+
   cerrar(): void {
     this.visible = false;
     this.resetProductComposer();
@@ -298,7 +306,14 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
             usuarioNombre: this.usuarioActual?.nombre ?? null,
           });
 
-          alert('Genial!! Tu reseña se ha guardado.');
+          const negocioOpt = this.negocios.find(n => n.id === this.negocioIdSeleccionado);
+          const rawAsset = negocioOpt?.nenufarAsset ?? negocioOpt?.nenufarActivo ?? negocioOpt?.nenufarKey ?? null;
+          const resolvedSrc = rawAsset
+            ? resolveNenufarAsset(rawAsset, NENUFAR_OPTIONS) ?? 'assets/imagenes/nenufar.png'
+            : 'assets/imagenes/nenufar.png';
+          this.burstNenufarSrc.set(resolvedSrc);
+          this.burstActivo.set(true);
+
           this.resenaCreada.emit(respuestaNormalizada);
           this.form.reset({
             negocio: this.negocioIdSeleccionado === this.negocioId ? this.getNegocioNombreInicial() : '',

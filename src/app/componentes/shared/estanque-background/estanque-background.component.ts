@@ -9,6 +9,7 @@ import {
   inject
 } from '@angular/core';
 import * as THREE from 'three';
+import { NenufarPerformanceService } from '../../../core/performance/nenufar-performance.service';
 
 type AmbientDrifterKind = 'leaf' | 'gleam';
 
@@ -60,11 +61,13 @@ export class EstanqueBackgroundComponent implements AfterViewInit, OnDestroy {
   @ViewChild('viewport', { static: true }) private viewportRef?: ElementRef<HTMLDivElement>;
 
   private readonly ngZone = inject(NgZone);
+  private readonly performanceService = inject(NenufarPerformanceService);
+  private readonly performanceProfile = this.performanceService.getProfile();
 
   private readonly clickRippleDuration = 2.5;
   private readonly maxClickRipples = 3;
   private readonly maxPads = 26;
-  private readonly maxPondClickSources = 18;
+  private readonly maxPondClickSources = this.performanceProfile.background.maxClickSources;
   private readonly worldHeight = 10;
   private readonly initialSpawnBounds = {
     left: -4.65,
@@ -216,10 +219,12 @@ export class EstanqueBackgroundComponent implements AfterViewInit, OnDestroy {
 
     this.renderer = new THREE.WebGLRenderer({
       alpha: true,
-      antialias: true,
-      powerPreference: 'high-performance'
+      antialias: this.performanceProfile.background.antialias,
+      powerPreference: this.performanceProfile.mode === 'lite' ? 'low-power' : 'high-performance'
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio || 1, this.performanceProfile.background.maxPixelRatio),
+    );
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.domElement.classList.add('estanque-canvas');
@@ -472,6 +477,14 @@ export class EstanqueBackgroundComponent implements AfterViewInit, OnDestroy {
     }
 
     const now = timestampMs * 0.001;
+    if (
+      this.lastFrameAt &&
+      timestampMs - this.lastFrameAt * 1000 < this.performanceProfile.background.frameIntervalMs
+    ) {
+      this.animationFrameId = requestAnimationFrame(this.renderLoop);
+      return;
+    }
+
     const elapsed = now - this.clockStart;
     this.lastFrameAt = now;
 
@@ -517,7 +530,10 @@ export class EstanqueBackgroundComponent implements AfterViewInit, OnDestroy {
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
 
-    this.pondRes = width < 720 ? 10 : 8;
+    this.pondRes = Math.max(
+      this.performanceProfile.background.pondResolution,
+      width < 720 ? 10 : 8,
+    );
     this.pondCols = Math.max(2, Math.floor(this.pondWidth / this.pondRes));
     this.pondRows = Math.max(2, Math.floor(this.pondHeight / this.pondRes));
     this.pondField = new Float32Array(this.pondRows * this.pondCols);
@@ -533,7 +549,7 @@ export class EstanqueBackgroundComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    const ring = 8;
+    const ring = this.performanceProfile.background.baseWaveSources;
     const radius = Math.min(this.pondWidth, this.pondHeight) * 0.24;
 
     for (let i = 0; i < ring; i += 1) {
@@ -560,7 +576,7 @@ export class EstanqueBackgroundComponent implements AfterViewInit, OnDestroy {
       'rgba(165, 192, 169, 0.12)'
     ];
 
-    for (let index = 0; index < 5; index += 1) {
+    for (let index = 0; index < this.performanceProfile.background.leafCount; index += 1) {
       const point = this.sampleAmbientLocation(0.18);
       this.ambientDrifters.push({
         baseU: point.x,
@@ -578,7 +594,7 @@ export class EstanqueBackgroundComponent implements AfterViewInit, OnDestroy {
       });
     }
 
-    for (let index = 0; index < 6; index += 1) {
+    for (let index = 0; index < this.performanceProfile.background.gleamCount; index += 1) {
       const point = this.sampleAmbientLocation(0.12);
       this.ambientDrifters.push({
         baseU: point.x,
@@ -869,7 +885,10 @@ export class EstanqueBackgroundComponent implements AfterViewInit, OnDestroy {
     }
 
     const { width, height } = size;
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    const pixelRatio = Math.min(
+      window.devicePixelRatio || 1,
+      this.performanceProfile.background.maxPixelRatio,
+    );
 
     this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(width, height, false);

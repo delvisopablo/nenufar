@@ -116,7 +116,7 @@ export class PerfilComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    if (!this.authService.hasAccessToken()) {
+    if (!this.authService.isAuthenticated()) {
       this.cargando.set(false);
       void this.router.navigate(['/estanque']);
       return;

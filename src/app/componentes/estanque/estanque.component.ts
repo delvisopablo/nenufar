@@ -17,6 +17,7 @@ import { NenufarEntity } from '../nenufar/nenufar.types';
 import { AuthService } from '../../servicios/authService/auth.service';
 import { CuentaAtrasService } from '../../servicios/cuentaAtrasServicio/cuenta-atras.service';
 import { getUserErrorMessage, isAppErrorModel } from '../../core/errors/error-parser';
+import { NenufarPerformanceService } from '../../core/performance/nenufar-performance.service';
 
 type ClickRipple = {
   startAt: number;
@@ -190,7 +191,9 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly idleTimeout = 1.2;
   private readonly maxClickRipples = 3;
   private readonly maxKick = 1.12;
+  private readonly performanceProfile: ReturnType<NenufarPerformanceService['getProfile']>;
   private readonly maxPads = 26;
+  private readonly activePadCount: number;
   private readonly maxPopupCount = 12;
   private readonly maxSpeed = 1.92;
   private readonly maxSpin = 0.142;
@@ -276,7 +279,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     '#bde5f1',
     '#f1feff'
   ];
-  private readonly maxPondClickSources = 18;
+  private readonly maxPondClickSources: number;
 
   private readonly onWindowResize = (): void => {
     this.scheduleViewportSync();
@@ -355,8 +358,13 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private cuentaAtrasService: CuentaAtrasService,
     private ngZone: NgZone,
+    private performanceService: NenufarPerformanceService,
     private router: Router
-  ) {}
+  ) {
+    this.performanceProfile = this.performanceService.getProfile();
+    this.activePadCount = this.performanceProfile.loginPond.padCount;
+    this.maxPondClickSources = this.performanceProfile.background.maxClickSources;
+  }
 
   ngOnInit(): void {
     this.lastScore = Number(localStorage.getItem('estanque_last_score') || 0);
@@ -563,10 +571,12 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.renderer = new THREE.WebGLRenderer({
       alpha: true,
-      antialias: true,
-      powerPreference: 'high-performance'
+      antialias: this.performanceProfile.background.antialias,
+      powerPreference: this.performanceProfile.mode === 'lite' ? 'low-power' : 'high-performance'
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio || 1, this.performanceProfile.background.maxPixelRatio),
+    );
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.domElement.classList.add('estanque-canvas');
@@ -824,7 +834,9 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     this.focusHaloTexture = this.createFocusHaloTexture();
     this.glowTexture = this.createGlowTexture();
     this.mustioTexture = await this.loadPadTexture(
-      'assets/imagenes/nenufar_mustio.png',
+      this.performanceProfile.preferSmallLocalAssets
+        ? 'assets/imagenes/nenufar_mustio_small.png'
+        : 'assets/imagenes/nenufar_mustio.png',
       {
         backgroundMode: 'preserve-source-alpha',
         fallbackColors: {
@@ -835,7 +847,9 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     );
     this.originalTexture = await this.loadPadTexture(
-      'assets/imagenes/nenufar.png',
+      this.performanceProfile.preferSmallLocalAssets
+        ? 'assets/imagenes/nenufar_small.png'
+        : 'assets/imagenes/nenufar.png',
       {
         backgroundMode: 'remove-white-background',
         fallbackColors: {
@@ -846,8 +860,11 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     );
 
-    const totalPads = THREE.MathUtils.randInt(18, 24);
-    const coreCount = THREE.MathUtils.randInt(6, 8);
+    const totalPads = this.activePadCount;
+    const coreCount = Math.min(
+      totalPads - 2,
+      this.performanceProfile.loginPond.corePadCount,
+    );
     const outerCount = totalPads - coreCount - 1;
     const minDist = this.basePadMinDist();
     const placed: PlacedSeed[] = [];
@@ -1044,6 +1061,14 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const now = timestampMs * 0.001;
+    if (
+      this.lastFrameAt &&
+      timestampMs - this.lastFrameAt * 1000 < this.performanceProfile.loginPond.frameIntervalMs
+    ) {
+      this.animationFrameId = requestAnimationFrame(this.renderLoop);
+      return;
+    }
+
     const elapsed = now - this.clockStart;
     const dt = Math.min(Math.max(now - this.lastFrameAt, 1 / 144), 1 / 24);
     this.lastFrameAt = now;
@@ -1657,7 +1682,10 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const { width, height } = size;
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    const pixelRatio = Math.min(
+      window.devicePixelRatio || 1,
+      this.performanceProfile.background.maxPixelRatio,
+    );
 
     this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(width, height, false);
@@ -2271,7 +2299,10 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
 
-    this.pondRes = width < 720 ? 10 : 8;
+    this.pondRes = Math.max(
+      this.performanceProfile.background.pondResolution,
+      width < 720 ? 10 : 8,
+    );
     this.pondCols = Math.max(2, Math.floor(this.pondWidth / this.pondRes));
     this.pondRows = Math.max(2, Math.floor(this.pondHeight / this.pondRes));
     this.pondField = new Float32Array(this.pondRows * this.pondCols);
@@ -2287,7 +2318,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const ring = 8;
+    const ring = this.performanceProfile.background.baseWaveSources;
     const radius = Math.min(this.pondWidth, this.pondHeight) * 0.24;
 
     for (let i = 0; i < ring; i += 1) {
@@ -2314,7 +2345,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       'rgba(165, 192, 169, 0.12)'
     ];
 
-    for (let index = 0; index < 5; index += 1) {
+    for (let index = 0; index < this.performanceProfile.background.leafCount; index += 1) {
       const point = this.sampleAmbientLocation(0.18);
       this.ambientDrifters.push({
         baseU: point.x,
@@ -2332,7 +2363,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    for (let index = 0; index < 6; index += 1) {
+    for (let index = 0; index < this.performanceProfile.background.gleamCount; index += 1) {
       const point = this.sampleAmbientLocation(0.12);
       this.ambientDrifters.push({
         baseU: point.x,

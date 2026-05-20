@@ -9,13 +9,14 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { catchError, finalize, of } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { PondBusinessSnapshot } from '../../servicios/estanqueFeed/estanque-feed.service';
 import {
   CreateProductoPayload,
   Producto,
   ProductoServiceService,
+  SolicitudProducto,
 } from '../../servicios/productoServicio/productoService.service';
 import {
   PendingProductSuggestionRequest,
@@ -32,6 +33,8 @@ import {
 export class CatalogoNegocioModalComponent implements OnChanges {
   @Input() negocioId!: number;
   @Input() negocio: PondBusinessSnapshot | null = null;
+  @Input() puedeGestionar = false;
+  @Input() mostrarSugerencias = false;
 
   private readonly fb = inject(FormBuilder);
   private readonly productoService = inject(ProductoServiceService);
@@ -62,11 +65,23 @@ export class CatalogoNegocioModalComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if ('negocioId' in changes && this.negocioId > 0) {
       this.cargarCatalogo();
+    }
+
+    if (
+      ('negocioId' in changes ||
+        'puedeGestionar' in changes ||
+        'mostrarSugerencias' in changes) &&
+      this.negocioId > 0
+    ) {
       this.cargarSolicitudes();
     }
   }
 
   abrirCrearProducto(): void {
+    if (!this.puedeGestionar) {
+      return;
+    }
+
     this.editorAbierto.set(true);
     this.productoEditandoId.set(null);
     this.errorMensaje.set('');
@@ -81,6 +96,10 @@ export class CatalogoNegocioModalComponent implements OnChanges {
   }
 
   editarProducto(producto: Producto): void {
+    if (!this.puedeGestionar) {
+      return;
+    }
+
     this.editorAbierto.set(true);
     this.productoEditandoId.set(producto.id);
     this.errorMensaje.set('');
@@ -89,7 +108,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
       nombre: producto.nombre,
       descripcion: String(producto.descripcion ?? ''),
       precio: Number(producto.precio ?? 0),
-      codigoSKU: String(producto.codigoSKU ?? ''),
+      codigoSKU: this.getProductCode(producto) ?? '',
       foto: this.getProductImage(producto),
     });
   }
@@ -108,6 +127,10 @@ export class CatalogoNegocioModalComponent implements OnChanges {
   }
 
   guardarProducto(): void {
+    if (!this.puedeGestionar) {
+      return;
+    }
+
     if (this.guardando()) {
       return;
     }
@@ -161,6 +184,10 @@ export class CatalogoNegocioModalComponent implements OnChanges {
   }
 
   eliminarProducto(producto: Producto): void {
+    if (!this.puedeGestionar) {
+      return;
+    }
+
     if (!producto?.id) {
       return;
     }
@@ -187,7 +214,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
   }
 
   aprobarSolicitud(solicitud: PendingProductSuggestionRequest): void {
-    if (!solicitud?.localId || this.negocioId <= 0) {
+    if (!this.puedeGestionar || !solicitud?.localId || this.negocioId <= 0) {
       return;
     }
 
@@ -200,6 +227,26 @@ export class CatalogoNegocioModalComponent implements OnChanges {
     this.guardando.set(true);
     this.errorMensaje.set('');
     this.exitoMensaje.set('');
+
+    const backendId = this.getSolicitudBackendId(solicitud);
+    if (solicitud.source === 'backend' && backendId) {
+      this.productoService
+        .aprobarSolicitud(backendId)
+        .pipe(finalize(() => this.guardando.set(false)))
+        .subscribe({
+          next: () => {
+            this.cargarCatalogo();
+            this.cargarSolicitudes();
+            this.exitoMensaje.set('Solicitud aprobada y convertida en producto.');
+          },
+          error: (error: unknown) => {
+            this.errorMensaje.set(
+              getUserErrorMessage(error, 'No hemos podido aprobar la solicitud.'),
+            );
+          },
+        });
+      return;
+    }
 
     this.productoService
       .create(this.negocioId, payload)
@@ -223,7 +270,30 @@ export class CatalogoNegocioModalComponent implements OnChanges {
   }
 
   rechazarSolicitud(solicitud: PendingProductSuggestionRequest): void {
-    if (!solicitud?.localId) {
+    if (!this.puedeGestionar || !solicitud?.localId) {
+      return;
+    }
+
+    const backendId = this.getSolicitudBackendId(solicitud);
+    if (solicitud.source === 'backend' && backendId) {
+      this.guardando.set(true);
+      this.errorMensaje.set('');
+      this.exitoMensaje.set('');
+
+      this.productoService
+        .rechazarSolicitud(backendId)
+        .pipe(finalize(() => this.guardando.set(false)))
+        .subscribe({
+          next: () => {
+            this.cargarSolicitudes();
+            this.exitoMensaje.set('Solicitud rechazada.');
+          },
+          error: (error: unknown) => {
+            this.errorMensaje.set(
+              getUserErrorMessage(error, 'No hemos podido rechazar la solicitud.'),
+            );
+          },
+        });
       return;
     }
 
@@ -250,6 +320,18 @@ export class CatalogoNegocioModalComponent implements OnChanges {
       '';
 
     return image || null;
+  }
+
+  getProductCode(producto: Partial<Producto> | null | undefined): string | null {
+    if (!producto) {
+      return null;
+    }
+
+    const codigo =
+      String(producto.codigoProducto ?? '').trim() ||
+      String(producto.codigoSKU ?? '').trim();
+
+    return codigo || null;
   }
 
   getSolicitudContexto(solicitud: PendingProductSuggestionRequest): string {
@@ -286,7 +368,25 @@ export class CatalogoNegocioModalComponent implements OnChanges {
   }
 
   private cargarSolicitudes(): void {
-    this.solicitudes.set(this.reviewProductMeta.listPendingRequests(this.negocioId));
+    if (!this.puedeGestionar || !this.mostrarSugerencias || this.negocioId <= 0) {
+      this.solicitudes.set([]);
+      return;
+    }
+
+    const solicitudesLocales = this.reviewProductMeta.listPendingRequests(this.negocioId);
+
+    this.productoService
+      .getSolicitudesProducto(this.negocioId)
+      .pipe(catchError(() => of([])))
+      .subscribe((solicitudesBackend) => {
+        const solicitudesNormalizadas = solicitudesBackend
+          .map((solicitud) => this.normalizeBackendSolicitud(solicitud))
+          .filter((solicitud): solicitud is PendingProductSuggestionRequest => solicitud !== null);
+
+        this.solicitudes.set(
+          this.mergeSolicitudesPendientes(solicitudesNormalizadas, solicitudesLocales),
+        );
+      });
   }
 
   private buildPayload(): CreateProductoPayload {
@@ -323,9 +423,122 @@ export class CatalogoNegocioModalComponent implements OnChanges {
         String(producto.codigoSKU ?? '').trim() ||
         String(payload.codigoSKU ?? '').trim() ||
         undefined,
+      codigoProducto:
+        String(producto.codigoProducto ?? '').trim() ||
+        String(payload.codigoSKU ?? '').trim() ||
+        undefined,
       foto: this.getProductImage(producto) ?? payload.foto ?? null,
       negocioId: Number(producto.negocioId ?? this.negocioId),
     };
+  }
+
+  private normalizeBackendSolicitud(
+    solicitud: SolicitudProducto,
+  ): PendingProductSuggestionRequest | null {
+    if (!solicitud || typeof solicitud !== 'object') {
+      return null;
+    }
+
+    const nombre =
+      this.cleanText(solicitud.nombre) ||
+      this.cleanText(solicitud.nombreSugerido) ||
+      this.cleanText(solicitud.productoNombre) ||
+      this.cleanText(solicitud.servicioNombre);
+
+    if (!nombre) {
+      return null;
+    }
+
+    const estado = this.cleanText(solicitud.estado) || 'pendiente';
+    const estadoNormalizado = estado.toLowerCase();
+    if (
+      estadoNormalizado &&
+      estadoNormalizado !== 'pendiente' &&
+      estadoNormalizado !== 'pending'
+    ) {
+      return null;
+    }
+
+    const precio = Number(solicitud.precioSugerido ?? solicitud.precio ?? NaN);
+    const resena = solicitud.resena ?? solicitud.review ?? null;
+    const usuario = solicitud.usuario ?? null;
+    const backendId = solicitud.id;
+    const reviewId = Number(
+      solicitud.resenaId ?? solicitud.reviewId ?? resena?.id ?? 0,
+    );
+    const usuarioId = Number(solicitud.usuarioId ?? usuario?.id ?? NaN);
+    const usuarioNombre =
+      this.cleanText(solicitud.usuarioNombre) ||
+      this.cleanText(usuario?.nombre) ||
+      this.cleanText(usuario?.username) ||
+      this.cleanText(usuario?.email);
+
+    return {
+      id: backendId,
+      localId: `backend-${backendId}`,
+      reviewId: Number.isFinite(reviewId) ? reviewId : 0,
+      negocioId: Number(solicitud.negocioId ?? this.negocioId),
+      createdAt:
+        this.cleanText(solicitud.creadoEn) ||
+        this.cleanText(solicitud.createdAt) ||
+        this.cleanText(solicitud.actualizadoEn) ||
+        new Date().toISOString(),
+      nombre,
+      ...(Number.isFinite(precio) ? { precioSugerido: precio } : {}),
+      ...(this.cleanText(solicitud.descripcion)
+        ? { descripcion: this.cleanText(solicitud.descripcion) }
+        : {}),
+      estado,
+      reviewContenido:
+        this.cleanText(resena?.contenido) ||
+        this.cleanText(resena?.texto) ||
+        this.cleanText(resena?.comentario) ||
+        null,
+      usuarioId: Number.isFinite(usuarioId) ? usuarioId : null,
+      usuarioNombre: usuarioNombre || null,
+      source: 'backend',
+    };
+  }
+
+  private mergeSolicitudesPendientes(
+    backend: PendingProductSuggestionRequest[],
+    locales: PendingProductSuggestionRequest[],
+  ): PendingProductSuggestionRequest[] {
+    const seen = new Set<string>();
+    const output: PendingProductSuggestionRequest[] = [];
+
+    for (const solicitud of [...backend, ...locales]) {
+      const key =
+        solicitud.source === 'backend'
+          ? `backend:${solicitud.id ?? solicitud.localId}`
+          : `local:${solicitud.localId}`;
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      output.push(solicitud);
+    }
+
+    return output.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
+  private getSolicitudBackendId(
+    solicitud: PendingProductSuggestionRequest,
+  ): number | string | null {
+    if (solicitud.id != null && String(solicitud.id).trim()) {
+      return solicitud.id;
+    }
+
+    const rawLocalId = String(solicitud.localId ?? '');
+    return rawLocalId.startsWith('backend-')
+      ? rawLocalId.replace(/^backend-/, '')
+      : null;
+  }
+
+  private cleanText(value: unknown): string {
+    return String(value ?? '').trim();
   }
 
   private truncate(value: string, maxLength: number): string {

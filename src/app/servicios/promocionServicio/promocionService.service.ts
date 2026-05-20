@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable, map, shareReplay, tap } from 'rxjs';
 import {
   ApiListResponse,
   buildApiUrl,
@@ -86,14 +86,31 @@ export interface ValidarPromocionPayload {
 @Injectable({ providedIn: 'root' })
 export class PromocionService {
   private readonly http = inject(HttpClient);
+  private readonly activeCacheTtlMs = 3 * 60 * 1000;
+  private activeCache: { expiresAt: number; request$: Observable<Promocion[]> } | null = null;
 
   /** GET /api/promociones/activas — promociones globalmente activas */
   findActivas(): Observable<Promocion[]> {
-    return this.http
+    const now = Date.now();
+    if (this.activeCache && this.activeCache.expiresAt > now) {
+      return this.activeCache.request$;
+    }
+
+    const request$ = this.http
       .get<Promocion[] | ApiListResponse<Promocion>>(
         buildApiUrl('/promociones/activas'),
       )
-      .pipe(map((response) => extractItems(response)));
+      .pipe(
+        map((response) => extractItems(response)),
+        shareReplay(1),
+      );
+
+    this.activeCache = {
+      expiresAt: now + this.activeCacheTtlMs,
+      request$,
+    };
+
+    return request$;
   }
 
   /** GET /api/promociones/negocio/:id */
@@ -112,7 +129,9 @@ export class PromocionService {
 
   /** POST /api/promociones — crear (negocioId va en el body) */
   crear(payload: PromocionMutationPayload & { negocioId: number }): Observable<Promocion> {
-    return this.http.post<Promocion>(buildApiUrl('/promociones'), payload);
+    return this.http
+      .post<Promocion>(buildApiUrl('/promociones'), payload)
+      .pipe(tap(() => this.invalidateActiveCache()));
   }
 
   /**
@@ -128,7 +147,9 @@ export class PromocionService {
 
   /** PATCH /api/promociones/:id */
   actualizar(id: number, payload: Partial<PromocionMutationPayload>): Observable<Promocion> {
-    return this.http.patch<Promocion>(buildApiUrl(`/promociones/${id}`), payload);
+    return this.http
+      .patch<Promocion>(buildApiUrl(`/promociones/${id}`), payload)
+      .pipe(tap(() => this.invalidateActiveCache()));
   }
 
   /** Alias semántico para el componente */
@@ -160,12 +181,18 @@ export class PromocionService {
 
   /** DELETE /api/promociones/:id */
   borrar(id: number): Observable<unknown> {
-    return this.http.delete<unknown>(buildApiUrl(`/promociones/${id}`));
+    return this.http
+      .delete<unknown>(buildApiUrl(`/promociones/${id}`))
+      .pipe(tap(() => this.invalidateActiveCache()));
   }
 
   /** Alias semántico para el componente */
   eliminarPromocion(id: number): Observable<unknown> {
     return this.borrar(id);
+  }
+
+  private invalidateActiveCache(): void {
+    this.activeCache = null;
   }
 }
 
