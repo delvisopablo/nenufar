@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import {
   HorarioLike,
-  buildHorarioSummaryLines,
+  getHorarioResumen,
   hasHorarioConfigurado,
 } from '../../core/negocio/negocio-horario';
 
@@ -27,6 +27,9 @@ export class BusinessHorarioResumenComponent {
       return [];
     }
 
-    return buildHorarioSummaryLines(this.horario, this.intervaloReserva);
+    return getHorarioResumen(this.horario, {
+      intervaloReserva: this.intervaloReserva,
+      reservasActivas: this.reservasActivas,
+    });
   }
 }

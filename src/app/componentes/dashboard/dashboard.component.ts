@@ -51,6 +51,7 @@ export class DashboardComponent implements OnInit {
     buildHorarioSummaryLines(
       this.negocio()?.horario ?? null,
       this.negocio()?.intervaloReserva ?? null,
+      this.negocio()?.reservasActivas ?? this.negocio()?.aceptaReservas ?? null,
     )
   );
 
@@ -137,7 +138,8 @@ export class DashboardComponent implements OnInit {
       fotoPortada: negocio.fotoPortada ?? undefined,
       nenufarAsset: negocio.nenufarAsset ?? undefined,
       nenufarKey: negocio.nenufarKey ?? undefined,
-      aceptaReservas: Boolean(negocio.aceptaReservas),
+      reservasActivas: Boolean(negocio.reservasActivas ?? negocio.aceptaReservas),
+      aceptaReservas: Boolean(negocio.reservasActivas ?? negocio.aceptaReservas),
       intervaloReserva: Number(negocio.intervaloReserva ?? negocio.horario?.intervalo ?? 0) || null,
       categoria:
         typeof negocio.categoria === 'string'

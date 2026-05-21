@@ -17,7 +17,6 @@ import {
   FormGroup,
   ReactiveFormsModule,
 } from '@angular/forms';
-import { catchError, forkJoin, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import {
   HORARIO_DAY_LABELS,
@@ -25,7 +24,7 @@ import {
   HORARIO_DAY_SHORT_LABELS,
   HorarioDayKey,
   HorarioLike,
-  buildHorarioSummaryLines,
+  getHorarioResumen,
   hasHorarioConfigurado,
   normalizeHorarioWeekly,
 } from '../../core/negocio/negocio-horario';
@@ -34,8 +33,10 @@ import {
   NegocioService,
   NegocioSummary,
 } from '../../servicios/negocioService/negocio.service';
+import { environment } from '../../../environments/environment';
 
 type HorarioNegocioContexto = {
+  reservasActivas?: boolean;
   aceptaReservas?: boolean;
   intervaloReserva?: number | null;
   horario?: HorarioLike | null;
@@ -73,7 +74,7 @@ export class HorarioNegocioModalComponent implements OnChanges {
   readonly exitoMensaje = signal('');
 
   readonly form = this.fb.group({
-    aceptaReservas: this.fb.nonNullable.control(true),
+    reservasActivas: this.fb.nonNullable.control(true),
     intervaloReserva: this.fb.nonNullable.control(30),
     plantillaApertura: this.fb.nonNullable.control('10:00'),
     plantillaCierre: this.fb.nonNullable.control('20:00'),
@@ -82,10 +83,10 @@ export class HorarioNegocioModalComponent implements OnChanges {
 
   readonly resumenHorario = computed(() => {
     const payload = this.buildHorarioPayload();
-    return buildHorarioSummaryLines(
-      payload.horario ?? null,
-      Number(this.form.controls.intervaloReserva.value ?? 30) || 30,
-    );
+    return getHorarioResumen(payload.horario ?? null, {
+      intervaloReserva: payload.intervaloReserva,
+      reservasActivas: payload.reservasActivas,
+    });
   });
 
   constructor() {
@@ -140,44 +141,44 @@ export class HorarioNegocioModalComponent implements OnChanges {
     this.exitoMensaje.set('');
     this.guardando.set(true);
 
-    const aceptaReservas = Boolean(this.form.controls.aceptaReservas.value);
+    const reservasActivas = Boolean(this.form.controls.reservasActivas.value);
     const intervaloReserva =
       Number(this.form.controls.intervaloReserva.value ?? 30) || 30;
-    const horarioPayload = this.buildHorarioPayload();
+    const horarioPayload: ConfigHorarioPayload = {
+      ...this.buildHorarioPayload(),
+      intervaloReserva,
+      reservasActivas,
+    };
 
-    forkJoin({
-      negocioActualizado: this.negocioService.update(this.negocioId, {
-        aceptaReservas,
-        intervaloReserva,
-      }),
-      horarioActualizado: this.negocioService.configHorario(this.negocioId, horarioPayload).pipe(
-        catchError((error: unknown) => {
-          if ((error as { status?: number })?.status === 404) {
-            return this.negocioService.update(this.negocioId, {
-              horario: horarioPayload.horario,
-              intervaloReserva,
-            });
-          }
+    this.negocioService.guardarHorario(this.negocioId, horarioPayload).subscribe({
+      next: (negocioActualizado) => {
+        const negocioConHorario = {
+          ...(this.negocio ?? {}),
+          ...negocioActualizado,
+          horario: negocioActualizado.horario ?? horarioPayload.horario,
+          intervaloReserva: negocioActualizado.intervaloReserva ?? intervaloReserva,
+          reservasActivas:
+            negocioActualizado.reservasActivas ?? horarioPayload.reservasActivas,
+          aceptaReservas:
+            negocioActualizado.reservasActivas ?? horarioPayload.reservasActivas,
+        };
 
-          throw error;
-        }),
-      ),
-    })
-      .pipe(switchMap(() => this.negocioService.getNegocioById(this.negocioId)))
-      .subscribe({
-        next: (negocioActualizado) => {
-          this.guardando.set(false);
-          this.exitoMensaje.set('Horario guardado correctamente.');
-          this.patchFromBusiness(negocioActualizado);
-          this.guardado.emit(negocioActualizado);
-        },
-        error: (error: unknown) => {
-          this.guardando.set(false);
-          this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido guardar el horario.'),
-          );
-        },
-      });
+        this.guardando.set(false);
+        this.exitoMensaje.set('Horario guardado correctamente.');
+        this.patchFromBusiness(negocioConHorario);
+        this.guardado.emit(negocioConHorario as NegocioSummary);
+      },
+      error: (error: unknown) => {
+        this.guardando.set(false);
+        this.errorMensaje.set(
+          getUserErrorMessage(error, 'No hemos podido guardar el horario.'),
+        );
+
+        if (!environment.production) {
+          console.error('[horario-negocio] Error al guardar horario', error);
+        }
+      },
+    });
   }
 
   private ensureDays(): void {
@@ -205,16 +206,18 @@ export class HorarioNegocioModalComponent implements OnChanges {
     this.ensureDays();
 
     const weekly = normalizeHorarioWeekly(source?.horario ?? null);
-    const aceptaReservas =
-      typeof source?.aceptaReservas === 'boolean'
-        ? source.aceptaReservas
+    const reservasActivas =
+      typeof source?.reservasActivas === 'boolean'
+        ? source.reservasActivas
+        : typeof source?.aceptaReservas === 'boolean'
+          ? source.aceptaReservas
         : hasHorarioConfigurado(source?.horario ?? null);
     const intervaloReserva =
       Number(source?.intervaloReserva ?? source?.horario?.intervalo ?? 30) || 30;
 
     this.form.patchValue(
       {
-        aceptaReservas,
+        reservasActivas,
         intervaloReserva,
       },
       { emitEvent: false },
@@ -281,6 +284,7 @@ export class HorarioNegocioModalComponent implements OnChanges {
 
   private buildHorarioPayload(): ConfigHorarioPayload {
     const interval = Number(this.form.controls.intervaloReserva.value ?? 30) || 30;
+    const reservasActivas = Boolean(this.form.controls.reservasActivas.value);
     const weekly: Record<string, [string, string][]> = {};
     const diasAbre: string[] = [];
 
@@ -302,6 +306,7 @@ export class HorarioNegocioModalComponent implements OnChanges {
 
     return {
       intervaloReserva: interval,
+      reservasActivas,
       horario: {
         intervalo: interval,
         apertura: firstRange?.[0] ?? '',

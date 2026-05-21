@@ -76,6 +76,65 @@
   margin-top: 1.4rem;
 }
 
+.foto-perfil-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.foto-perfil-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.foto-perfil-copy > span {
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.foto-perfil-copy small,
+.foto-perfil-card .hint {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.foto-perfil-control {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.foto-perfil-preview {
+  width: 5.9rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(0, 95, 2, 0.18);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-soft);
+}
+
+.foto-perfil-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.file-input {
+  display: none;
+}
+
+.foto-perfil-card .error {
+  color: var(--nenufar-pink, #f45c9c);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .campo {
   display: flex;
   flex-direction: column;
@@ -155,6 +214,40 @@
 }
 
 .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary,
+.btn-ghost {
+  border: 0;
+  padding: 0.68rem 1.05rem;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-secondary {
+  color: #fff;
+  background: linear-gradient(135deg, #005f02, #427a43);
+}
+
+.btn-ghost {
+  color: var(--text-primary);
+  background: rgba(0, 95, 2, 0.1);
+  border: 1px solid rgba(0, 95, 2, 0.16);
+}
+
+.btn-secondary:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-secondary:disabled,
+.btn-ghost:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

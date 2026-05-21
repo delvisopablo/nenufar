@@ -82,7 +82,12 @@ export class HeaderComponent implements OnDestroy {
   readonly sinResultadosBusqueda = computed(
     () =>
       (normalizeSearchText(this.currentQuery()).length >= 2 || this.hayFiltrosActivos()) &&
-      (this.busquedaEstado() === 'empty' || this.busquedaEstado() === 'error')
+      this.busquedaEstado() === 'empty',
+  );
+  readonly errorBusqueda = computed(
+    () =>
+      (normalizeSearchText(this.currentQuery()).length >= 2 || this.hayFiltrosActivos()) &&
+      this.busquedaEstado() === 'error',
   );
   readonly hayFiltrosActivos = computed(
     () => Boolean(this.categoriaSeleccionadaId() || this.subcategoriaSeleccionadaId()),
@@ -157,39 +162,10 @@ export class HeaderComponent implements OnDestroy {
   }
 
   async buscarPrimerNegocio(): Promise<void> {
-    if (this.hayFiltrosActivos()) {
-      await this.ejecutarBusquedaActual();
-      return;
-    }
-
-    const primerResultado = this.resultadosBusqueda()[0];
-    if (primerResultado) {
-      this.seleccionarNegocio(primerResultado);
-      return;
-    }
-
-    const normalized = normalizeSearchText(this.searchControl.value);
-    if (normalized.length < 2) {
-      return;
-    }
-
-    this.busquedaEstado.set('loading');
-
-    try {
-      const results = await firstValueFrom(this.negocioSearchService.search(normalized, this.getFiltrosBusqueda()));
-      const firstMatch = results[0];
-
-      if (firstMatch) {
-        this.seleccionarNegocio(firstMatch);
-        return;
-      }
-
-      this.resultadosBusqueda.set([]);
-      this.busquedaEstado.set('empty');
-    } catch {
-      this.resultadosBusqueda.set([]);
-      this.busquedaEstado.set('error');
-    }
+    // Siempre ejecuta la búsqueda filtrada al pulsar "Buscar" o Enter.
+    // Así el usuario ve los resultados actualizados con el texto + filtros activos
+    // en lugar de navegar automáticamente al primer resultado.
+    await this.ejecutarBusquedaActual();
   }
 
   seleccionarNegocio(negocio: NegocioLite): void {
@@ -334,11 +310,18 @@ export class HeaderComponent implements OnDestroy {
     if (categoria) {
       this.cargarSubcategorias(categoria.id);
     }
+
+    // Lanza búsqueda inmediatamente al cambiar de categoría.
+    // cerrarPanel=false para que el usuario pueda seguir eligiendo subcategoría.
+    void this.ejecutarBusquedaActual(false);
   }
 
   seleccionarSubcategoria(subcategoria: Subcategoria | null): void {
     this.subcategoriaSeleccionadaId.set(subcategoria?.id ?? null);
     this.navigationError.set('');
+    // Lanza búsqueda inmediatamente al cambiar subcategoría.
+    // cerrarPanel=false para que el usuario vea el panel y pueda limpiar filtros.
+    void this.ejecutarBusquedaActual(false);
   }
 
   limpiarFiltros(): void {
@@ -440,7 +423,7 @@ export class HeaderComponent implements OnDestroy {
     });
   }
 
-  private async ejecutarBusquedaActual(): Promise<void> {
+  private async ejecutarBusquedaActual(cerrarPanel = true): Promise<void> {
     const normalized = normalizeSearchText(this.searchControl.value);
 
     if (!normalized && !this.hayFiltrosActivos()) {
@@ -457,7 +440,9 @@ export class HeaderComponent implements OnDestroy {
       );
       this.resultadosBusqueda.set(results);
       this.busquedaEstado.set(results.length ? 'ready' : 'empty');
-      this.filtrosAbiertos.set(false);
+      if (cerrarPanel) {
+        this.filtrosAbiertos.set(false);
+      }
     } catch {
       this.resultadosBusqueda.set([]);
       this.busquedaEstado.set('error');

@@ -93,8 +93,6 @@ describe('AuthService', () => {
   });
 
   it('registerNegocio uses /auth/registro-negocio and normalizes the token key to accessToken', () => {
-    spyOn(console, 'log');
-
     service.registerNegocio({
       nombreDueño: 'Paula',
       nickname: 'paula-cafe',
@@ -128,14 +126,6 @@ describe('AuthService', () => {
       codigoNenufarizacion: 'NENU-PAULA-8F3K',
       nenufarActivo: 'assets/nenufares_colores/nenufar_var3.png'
     });
-    expect(console.log).toHaveBeenCalledWith(
-      'Payload registro negocio:',
-      jasmine.objectContaining({
-        categoriaId: 3,
-        subcategoriaId: 8,
-        nenufarActivo: 'assets/nenufares_colores/nenufar_var3.png'
-      })
-    );
 
     req.flush({
       access_token: 'token-negocio',
@@ -160,6 +150,67 @@ describe('AuthService', () => {
       jasmine.objectContaining({
         id: 55,
         nombre: 'Cafe Nenufar'
+      }),
+    );
+  });
+
+  it('registerNegocio sends horario, intervaloReserva and reservasActivas when provided', () => {
+    const horario = {
+      weekly: {
+        mon: [['10:00', '20:00']],
+        tue: [['10:00', '20:00']],
+        wed: [['10:00', '20:00']],
+        thu: [['10:00', '20:00']],
+        fri: [['10:00', '20:00']],
+        sat: [],
+        sun: [],
+      },
+      exceptions: {},
+    };
+
+    service.registerNegocio({
+      nombreDueno: 'Nerea',
+      nickname: 'nerea',
+      email: 'nerea@example.com',
+      password: 'secret123',
+      nombreNegocio: 'Nenufar Bar',
+      categoriaId: 2,
+      horario,
+      intervaloReserva: 30,
+      reservasActivas: true,
+    }).subscribe();
+
+    const req = httpMock.expectOne('http://localhost:3000/api/auth/registro-negocio');
+
+    expect(req.request.body).toEqual(
+      jasmine.objectContaining({
+        horario,
+        intervaloReserva: 30,
+        reservasActivas: true,
+      }),
+    );
+
+    req.flush({
+      access_token: 'token-negocio-horario',
+      usuario: {
+        id: 102,
+        nombre: 'Nerea',
+        negocio: {
+          id: 56,
+          nombre: 'Nenufar Bar',
+          horario,
+          intervaloReserva: 30,
+          reservasActivas: true,
+        },
+      },
+    });
+
+    expect(service.obtenerUsuario()?.negocio).toEqual(
+      jasmine.objectContaining({
+        id: 56,
+        horario,
+        intervaloReserva: 30,
+        reservasActivas: true,
       }),
     );
   });

@@ -6,10 +6,10 @@
     </div>
 
     <label class="reservas-toggle">
-      <input type="checkbox" formControlName="aceptaReservas">
+      <input type="checkbox" formControlName="reservasActivas">
       <span>
         <strong>Reservas online</strong>
-        <small>{{ form.controls.aceptaReservas.value ? 'Activadas' : 'Desactivadas' }}</small>
+        <small>{{ form.controls.reservasActivas.value ? 'Activadas' : 'Desactivadas' }}</small>
       </span>
     </label>
   </section>
@@ -111,8 +111,6 @@
           <p class="summary-line">{{ linea }}</p>
         }
       </div>
-    } @else {
-      <p class="summary-empty">Horario no configurado</p>
     }
   </section>
 

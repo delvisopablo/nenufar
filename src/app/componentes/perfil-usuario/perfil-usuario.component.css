@@ -37,6 +37,8 @@
 .back-link,
 .edit-btn,
 .save-btn,
+.edit-secondary-btn,
+.edit-ghost-btn,
 .follow-btn {
   font: inherit;
   transition: transform 140ms ease, background 140ms ease, border-color 140ms ease, filter 140ms ease;
@@ -44,6 +46,8 @@
 
 .back-link,
 .edit-btn,
+.edit-secondary-btn,
+.edit-ghost-btn,
 .follow-btn {
   display: inline-flex;
   align-items: center;
@@ -66,6 +70,7 @@
 
 .edit-btn,
 .save-btn,
+.edit-secondary-btn,
 .follow-btn {
   border: 0;
   background: linear-gradient(135deg, #f05c9c, #ef7d57);
@@ -83,6 +88,8 @@
 .back-link:hover,
 .edit-btn:hover,
 .save-btn:hover,
+.edit-secondary-btn:hover,
+.edit-ghost-btn:hover,
 .follow-btn:hover {
   transform: translateY(-1px);
 }
@@ -253,6 +260,97 @@
   gap: 0.7rem;
 }
 
+.edit-alert {
+  margin: 0;
+  padding: 0.72rem 0.85rem;
+  border-radius: 1rem;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.edit-alert--error {
+  border: 1px solid rgba(240, 92, 156, 0.32);
+  background: rgba(240, 92, 156, 0.12);
+  color: #ffd8e9;
+}
+
+.edit-alert--ok {
+  border: 1px solid rgba(124, 217, 181, 0.34);
+  background: rgba(124, 217, 181, 0.14);
+  color: #d7fff0;
+}
+
+.profile-photo-editor {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0.85rem;
+  border-radius: 1.2rem;
+  border: 1px solid rgba(247, 255, 249, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.profile-photo-editor__preview {
+  width: 5rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(247, 255, 249, 0.14);
+  box-shadow: 0 16px 20px rgba(0, 0, 0, 0.18);
+}
+
+.profile-photo-editor__body {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.profile-photo-editor__body > span {
+  color: #f7fff9;
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.profile-photo-editor__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.edit-secondary-btn,
+.edit-ghost-btn {
+  min-height: 2.35rem;
+  padding: 0.52rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.edit-ghost-btn {
+  color: #f7fff9;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(247, 255, 249, 0.14);
+}
+
+.edit-hint,
+.edit-error {
+  font-size: 0.78rem;
+}
+
+.edit-hint {
+  color: rgba(236, 247, 242, 0.72);
+}
+
+.edit-error {
+  color: #ffd8e9;
+  font-weight: 800;
+}
+
 .bio-editor {
   width: 100%;
   min-height: 6rem;
@@ -268,6 +366,13 @@
 .save-btn {
   justify-self: start;
   padding: 0.72rem 1rem;
+}
+
+.save-btn:disabled,
+.edit-secondary-btn:disabled,
+.edit-ghost-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
 }
 
 .meta-chip,
@@ -572,8 +677,15 @@
   .follow-btn,
   .edit-btn,
   .edit-btn--soft,
+  .edit-secondary-btn,
+  .edit-ghost-btn,
   .stat-pill {
     width: 100%;
+  }
+
+  .profile-photo-editor {
+    grid-template-columns: 1fr;
+    justify-items: start;
   }
 }
 

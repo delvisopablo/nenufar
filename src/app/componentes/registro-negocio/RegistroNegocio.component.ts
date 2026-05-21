@@ -20,11 +20,17 @@ import { Router } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { buildApiUrl } from '../../config/api.config';
+import { hasHorarioConfigurado } from '../../core/negocio/negocio-horario';
 import {
   AuthResponse,
   AuthService,
+  AuthUser,
   RegisterPayload,
 } from '../../servicios/authService/auth.service';
+import {
+  ConfigHorarioPayload,
+  NegocioService,
+} from '../../servicios/negocioService/negocio.service';
 import {
   Categoria,
   CategoriaServiceService,
@@ -57,6 +63,7 @@ export class RegistroNegocioComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly negocioService = inject(NegocioService);
   private readonly http = inject(HttpClient);
   private readonly title = inject(Title);
   private readonly destroyRef = inject(DestroyRef);
@@ -171,26 +178,22 @@ export class RegistroNegocioComponent implements OnInit {
       ...(descripcionCorta ? { descripcionCorta } : {}),
       ...(codigoNenufarizacion ? { codigoNenufarizacion } : {}),
       nenufarActivo,
-      ...(horario ? { horario, intervaloReserva: this.intervaloReservaValue() } : {}),
+      ...(horario
+        ? {
+            horario,
+            intervaloReserva: this.intervaloReservaValue(),
+            reservasActivas: true,
+          }
+        : {}),
     };
 
     this.registrando.set(true);
 
     this.auth.registerNegocio(payload).subscribe({
-      next: (_response: AuthResponse) => {
+      next: (response: AuthResponse) => {
         localStorage.setItem('accesoPermitido', 'true');
         localStorage.removeItem('guestMode');
-        // Verify session via HttpOnly cookie before navigating
-        this.auth.me().subscribe({
-          next: () => {
-            this.registrando.set(false);
-            void this.router.navigate(['/inicio']);
-          },
-          error: () => {
-            this.registrando.set(false);
-            void this.router.navigate(['/inicio']);
-          }
-        });
+        this.sincronizarSesionTrasRegistro(response, payload);
       },
       error: (error: unknown) => {
         this.registrando.set(false);
@@ -470,7 +473,7 @@ export class RegistroNegocioComponent implements OnInit {
     return normalized;
   }
 
-  private buildHorarioJson(): object | null {
+  private buildHorarioJson(): ConfigHorarioPayload['horario'] | null {
     if (!this.tieneHorario()) {
       return null;
     }
@@ -478,7 +481,7 @@ export class RegistroNegocioComponent implements OnInit {
     const lv = this.horarioLV();
     const sat = this.horarioSabado();
     const sun = this.horarioDomingo();
-    const daySlot: string[][] = [[lv.apertura, lv.cierre]];
+    const daySlot: [string, string][] = [[lv.apertura, lv.cierre]];
 
     return {
       weekly: {
@@ -487,10 +490,124 @@ export class RegistroNegocioComponent implements OnInit {
         wed: daySlot,
         thu: daySlot,
         fri: daySlot,
-        sat: sat.abierto ? [[sat.apertura, sat.cierre]] : [],
-        sun: sun.abierto ? [[sun.apertura, sun.cierre]] : [],
+        sat: sat.abierto ? [[sat.apertura, sat.cierre] as [string, string]] : [],
+        sun: sun.abierto ? [[sun.apertura, sun.cierre] as [string, string]] : [],
       },
       exceptions: {}
     };
+  }
+
+  private sincronizarSesionTrasRegistro(
+    response: AuthResponse,
+    payload: RegisterPayload,
+  ): void {
+    const horarioPayload = this.getHorarioPayloadDesdeRegistro(payload);
+
+    this.auth.me().subscribe({
+      next: (usuario) => {
+        const usuarioRespuesta = this.getUsuarioDesdeRespuesta(response);
+        const usuarioActual =
+          usuario ?? this.auth.obtenerUsuario() ?? usuarioRespuesta;
+        const negocioId =
+          this.resolveNegocioId(usuarioActual) ?? this.resolveNegocioId(usuarioRespuesta);
+        const usuarioConNegocio =
+          this.getNegocioDesdeUsuario(usuarioActual) ? usuarioActual : usuarioRespuesta;
+
+        if (
+          horarioPayload &&
+          negocioId &&
+          this.necesitaSincronizarHorario(usuarioConNegocio, horarioPayload)
+        ) {
+          this.guardarHorarioPostRegistro(negocioId, horarioPayload);
+          return;
+        }
+
+        this.finalizarRegistroExitoso();
+      },
+      error: () => {
+        const usuarioRespuesta = this.getUsuarioDesdeRespuesta(response);
+        const negocioId = this.resolveNegocioId(usuarioRespuesta);
+
+        if (horarioPayload && negocioId) {
+          this.guardarHorarioPostRegistro(negocioId, horarioPayload);
+          return;
+        }
+
+        this.finalizarRegistroExitoso();
+      },
+    });
+  }
+
+  private guardarHorarioPostRegistro(
+    negocioId: number,
+    horarioPayload: ConfigHorarioPayload,
+  ): void {
+    this.negocioService.guardarHorario(negocioId, horarioPayload).subscribe({
+      next: () => {
+        this.auth.me().subscribe({
+          next: () => this.finalizarRegistroExitoso(),
+          error: () => this.finalizarRegistroExitoso(),
+        });
+      },
+      error: (error: unknown) => {
+        this.registrando.set(false);
+        this.errorMensaje.set(
+          getUserErrorMessage(
+            error,
+            'Tu negocio se creó, pero no hemos podido guardar el horario. Abre tu perfil e inténtalo de nuevo.',
+          ),
+        );
+      },
+    });
+  }
+
+  private finalizarRegistroExitoso(): void {
+    this.registrando.set(false);
+    void this.router.navigate(['/inicio']);
+  }
+
+  private getHorarioPayloadDesdeRegistro(
+    payload: RegisterPayload,
+  ): ConfigHorarioPayload | null {
+    if (!payload.horario || !hasHorarioConfigurado(payload.horario as ConfigHorarioPayload['horario'])) {
+      return null;
+    }
+
+    return {
+      horario: payload.horario as ConfigHorarioPayload['horario'],
+      intervaloReserva: Number(payload.intervaloReserva ?? 30) || 30,
+      reservasActivas: payload.reservasActivas ?? true,
+    };
+  }
+
+  private necesitaSincronizarHorario(
+    usuario: AuthUser | null,
+    horarioPayload: ConfigHorarioPayload,
+  ): boolean {
+    const negocio = this.getNegocioDesdeUsuario(usuario);
+    if (!negocio) {
+      return true;
+    }
+
+    const intervaloActual = Number(negocio.intervaloReserva ?? 0) || null;
+
+    return (
+      !hasHorarioConfigurado(negocio.horario as ConfigHorarioPayload['horario']) ||
+      intervaloActual !== horarioPayload.intervaloReserva ||
+      negocio.reservasActivas !== true
+    );
+  }
+
+  private getUsuarioDesdeRespuesta(response: AuthResponse): AuthUser | null {
+    return response.usuario ?? response.user ?? response.data ?? null;
+  }
+
+  private getNegocioDesdeUsuario(usuario: AuthUser | null): AuthUser['negocio'] | null {
+    return usuario?.negocio ?? usuario?.negocios?.[0] ?? null;
+  }
+
+  private resolveNegocioId(usuario: AuthUser | null): number | null {
+    const id = Number(this.getNegocioDesdeUsuario(usuario)?.id ?? 0);
+    return Number.isFinite(id) && id > 0 ? id : null;
   }
 }

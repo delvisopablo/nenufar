@@ -1,9 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { finalize, map, of, switchMap } from 'rxjs';
 import { AuthService, AuthUser } from '../../../servicios/authService/auth.service';
 import { UsuarioServiceService } from '../../../servicios/usuarioServicio/usuarioService.service';
 import { getUserErrorMessage } from '../../../core/errors/error-parser';
+import { environment } from '../../../../environments/environment';
+import {
+  DEFAULT_PROFILE_PHOTO,
+  getProfilePhotoFileError,
+  resolveProfilePhoto,
+} from '../../../core/usuario/profile-photo';
 
 @Component({
   selector: 'app-ajustes',
@@ -12,7 +19,7 @@ import { getUserErrorMessage } from '../../../core/errors/error-parser';
   templateUrl: './ajustes.component.html',
   styleUrl: './ajustes.component.css'
 })
-export class AjustesComponent implements OnInit {
+export class AjustesComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly usuarios = inject(UsuarioServiceService);
@@ -21,18 +28,32 @@ export class AjustesComponent implements OnInit {
   readonly guardando = signal(false);
   readonly errorMensaje = signal('');
   readonly mensajeExito = signal('');
+  readonly fotoPerfilError = signal('');
+  readonly fotoPerfilArchivo = signal<File | null>(null);
+  readonly fotoPerfilPreview = signal<string | null>(null);
   readonly usuario = signal<AuthUser | null>(null);
+  readonly fotoPerfilSrc = computed(
+    () =>
+      this.fotoPerfilPreview() ||
+      resolveProfilePhoto(this.usuario()) ||
+      DEFAULT_PROFILE_PHOTO,
+  );
+
+  private fotoPerfilObjectUrl: string | null = null;
 
   form: FormGroup = this.fb.group({
     nombre: ['', [Validators.required, Validators.maxLength(80)]],
     nickname: [{ value: '', disabled: true }],
     email: [{ value: '', disabled: true }],
     biografia: ['', Validators.maxLength(220)],
-    foto: ['', Validators.maxLength(255)],
   });
 
   ngOnInit(): void {
     this.cargarPerfil();
+  }
+
+  ngOnDestroy(): void {
+    this.revokeFotoPerfilPreview();
   }
 
   private cargarPerfil(): void {
@@ -51,7 +72,6 @@ export class AjustesComponent implements OnInit {
           nickname: usuario.nickname ?? '',
           email: usuario.email ?? '',
           biografia: usuario.biografia ?? '',
-          foto: typeof usuario.foto === 'string' ? usuario.foto : (usuario.foto_perfil ?? ''),
         });
         this.cargando.set(false);
       },
@@ -65,6 +85,7 @@ export class AjustesComponent implements OnInit {
   guardar(): void {
     this.errorMensaje.set('');
     this.mensajeExito.set('');
+    this.fotoPerfilError.set('');
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -75,29 +96,94 @@ export class AjustesComponent implements OnInit {
       return;
     }
     const valores = this.form.getRawValue();
+    const archivoFotoPerfil = this.fotoPerfilArchivo();
     this.guardando.set(true);
     this.usuarios.updatePerfil(usuario.id, {
       nombre: valores.nombre,
       biografia: valores.biografia || null,
-      foto: valores.foto || null,
-    }).subscribe({
+    }).pipe(
+      switchMap((perfil) => {
+        if (!archivoFotoPerfil) {
+          return of(perfil);
+        }
+
+        return this.usuarios.subirFotoPerfil(archivoFotoPerfil).pipe(
+          map((perfilConFoto) => ({
+            ...perfil,
+            ...perfilConFoto,
+          })),
+        );
+      }),
+      finalize(() => this.guardando.set(false)),
+    ).subscribe({
       next: (perfil) => {
-        this.guardando.set(false);
         this.mensajeExito.set('Cambios guardados correctamente.');
-        // Refrescar la sesión cacheada (normalizo null→undefined para AuthUser)
+        const fotoPerfil = resolveProfilePhoto(perfil);
         const merged = {
           ...usuario,
+          ...perfil,
           nombre: perfil.nombre ?? usuario.nombre,
           biografia: perfil.biografia ?? undefined,
-          foto: perfil.foto ?? undefined,
-          foto_perfil: perfil.foto_perfil ?? undefined,
+          foto: fotoPerfil ?? perfil.foto ?? undefined,
+          fotoPerfil: fotoPerfil ?? null,
+          foto_perfil: fotoPerfil ?? null,
         };
+        this.usuario.set(merged);
         this.auth.guardarUsuario(merged);
+        this.clearFotoPerfilSelection();
       },
       error: (err: unknown) => {
-        this.guardando.set(false);
+        this.logDevError(err);
         this.errorMensaje.set(getUserErrorMessage(err, 'No hemos podido guardar los cambios.'));
       }
     });
+  }
+
+  onFotoPerfilSeleccionada(event: Event): void {
+    this.fotoPerfilError.set('');
+    this.mensajeExito.set('');
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+
+    if (!file) {
+      return;
+    }
+
+    const fileError = getProfilePhotoFileError(file);
+    if (fileError) {
+      this.fotoPerfilError.set(fileError);
+      input.value = '';
+      return;
+    }
+
+    this.revokeFotoPerfilPreview();
+    this.fotoPerfilArchivo.set(file);
+    this.fotoPerfilObjectUrl = URL.createObjectURL(file);
+    this.fotoPerfilPreview.set(this.fotoPerfilObjectUrl);
+    input.value = '';
+  }
+
+  descartarFotoPerfilSeleccionada(): void {
+    this.clearFotoPerfilSelection();
+    this.fotoPerfilError.set('');
+  }
+
+  private clearFotoPerfilSelection(): void {
+    this.fotoPerfilArchivo.set(null);
+    this.fotoPerfilPreview.set(null);
+    this.revokeFotoPerfilPreview();
+  }
+
+  private revokeFotoPerfilPreview(): void {
+    if (this.fotoPerfilObjectUrl) {
+      URL.revokeObjectURL(this.fotoPerfilObjectUrl);
+      this.fotoPerfilObjectUrl = null;
+    }
+  }
+
+  private logDevError(error: unknown): void {
+    if (!environment.production) {
+      console.error('[AjustesComponent] Error guardando perfil', error);
+    }
   }
 }

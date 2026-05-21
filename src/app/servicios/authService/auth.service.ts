@@ -24,6 +24,9 @@ export interface AuthBusiness {
   nickname?: string | null;
   fotoPerfil?: string | null;
   nenufarAsset?: string | null;
+  horario?: unknown;
+  intervaloReserva?: number | null;
+  reservasActivas?: boolean;
 }
 
 export type GlobalRole = 'USUARIO' | 'MODERADOR' | 'ADMIN';
@@ -37,7 +40,8 @@ export interface AuthUser {
   rol?: string;
   biografia?: string;
   foto?: string | null;
-  foto_perfil?: string;
+  fotoPerfil?: string | null;
+  foto_perfil?: string | null;
   negocio?: AuthBusiness;
   negocios?: AuthBusiness[];
   [key: string]: unknown;
@@ -97,6 +101,7 @@ export interface RegisterPayload {
   nenufarActivo?: string | null;
   intervaloReserva?: number;
   horario?: unknown;
+  reservasActivas?: boolean;
   duenoId?: number;
   usuarioId?: number;
   [key: string]: unknown;
@@ -257,7 +262,13 @@ export class AuthService {
       ...(descripcionCorta ? { descripcionCorta } : {}),
       ...(codigoNenufarizacion ? { codigoNenufarizacion } : {}),
       nenufarActivo: nenufarActivo || null,
-      ...(data.horario ? { horario: data.horario, intervaloReserva: data.intervaloReserva ?? 30 } : {}),
+      ...(data.horario
+        ? {
+            horario: data.horario,
+            intervaloReserva: data.intervaloReserva ?? 30,
+            reservasActivas: data.reservasActivas ?? true,
+          }
+        : {}),
     };
 
     return this.http
@@ -461,12 +472,17 @@ export class AuthService {
         ? usuarioRaw.rolGlobal.trim().toUpperCase()
         : undefined;
 
+    const fotoPerfil =
+      usuario.foto_perfil ??
+      usuario.fotoPerfil ??
+      (typeof usuario.foto === 'string' ? usuario.foto : undefined);
+
     return {
       ...usuario,
       ...(rolGlobal ? { rolGlobal } : {}),
-      foto_perfil:
-        usuario.foto_perfil ??
-        (typeof usuario.foto === 'string' ? usuario.foto : undefined),
+      foto: usuario.foto ?? fotoPerfil ?? null,
+      fotoPerfil: fotoPerfil ?? null,
+      foto_perfil: fotoPerfil ?? null,
       ...(negocios ? { negocios } : {}),
       ...(negocio ? { negocio } : {}),
     };

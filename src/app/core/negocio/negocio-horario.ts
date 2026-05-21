@@ -32,13 +32,13 @@ export const HORARIO_DAY_LABELS: Record<HorarioDayKey, string> = {
 };
 
 export const HORARIO_DAY_SHORT_LABELS: Record<HorarioDayKey, string> = {
-  mon: 'Lu',
-  tue: 'Ma',
-  wed: 'Mi',
-  thu: 'Ju',
-  fri: 'Vi',
-  sat: 'Sa',
-  sun: 'Do',
+  mon: 'Lun',
+  tue: 'Mar',
+  wed: 'Mié',
+  thu: 'Jue',
+  fri: 'Vie',
+  sat: 'Sáb',
+  sun: 'Dom',
 };
 
 const DAY_KEY_BY_INPUT = new Map<string, HorarioDayKey>([
@@ -81,9 +81,20 @@ const DAY_KEY_BY_INPUT = new Map<string, HorarioDayKey>([
   ['do', 'sun'],
 ]);
 
-function normalizeScheduleValue(value: string | null | undefined): string | null {
+function normalizeScheduleValue(value: unknown): string | null {
   const normalized = String(value ?? '').trim();
   return normalized || null;
+}
+
+function normalizeRange(range: unknown): [string, string] | null {
+  if (!Array.isArray(range) || range.length < 2) {
+    return null;
+  }
+
+  const apertura = normalizeScheduleValue(range[0]);
+  const cierre = normalizeScheduleValue(range[1]);
+
+  return apertura && cierre ? [apertura, cierre] : null;
 }
 
 function normalizeDayKey(value: string | null | undefined): HorarioDayKey | null {
@@ -111,12 +122,10 @@ export function hasHorarioConfigurado(horario: HorarioLike | null | undefined): 
     return false;
   }
 
-  if (normalizeScheduleValue(horario.apertura) && normalizeScheduleValue(horario.cierre)) {
-    return true;
-  }
-
-  return Object.values(horario.weekly ?? {}).some(
-    (ranges) => Array.isArray(ranges) && ranges.length > 0,
+  return HORARIO_DAY_ORDER.some((dayKey) =>
+    normalizeHorarioWeekly(horario)[dayKey].some(([apertura, cierre]) =>
+      Boolean(normalizeScheduleValue(apertura) && normalizeScheduleValue(cierre)),
+    ),
   );
 }
 
@@ -133,8 +142,8 @@ export function normalizeHorarioWeekly(
       const ranges = horario.weekly?.[dayKey];
       weekly[dayKey] = Array.isArray(ranges)
         ? ranges
-            .filter((range): range is [string, string] => Array.isArray(range) && range.length >= 2)
-            .map((range) => [String(range[0]), String(range[1])])
+            .map((range) => normalizeRange(range))
+            .filter((range): range is [string, string] => Boolean(range))
         : [];
     });
 
@@ -175,17 +184,20 @@ function formatRanges(ranges: [string, string][]): string {
 
 function formatDaySpan(startIndex: number, endIndex: number): string {
   if (startIndex === endIndex) {
-    return HORARIO_DAY_LABELS[HORARIO_DAY_ORDER[startIndex]];
+    return HORARIO_DAY_SHORT_LABELS[HORARIO_DAY_ORDER[startIndex]];
   }
 
-  return `${HORARIO_DAY_LABELS[HORARIO_DAY_ORDER[startIndex]]} a ${HORARIO_DAY_LABELS[HORARIO_DAY_ORDER[endIndex]]}`;
+  return `${HORARIO_DAY_SHORT_LABELS[HORARIO_DAY_ORDER[startIndex]]} - ${HORARIO_DAY_SHORT_LABELS[HORARIO_DAY_ORDER[endIndex]]}`;
 }
 
-export function buildHorarioSummaryLines(
+export function getHorarioResumen(
   horario: HorarioLike | null | undefined,
-  intervaloReserva?: number | null,
+  options: {
+    intervaloReserva?: number | null;
+    reservasActivas?: boolean | null;
+  } = {},
 ): string[] {
-  if (!horario) {
+  if (!hasHorarioConfigurado(horario)) {
     return [];
   }
 
@@ -212,10 +224,18 @@ export function buildHorarioSummaryLines(
     blockStart = blockEnd + 1;
   }
 
-  const interval = Number(intervaloReserva ?? horario.intervalo ?? 0);
-  if (Number.isFinite(interval) && interval > 0) {
+  const interval = Number(options.intervaloReserva ?? horario?.intervalo ?? 0);
+  if (options.reservasActivas === true && Number.isFinite(interval) && interval > 0) {
     lines.push(`Reservas cada ${interval} min`);
   }
 
   return lines;
+}
+
+export function buildHorarioSummaryLines(
+  horario: HorarioLike | null | undefined,
+  intervaloReserva?: number | null,
+  reservasActivas?: boolean | null,
+): string[] {
+  return getHorarioResumen(horario, { intervaloReserva, reservasActivas });
 }

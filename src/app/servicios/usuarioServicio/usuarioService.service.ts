@@ -14,6 +14,7 @@ export interface PerfilUsuarioResponse {
   nickname: string;
   email?: string;
   foto?: string | null;
+  fotoPerfil?: string | null;
   foto_perfil?: string | null;
   biografia?: string | null;
   creadoEn?: string;
@@ -67,8 +68,13 @@ export interface UpdatePerfilPayload {
   nombre?: string;
   biografia?: string | null;
   foto?: string | null;
+  fotoPerfil?: string | null;
 }
 
+export interface FotoPerfilUploadResponse {
+  ok?: boolean;
+  usuario?: PerfilUsuarioResponse;
+}
 
 export interface UsuarioBasico {
   id: number;
@@ -123,6 +129,24 @@ export class UsuarioServiceService {
       buildApiUrl(`/usuario/${id}`),
       payload,
     );
+  }
+
+  subirFotoPerfil(file: File): Observable<PerfilUsuarioResponse> {
+    const formData = new FormData();
+    formData.append('fotoPerfil', file);
+
+    return this.http
+      .post<FotoPerfilUploadResponse | PerfilUsuarioResponse>(
+        buildApiUrl('/usuario/me/foto-perfil'),
+        formData,
+      )
+      .pipe(
+        map((response) =>
+          'usuario' in response && response.usuario
+            ? response.usuario
+            : (response as PerfilUsuarioResponse),
+        ),
+      );
   }
 
   /** POST /api/usuario — alta básica de usuario (también disponible vía /auth/registro) */

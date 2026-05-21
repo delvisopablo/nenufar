@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, finalize, forkJoin, of, switchMap } from 'rxjs';
+import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
+import { environment } from '../../../environments/environment';
 import { AccessRequiredModalComponent } from '../../components/shared/access-required-modal/access-required-modal.component';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 import {
@@ -23,6 +24,11 @@ import {
   UpdatePerfilPayload,
   UsuarioServiceService,
 } from '../../servicios/usuarioServicio/usuarioService.service';
+import {
+  DEFAULT_PROFILE_PHOTO,
+  getProfilePhotoFileError,
+  resolveProfilePhoto,
+} from '../../core/usuario/profile-photo';
 
 type UserReview = {
   id?: number;
@@ -69,7 +75,7 @@ type CopiaReferidoAccion = '' | 'codigo' | 'enlace';
   templateUrl: './perfil-usuario.component.html',
   styleUrl: './perfil-usuario.component.css'
 })
-export class PerfilUsuarioComponent implements OnInit {
+export class PerfilUsuarioComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
@@ -98,9 +104,22 @@ export class PerfilUsuarioComponent implements OnInit {
   readonly nenufarizarError = signal('');
   readonly mostrarCodigoPanel = signal(false);
   readonly profileFlowerSpinning = signal(false);
+  readonly guardandoPerfil = signal(false);
+  readonly perfilEditError = signal('');
+  readonly perfilEditExito = signal('');
+  readonly fotoPerfilError = signal('');
+  readonly fotoPerfilArchivo = signal<File | null>(null);
+  readonly fotoPerfilPreview = signal<string | null>(null);
+  readonly fotoPerfilEdicionSrc = computed(
+    () =>
+      this.fotoPerfilPreview() ||
+      resolveProfilePhoto(this.usuario()) ||
+      DEFAULT_PROFILE_PHOTO,
+  );
 
   nuevaBio = '';
   private copyFeedbackTimerId: number | null = null;
+  private fotoPerfilObjectUrl: string | null = null;
 
   readonly esPerfilPropio = computed(() => {
     const actual = this.usuarioActual();
@@ -216,6 +235,14 @@ export class PerfilUsuarioComponent implements OnInit {
       });
   }
 
+  ngOnDestroy(): void {
+    this.clearFotoPerfilSelection();
+
+    if (this.copyFeedbackTimerId) {
+      window.clearTimeout(this.copyFeedbackTimerId);
+    }
+  }
+
   getStars(n: number): string {
     return '★'.repeat(Math.max(0, Math.min(5, Math.round(n))));
   }
@@ -271,37 +298,63 @@ export class PerfilUsuarioComponent implements OnInit {
       return;
     }
 
+    this.perfilEditError.set('');
+    this.perfilEditExito.set('');
+    this.fotoPerfilError.set('');
     const payload: UpdatePerfilPayload = {
       biografia: this.nuevaBio,
     };
+    const archivoFotoPerfil = this.fotoPerfilArchivo();
 
-    this.usuarioService.updatePerfil(perfil.id, payload).subscribe({
+    this.guardandoPerfil.set(true);
+    this.usuarioService.updatePerfil(perfil.id, payload).pipe(
+      switchMap((response) => {
+        if (!archivoFotoPerfil) {
+          return of(response);
+        }
+
+        return this.usuarioService.subirFotoPerfil(archivoFotoPerfil).pipe(
+          map((perfilConFoto) => ({
+            ...response,
+            ...perfilConFoto,
+          })),
+        );
+      }),
+      finalize(() => this.guardandoPerfil.set(false)),
+    ).subscribe({
       next: (response) => {
         const actual = this.usuarioActual();
+        const fotoPerfil = resolveProfilePhoto(response) ?? resolveProfilePhoto(perfil);
         const usuarioActualizado = {
           ...perfil,
           ...response,
           biografia: response.biografia ?? this.nuevaBio,
+          foto: fotoPerfil ?? response.foto ?? perfil.foto ?? null,
+          fotoPerfil: fotoPerfil ?? null,
+          foto_perfil: fotoPerfil ?? null,
         };
 
         this.usuario.set(usuarioActualizado);
         this.nuevaBio = usuarioActualizado.biografia || '';
         this.modoEdicion.set(false);
+        this.perfilEditExito.set('Perfil actualizado correctamente.');
+        this.clearFotoPerfilSelection();
 
         if (actual) {
           this.authService.guardarUsuario({
             ...actual,
             ...response,
             biografia: response.biografia ?? this.nuevaBio,
-            foto_perfil:
-              response.foto_perfil ??
-              (typeof response.foto === 'string' ? response.foto : actual.foto_perfil),
+            foto: fotoPerfil ?? response.foto ?? actual.foto ?? null,
+            fotoPerfil: fotoPerfil ?? null,
+            foto_perfil: fotoPerfil ?? null,
           });
           this.usuarioActual.set(this.authService.obtenerUsuario());
         }
       },
       error: (error: unknown) => {
-        this.error.set(getUserErrorMessage(error, 'No hemos podido guardar los cambios del perfil.'));
+        this.logDevError(error);
+        this.perfilEditError.set(getUserErrorMessage(error, 'No hemos podido guardar los cambios del perfil.'));
       },
     });
   }
@@ -441,12 +494,69 @@ export class PerfilUsuarioComponent implements OnInit {
 
   onProfileFlowerClick(): void {
     this.profileFlowerSpinning.set(true);
-    this.modoEdicion.update((value) => !value);
+    this.toggleModoEdicion();
     window.setTimeout(() => this.profileFlowerSpinning.set(false), 380);
   }
 
+  toggleModoEdicion(): void {
+    const nextValue = !this.modoEdicion();
+    this.modoEdicion.set(nextValue);
+    this.perfilEditError.set('');
+    this.fotoPerfilError.set('');
+
+    if (nextValue) {
+      this.perfilEditExito.set('');
+    }
+
+    if (!nextValue) {
+      this.clearFotoPerfilSelection();
+    }
+  }
+
+  onFotoPerfilSeleccionada(event: Event): void {
+    this.fotoPerfilError.set('');
+    this.perfilEditExito.set('');
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+
+    if (!file) {
+      return;
+    }
+
+    const fileError = getProfilePhotoFileError(file);
+    if (fileError) {
+      this.fotoPerfilError.set(fileError);
+      input.value = '';
+      return;
+    }
+
+    this.revokeFotoPerfilPreview();
+    this.fotoPerfilArchivo.set(file);
+    this.fotoPerfilObjectUrl = URL.createObjectURL(file);
+    this.fotoPerfilPreview.set(this.fotoPerfilObjectUrl);
+    input.value = '';
+  }
+
+  descartarFotoPerfilSeleccionada(): void {
+    this.clearFotoPerfilSelection();
+    this.fotoPerfilError.set('');
+  }
+
   private shouldOpenNenúditar(): boolean {
-    return /\/Nenúditar(?:[/?#]|$)/.test(this.router.url);
+    return /\/Nen[uú]ditar(?:[/?#]|$)/i.test(this.router.url);
+  }
+
+  private clearFotoPerfilSelection(): void {
+    this.fotoPerfilArchivo.set(null);
+    this.fotoPerfilPreview.set(null);
+    this.revokeFotoPerfilPreview();
+  }
+
+  private revokeFotoPerfilPreview(): void {
+    if (this.fotoPerfilObjectUrl) {
+      URL.revokeObjectURL(this.fotoPerfilObjectUrl);
+      this.fotoPerfilObjectUrl = null;
+    }
   }
 
   private cargarNenufarizar(): void {
@@ -511,5 +621,11 @@ export class PerfilUsuarioComponent implements OnInit {
         'No hemos podido cargar tu zona de referidos ahora mismo.',
       ),
     );
+  }
+
+  private logDevError(error: unknown): void {
+    if (!environment.production) {
+      console.error('[PerfilUsuarioComponent] Error guardando perfil', error);
+    }
   }
 }

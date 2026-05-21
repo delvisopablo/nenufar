@@ -122,6 +122,7 @@ export interface NegocioSummary {
   descripcion?: string;
   descripcionCorta?: string;
   direccion?: string;
+  reservasActivas?: boolean;
   aceptaReservas?: boolean;
   intervaloReserva?: number | null;
   foto?: string | null;
@@ -234,6 +235,7 @@ export interface CreateNegocioPayload {
   subcategoriaId?: number;
   intervaloReserva?: number;
   horario?: NegocioHorario;
+  reservasActivas?: boolean;
 }
 
 export interface UpdateNegocioPayload {
@@ -252,11 +254,18 @@ export interface UpdateNegocioPayload {
   subcategoriaId?: number;
   intervaloReserva?: number;
   horario?: NegocioHorario;
+  reservasActivas?: boolean;
 }
 
 export interface ConfigHorarioPayload {
   intervaloReserva?: number;
   horario?: NegocioHorario;
+  reservasActivas?: boolean;
+}
+
+export interface HorarioNegocioConfig extends ConfigHorarioPayload {
+  id?: number;
+  nombre?: string;
 }
 
 export interface CreateMiembroPayload {
@@ -413,7 +422,15 @@ export class NegocioService {
     return this.getByNickname(nickname);
   }
 
+  getNegocioPorSlug(slug: string): Observable<NegocioSummary> {
+    return this.getBySlug(slug);
+  }
+
   getNegocioById(id: number): Observable<NegocioSummary> {
+    return this.getById(id);
+  }
+
+  getNegocioPorId(id: number): Observable<NegocioSummary> {
     return this.getById(id);
   }
 
@@ -650,16 +667,28 @@ export class NegocioService {
   }
 
   /** GET /api/negocios/:id/horario */
-  getHorario(id: number): Observable<NegocioHorario | null> {
-    return this.http.get<NegocioHorario | null>(buildApiUrl(`/negocios/${id}/horario`));
+  getHorario(id: number): Observable<HorarioNegocioConfig | null> {
+    return this.http
+      .get<unknown>(buildApiUrl(`/negocios/${id}/horario`))
+      .pipe(map((response) => this.normalizarHorarioConfig(response)));
+  }
+
+  /** PATCH /api/negocios/:id/horario */
+  guardarHorario(
+    negocioId: number,
+    payload: ConfigHorarioPayload,
+  ): Observable<NegocioSummary> {
+    return this.http
+      .patch<unknown>(buildApiUrl(`/negocios/${negocioId}/horario`), payload)
+      .pipe(
+        map((response) => this.requireNegocioSummary(response, String(negocioId))),
+        tap(() => this.invalidateNegociosCache()),
+      );
   }
 
   /** PATCH /api/negocios/:id/config-horario */
   configHorario(id: number, payload: ConfigHorarioPayload): Observable<NegocioSummary> {
-    return this.http.patch<NegocioSummary>(
-      buildApiUrl(`/negocios/${id}/config-horario`),
-      payload,
-    );
+    return this.guardarHorario(id, payload);
   }
 
   /** GET /api/negocios/:id/resenas */
@@ -769,7 +798,10 @@ export class NegocioService {
       nenufarKey?: string | null;
       nenufarAsset?: string | null;
       verificado?: boolean;
+      reservasActivas?: boolean;
       aceptaReservas?: boolean;
+      intervaloReserva?: number | string | null;
+      horario?: NegocioHorario | null;
       followersCount?: number;
       resenasCount?: number;
       productosCount?: number;
@@ -789,6 +821,13 @@ export class NegocioService {
 
     const id = Number(negocio.id);
     const nombre = negocio.nombre?.trim();
+    const reservasActivas =
+      typeof negocio.reservasActivas === 'boolean'
+        ? negocio.reservasActivas
+        : typeof negocio.aceptaReservas === 'boolean'
+          ? negocio.aceptaReservas
+          : undefined;
+    const intervaloReserva = Number(negocio.intervaloReserva);
 
     if (!Number.isFinite(id) && !nombre) {
       return null;
@@ -817,7 +856,15 @@ export class NegocioService {
       ...(typeof negocio.nenufarKey === 'string' ? { nenufarKey: negocio.nenufarKey } : {}),
       ...(typeof negocio.nenufarAsset === 'string' ? { nenufarAsset: negocio.nenufarAsset } : {}),
       ...(typeof negocio.verificado === 'boolean' ? { verificado: negocio.verificado } : {}),
-      ...(typeof negocio.aceptaReservas === 'boolean' ? { aceptaReservas: negocio.aceptaReservas } : {}),
+      ...(typeof reservasActivas === 'boolean'
+        ? { reservasActivas, aceptaReservas: reservasActivas }
+        : {}),
+      ...(Number.isFinite(intervaloReserva) && intervaloReserva > 0
+        ? { intervaloReserva }
+        : {}),
+      ...(negocio.horario && typeof negocio.horario === 'object'
+        ? { horario: negocio.horario }
+        : {}),
       ...(typeof negocio.followersCount === 'number' ? { followersCount: negocio.followersCount } : {}),
       ...(typeof negocio.resenasCount === 'number' ? { resenasCount: negocio.resenasCount } : {}),
       ...(typeof negocio.productosCount === 'number' ? { productosCount: negocio.productosCount } : {}),
@@ -879,6 +926,38 @@ export class NegocioService {
 
   private isControlledLookup404(error: unknown): boolean {
     return error instanceof HttpErrorResponse && error.status === 404;
+  }
+
+  private normalizarHorarioConfig(response: unknown): HorarioNegocioConfig | null {
+    if (!response || typeof response !== 'object') {
+      return null;
+    }
+
+    const raw = response as {
+      id?: number | string;
+      nombre?: string;
+      horario?: NegocioHorario | null;
+      intervaloReserva?: number | string | null;
+      reservasActivas?: boolean;
+      aceptaReservas?: boolean;
+    };
+    const intervaloReserva = Number(raw.intervaloReserva);
+    const reservasActivas =
+      typeof raw.reservasActivas === 'boolean'
+        ? raw.reservasActivas
+        : typeof raw.aceptaReservas === 'boolean'
+          ? raw.aceptaReservas
+          : undefined;
+
+    return {
+      ...(Number.isFinite(Number(raw.id)) ? { id: Number(raw.id) } : {}),
+      ...(raw.nombre?.trim() ? { nombre: raw.nombre.trim() } : {}),
+      horario: raw.horario && typeof raw.horario === 'object' ? raw.horario : undefined,
+      ...(Number.isFinite(intervaloReserva) && intervaloReserva > 0
+        ? { intervaloReserva }
+        : {}),
+      ...(typeof reservasActivas === 'boolean' ? { reservasActivas } : {}),
+    };
   }
 
 }

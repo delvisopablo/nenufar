@@ -163,13 +163,26 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     return buildHorarioSummaryLines(
       this.negocio?.horario ?? null,
       this.negocio?.intervaloReserva,
+      this.getReservasActivas(),
     );
   }
 
   getHorarioEstadoLabel(): string {
-    return this.negocio?.aceptaReservas
+    return this.getReservasActivas()
       ? 'Reservas online activadas'
       : 'Reservas online desactivadas';
+  }
+
+  getReservasActivas(): boolean | null {
+    if (typeof this.negocio?.reservasActivas === 'boolean') {
+      return this.negocio.reservasActivas;
+    }
+
+    if (typeof this.negocio?.aceptaReservas === 'boolean') {
+      return this.negocio.aceptaReservas;
+    }
+
+    return null;
   }
 
   getPetalosPerfil(): number {
@@ -511,6 +524,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
         this.cargarSeguimiento();
         this.generarHorasDisponibles();
         this.recargarReservas();
+        this.cargarHorarioSiNecesario();
       },
       error: (error: unknown) => {
         this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
@@ -529,11 +543,27 @@ export class PerfilPublicoNegocioComponent implements OnInit {
         this.cargarSeguimiento();
         this.generarHorasDisponibles();
         this.recargarReservas();
+        this.cargarHorarioSiNecesario();
       },
       error: (error: unknown) => {
         this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
       },
     });
+  }
+
+  private cargarHorarioSiNecesario(): void {
+    if (!this.negocioId || this.negocio?.horario) {
+      return;
+    }
+
+    this.negocioService.getHorario(this.negocioId)
+      .pipe(catchError(() => of(null)))
+      .subscribe((horario) => {
+        if (horario) {
+          this.negocio = { ...this.negocio, ...horario };
+          this.generarHorasDisponibles();
+        }
+      });
   }
 
   refrescarResenas(): void {
@@ -661,7 +691,10 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   }
 
   manejarHorarioGuardado(negocioActualizado: unknown): void {
-    this.negocio = negocioActualizado;
+    this.negocio = {
+      ...this.negocio,
+      ...(negocioActualizado && typeof negocioActualizado === 'object' ? negocioActualizado : {}),
+    };
     this.generarHorasDisponibles();
     this.recargarReservas();
   }

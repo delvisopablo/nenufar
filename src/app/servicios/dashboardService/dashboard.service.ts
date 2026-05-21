@@ -40,6 +40,7 @@ export interface DashboardNegocio {
   fotoPortada?: string;
   nenufarAsset?: string;
   nenufarKey?: string;
+  reservasActivas: boolean;
   aceptaReservas: boolean;
   intervaloReserva?: number | null;
   categoria?: {
@@ -200,7 +201,7 @@ export class DashboardService {
           noShow: reservas.filter((item) => item.estado === 'NO_SHOW').length,
           puntuacionMedia: totalResenas ? Number((sumaPuntuacion / totalResenas).toFixed(1)) : 0,
           totalResenas,
-          aceptaReservas: Boolean(negocio.aceptaReservas),
+          aceptaReservas: negocio.reservasActivas,
           tieneHorario
         };
       })
@@ -272,6 +273,11 @@ export class DashboardService {
     const raw = (response && typeof response === 'object' ? response : {}) as Record<string, any>;
     const horario = this.normalizeHorario(raw['horario']);
 
+    const reservasActivas =
+      typeof raw['reservasActivas'] === 'boolean'
+        ? raw['reservasActivas']
+        : Boolean(raw['aceptaReservas']);
+
     return {
       id: Number(raw['id'] ?? 0) || 0,
       nombre: String(raw['nombre'] ?? 'Negocio'),
@@ -280,7 +286,8 @@ export class DashboardService {
       fotoPortada: raw['fotoPortada'] ?? undefined,
       nenufarAsset: raw['nenufarAsset'] ?? undefined,
       nenufarKey: raw['nenufarKey'] ?? undefined,
-      aceptaReservas: Boolean(raw['aceptaReservas']),
+      reservasActivas,
+      aceptaReservas: reservasActivas,
       intervaloReserva: Number(raw['intervaloReserva'] ?? horario?.intervalo ?? 0) || null,
       categoria: raw['categoria'] ?? undefined,
       horario: horario ?? undefined

@@ -3,21 +3,77 @@
     <p class="ajustes-kicker">Ajustes</p>
     <h1>Tu perfil</h1>
 
-    <ng-container *ngIf="cargando(); else contenido">
+    @if (cargando()) {
       <p class="status-text">Cargando tu perfil…</p>
-    </ng-container>
+    } @else {
+      @if (errorMensaje()) {
+        <p class="alert alert-error">{{ errorMensaje() }}</p>
+      }
+      @if (mensajeExito()) {
+        <p class="alert alert-ok">{{ mensajeExito() }}</p>
+      }
 
-    <ng-template #contenido>
-      <p *ngIf="errorMensaje()" class="alert alert-error">{{ errorMensaje() }}</p>
-      <p *ngIf="mensajeExito()" class="alert alert-ok">{{ mensajeExito() }}</p>
+      @if (usuario()) {
+      <form [formGroup]="form" (ngSubmit)="guardar()" class="ajustes-form">
+        <section class="foto-perfil-card" aria-labelledby="foto-perfil-title">
+          <div class="foto-perfil-copy">
+            <span id="foto-perfil-title">Foto de perfil</span>
+            <small>JPG, PNG o WEBP · máximo 3 MB</small>
+          </div>
 
-      <form *ngIf="usuario()" [formGroup]="form" (ngSubmit)="guardar()" class="ajustes-form">
+          <div class="foto-perfil-control">
+            <img
+              class="foto-perfil-preview"
+              [src]="fotoPerfilSrc()"
+              alt="Foto de perfil actual"
+            />
+
+            <div class="foto-perfil-actions">
+              <input
+                #fotoPerfilInput
+                class="file-input"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                (change)="onFotoPerfilSeleccionada($event)"
+              />
+              <button
+                type="button"
+                class="btn-secondary"
+                (click)="fotoPerfilInput.click()"
+                [disabled]="guardando()"
+              >
+                {{ fotoPerfilArchivo() ? 'Cambiar foto' : 'Subir foto' }}
+              </button>
+
+              @if (fotoPerfilArchivo()) {
+                <button
+                  type="button"
+                  class="btn-ghost"
+                  (click)="descartarFotoPerfilSeleccionada()"
+                  [disabled]="guardando()"
+                >
+                  Quitar selección
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (fotoPerfilArchivo()) {
+            <small class="hint">Se guardará al pulsar “Guardar cambios”.</small>
+          }
+          @if (fotoPerfilError()) {
+            <small class="error">{{ fotoPerfilError() }}</small>
+          }
+        </section>
+
         <label class="campo">
           <span>Nombre</span>
           <input type="text" formControlName="nombre" maxlength="80" />
-          <small class="error" *ngIf="form.controls['nombre'].touched && form.controls['nombre'].invalid">
+          @if (form.controls['nombre'].touched && form.controls['nombre'].invalid) {
+          <small class="error">
             El nombre es obligatorio (máximo 80 caracteres).
           </small>
+          }
         </label>
 
         <div class="dos-columnas">
@@ -40,17 +96,13 @@
           <small class="hint">Máximo 220 caracteres.</small>
         </label>
 
-        <label class="campo">
-          <span>Foto (URL)</span>
-          <input type="url" formControlName="foto" maxlength="255" placeholder="https://…" />
-        </label>
-
         <div class="acciones">
           <button type="submit" class="btn-primary" [disabled]="guardando()">
             {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
           </button>
         </div>
       </form>
-    </ng-template>
+      }
+    }
   </div>
 </section>

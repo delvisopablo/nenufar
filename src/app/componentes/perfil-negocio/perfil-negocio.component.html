@@ -83,7 +83,7 @@
             <aside class="business-card__summary">
               <app-business-horario-resumen
                 [horario]="negocio?.horario"
-                [reservasActivas]="negocio?.aceptaReservas"
+                [reservasActivas]="getReservasActivas()"
                 [intervaloReserva]="negocio?.intervaloReserva"
               />
             </aside>

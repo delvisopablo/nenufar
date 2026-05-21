@@ -42,6 +42,7 @@ type ResumenHorarioSlot = {
 type NegocioReservasContexto = {
   id: number;
   nombre: string;
+  reservasActivas?: boolean;
   aceptaReservas?: boolean;
   intervaloReserva?: number | null;
   horario?: {
@@ -376,13 +377,20 @@ export class ReservasComponent implements OnInit, OnChanges {
   }
 
   crearReserva(): void {
-    if (!this.negocioActual?.id || !this.slotSeleccionadoIso) {
+    if (!this.negocioActual?.id) {
+      this.error = 'No hemos podido identificar el negocio. Recarga la página e inténtalo de nuevo.';
       return;
     }
 
-    if (!this.authService.hasAccessToken()) {
+    if (!this.slotSeleccionadoIso) {
+      this.error = 'Selecciona una hora para continuar.';
+      return;
+    }
+
+    if (!this.usuarioActual?.id && !this.authService.isAuthenticated()) {
       this.mensajeAcceso = 'Necesitas iniciar sesion para crear una reserva.';
       this.modalAccesoAbierto = true;
+      this.error = 'Para confirmar la reserva, primero inicia sesión.';
       return;
     }
 
@@ -816,11 +824,18 @@ export class ReservasComponent implements OnInit, OnChanges {
   }
 
   private normalizeNegocioContext(source: any): NegocioReservasContexto {
+    const reservasActivas =
+      typeof source?.reservasActivas === 'boolean'
+        ? source.reservasActivas
+        : typeof source?.aceptaReservas === 'boolean'
+          ? source.aceptaReservas
+          : true;
+
     return {
       id: Number(source?.id ?? 0) || 0,
       nombre: String(source?.nombre ?? 'Negocio'),
-      aceptaReservas:
-        typeof source?.aceptaReservas === 'boolean' ? source.aceptaReservas : true,
+      reservasActivas,
+      aceptaReservas: reservasActivas,
       intervaloReserva:
         Number(source?.intervaloReserva ?? source?.horario?.intervalo ?? 0) || null,
       horario: source?.horario ?? null,

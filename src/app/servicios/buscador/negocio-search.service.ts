@@ -317,7 +317,11 @@ export class NegocioSearchService {
         ...(filters.subcategoriaId ? { subcategoriaId: filters.subcategoriaId } : {}),
         limit: 500,
       })
-      .pipe(catchError(() => this.catalogo$));
+      .pipe(
+        // No caemos al catálogo sin filtrar: si la API falla con filtros activos
+        // devolvemos vacío para no mostrar resultados de la categoría incorrecta.
+        catchError(() => of([] as NegocioSummary[])),
+      );
   }
 
   private hasFilters(filters: NegocioSearchFilters): boolean {

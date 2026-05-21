@@ -7,7 +7,7 @@
 
       @if (esPerfilPropio()) {
         <div class="topbar-actions">
-          <button class="edit-btn" type="button" (click)="modoEdicion.set(!modoEdicion())">
+          <button class="edit-btn" type="button" (click)="toggleModoEdicion()">
             {{ modoEdicion() ? 'Cerrar' : 'Nenúditar' }}
           </button>
 
@@ -79,7 +79,7 @@
         <div class="user-card__media">
           <img
             class="user-avatar"
-            [src]="usuario()?.foto_perfil || usuario()?.foto || 'assets/imagenes/rana1_profile_foto.png'"
+            [src]="usuario()?.fotoPerfil || usuario()?.foto_perfil || usuario()?.foto || 'assets/imagenes/rana1_profile_foto.png'"
             alt="Foto de perfil"
           >
         </div>
@@ -104,19 +104,82 @@
             </div>
           </div>
 
+          @if (perfilEditError()) {
+            <p class="edit-alert edit-alert--error" role="alert">{{ perfilEditError() }}</p>
+          }
+          @if (perfilEditExito()) {
+            <p class="edit-alert edit-alert--ok">{{ perfilEditExito() }}</p>
+          }
+
           @if (!modoEdicion()) {
             <p class="hero-bio">
               {{ usuario()?.biografia || 'Este usuario aún no ha escrito una biografía.' }}
             </p>
           } @else {
             <div class="edit-panel">
+              <section class="profile-photo-editor" aria-labelledby="profile-photo-editor-title">
+                <img
+                  class="profile-photo-editor__preview"
+                  [src]="fotoPerfilEdicionSrc()"
+                  alt="Foto de perfil"
+                />
+
+                <div class="profile-photo-editor__body">
+                  <span id="profile-photo-editor-title">Foto de perfil</span>
+                  <small class="edit-hint">JPG, PNG o WEBP · máximo 3 MB</small>
+
+                  <div class="profile-photo-editor__actions">
+                    <input
+                      #fotoPerfilInput
+                      class="file-input"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      (change)="onFotoPerfilSeleccionada($event)"
+                    />
+                    <button
+                      type="button"
+                      class="edit-secondary-btn"
+                      (click)="fotoPerfilInput.click()"
+                      [disabled]="guardandoPerfil()"
+                    >
+                      {{ fotoPerfilArchivo() ? 'Cambiar foto' : 'Subir foto' }}
+                    </button>
+
+                    @if (fotoPerfilArchivo()) {
+                      <button
+                        type="button"
+                        class="edit-ghost-btn"
+                        (click)="descartarFotoPerfilSeleccionada()"
+                        [disabled]="guardandoPerfil()"
+                      >
+                        Quitar selección
+                      </button>
+                    }
+                  </div>
+
+                  @if (fotoPerfilArchivo()) {
+                    <small class="edit-hint">Se guardará con los cambios del perfil.</small>
+                  }
+                  @if (fotoPerfilError()) {
+                    <small class="edit-error">{{ fotoPerfilError() }}</small>
+                  }
+                </div>
+              </section>
+
               <textarea
                 class="bio-editor"
                 [(ngModel)]="nuevaBio"
                 placeholder="Escribe algo sobre ti"
                 rows="3"
               ></textarea>
-              <button class="save-btn" type="button" (click)="guardarCambios()">Guardar cambios</button>
+              <button
+                class="save-btn"
+                type="button"
+                (click)="guardarCambios()"
+                [disabled]="guardandoPerfil()"
+              >
+                {{ guardandoPerfil() ? 'Guardando...' : 'Guardar cambios' }}
+              </button>
             </div>
           }
 
