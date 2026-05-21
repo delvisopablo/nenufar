@@ -2199,7 +2199,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       return image;
     }
 
-    if (image.includes('/nenufares_colores/') || image.endsWith('/nenufar.png')) {
+    if (image.endsWith('/nenufar.png')) {
       return item.tone === 'mustio' ? this.mustioLilyImageSrc : DEFAULT_NENUFAR_SMALL_ASSET;
     }
 

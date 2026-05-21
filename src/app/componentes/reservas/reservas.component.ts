@@ -520,7 +520,7 @@ export class ReservasComponent implements OnInit, OnChanges {
   }
 
   irAConfigurarHorario(): void {
-    void this.router.navigate(['/mi-negocio/NENUditar']);
+    void this.router.navigate(['/mi-negocio/Nenuditar']);
   }
 
   irAEstanque(): void {

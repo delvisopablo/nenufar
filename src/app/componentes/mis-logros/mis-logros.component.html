@@ -47,7 +47,6 @@
     @if (logrosRecientes().length) {
       <section class="bloque">
         <div class="bloque-cabecera">
-          <span class="bloque-icono">🏅</span>
           <h2>Últimos logros desbloqueados</h2>
           <span class="badge-count">{{ totalDesbloqueados() }}</span>
         </div>
@@ -72,7 +71,6 @@
       @if (escalerasDe(cat).length) {
         <section class="bloque">
           <div class="bloque-cabecera">
-            <span class="bloque-icono">{{ cat.icono }}</span>
             <h2>{{ cat.nombre }}</h2>
           </div>
 
@@ -110,7 +108,11 @@
                             class="nenufar-img"
                           />
                         } @else {
-                          <span class="nivel-lock">🔒</span>
+                          <span class="nivel-lock" aria-label="Bloqueado">
+                            <svg class="lock-svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                              <path d="M13 6h-1V5A4 4 0 0 0 4 5v1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1zm-5 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm2-6H6V5a2 2 0 0 1 4 0v1z"/>
+                            </svg>
+                          </span>
                         }
                       </div>
                       <div class="nivel-datos">
@@ -131,9 +133,8 @@
     <!-- ── LOGROS OCULTOS ────────────────────────────────────── -->
     <section class="bloque">
       <div class="bloque-cabecera">
-        <span class="bloque-icono">🌑</span>
         <h2>Logros ocultos</h2>
-        <span class="bloque-subtitulo">Secretos y Easter Eggs</span>
+        <span class="bloque-subtitulo">Secretos del Estanque</span>
       </div>
 
       <div class="ocultos-grid">
@@ -152,11 +153,11 @@
               @if (lo.esMaestro) {
                 <img src="assets/imagenes/nenufar.png" alt="nenúfar maestro" class="oculto-nenufar" />
               } @else if (lo.esEasterEgg) {
-                <span class="oculto-signo">✨</span>
+                <span class="oculto-signo oculto-egg">✦</span>
               } @else if (lo.desbloqueado) {
-                <span class="oculto-signo">🌸</span>
+                <img src="assets/imagenes/nenufar_small.png" alt="desbloqueado" class="oculto-nenufar" />
               } @else {
-                <span class="oculto-signo">❓</span>
+                <span class="oculto-signo oculto-unknown">?</span>
               }
             </div>
             <div class="oculto-info">
@@ -167,7 +168,11 @@
               <span class="nivel-pts">+{{ lo.recompensa }} pétalos</span>
             </div>
             @if (!lo.desbloqueado) {
-              <div class="oculto-candado">🔒</div>
+              <div class="oculto-candado">
+                <svg class="lock-svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path d="M13 6h-1V5A4 4 0 0 0 4 5v1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1zm-5 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm2-6H6V5a2 2 0 0 1 4 0v1z"/>
+                </svg>
+              </div>
             }
           </article>
         }
@@ -178,7 +183,6 @@
     @if (proximosLogros().length) {
       <section class="bloque">
         <div class="bloque-cabecera">
-          <span class="bloque-icono">🎯</span>
           <h2>Próximos logros</h2>
         </div>
 
@@ -204,7 +208,6 @@
     <!-- ── SISTEMA DE PÉTALOS ────────────────────────────────── -->
     <section class="bloque petalos-bloque">
       <div class="bloque-cabecera">
-        <span class="bloque-icono">🌸</span>
         <h2>Sistema de pétalos</h2>
       </div>
 
@@ -220,12 +223,12 @@
         <div class="petalos-formas">
           <h3>¿Cómo conseguir pétalos?</h3>
           <ul class="formas-lista">
-            <li><span class="forma-icono">⭐</span> Publicar reseñas</li>
-            <li><span class="forma-icono">🤝</span> Seguir negocios y perfiles</li>
-            <li><span class="forma-icono">👤</span> Completar tu perfil</li>
-            <li><span class="forma-icono">🏪</span> Configurar tu negocio</li>
-            <li><span class="forma-icono">🗺️</span> Explorar negocios y categorías</li>
-            <li><span class="forma-icono">🏅</span> Desbloquear logros</li>
+            <li>Publicar reseñas</li>
+            <li>Seguir negocios y perfiles</li>
+            <li>Completar tu perfil</li>
+            <li>Configurar tu negocio</li>
+            <li>Explorar negocios y categorías</li>
+            <li>Desbloquear logros</li>
           </ul>
         </div>
 
@@ -252,7 +255,11 @@
           <img src="assets/imagenes/nenufar_small.png" alt="desbloqueado" class="modal-nenufar" />
           <span class="modal-estado-texto desbloqueado">Desbloqueado</span>
         } @else {
-          <span class="modal-lock">🔒</span>
+          <span class="modal-lock">
+            <svg class="lock-svg lock-svg--modal" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M13 6h-1V5A4 4 0 0 0 4 5v1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1zm-5 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm2-6H6V5a2 2 0 0 1 4 0v1z"/>
+            </svg>
+          </span>
           <span class="modal-estado-texto bloqueado">No desbloqueado</span>
         }
       </div>

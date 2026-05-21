@@ -465,7 +465,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loginModalOpen = false;
     this.loginSubmitting = false;
     this.loginError = '';
-    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 
   onRegisterClick(): void {
@@ -2004,7 +2004,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     return new Promise((resolve) => {
       new THREE.ImageLoader().load(
         path,
-        (image) => {
+        (image: HTMLImageElement | ImageBitmap) => {
           resolve(this.preparePadTexture(image, options));
         },
         undefined,

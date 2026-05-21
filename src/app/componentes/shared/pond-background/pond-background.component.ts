@@ -88,7 +88,7 @@ export class PondBackgroundComponent implements AfterViewInit, OnChanges, OnDest
   @Input() tone: PondBackgroundTone | string = 'kelp';
   @Input({ transform: numberAttribute }) intensity = 1;
   @Input({ transform: numberAttribute }) opacity = 1;
-  @Input({ transform: booleanAttribute }) animated = true;
+  @Input({ transform: booleanAttribute }) animated = false;
 
   private ctx: CanvasRenderingContext2D | null = null;
   private resizeObserver?: ResizeObserver;

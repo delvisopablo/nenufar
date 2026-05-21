@@ -5,15 +5,9 @@
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
+  background-color: var(--nenufar-water-bg, #CBEFF6);
 }
 
 .pond-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  opacity: 1;
-  image-rendering: pixelated;
-  filter: saturate(106%) contrast(103%);
-  transform: translateZ(0);
+  display: none;
 }

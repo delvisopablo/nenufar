@@ -143,7 +143,7 @@ export class PerfilUsuarioComponent implements OnInit {
 
           this.cargando.set(true);
           this.error.set('');
-          this.modoEdicion.set(this.shouldOpenNENUditar());
+          this.modoEdicion.set(this.shouldOpenNenúditar());
 
           return this.usuarioService.getByNickname(nickname).pipe(
             switchMap((perfil) => {
@@ -445,8 +445,8 @@ export class PerfilUsuarioComponent implements OnInit {
     window.setTimeout(() => this.profileFlowerSpinning.set(false), 380);
   }
 
-  private shouldOpenNENUditar(): boolean {
-    return /\/NENUditar(?:[/?#]|$)/.test(this.router.url);
+  private shouldOpenNenúditar(): boolean {
+    return /\/Nenúditar(?:[/?#]|$)/.test(this.router.url);
   }
 
   private cargarNenufarizar(): void {

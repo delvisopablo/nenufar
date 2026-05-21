@@ -45,19 +45,19 @@ const CATEGORIAS: CategoriaLogros[] = [
   {
     id: 'resenas',
     nombre: 'Reseñas',
-    icono: '⭐',
+    icono: '',
     acciones: ['RESENA_PUBLICADA'],
   },
   {
     id: 'exploracion',
     nombre: 'Exploración',
-    icono: '🗺️',
+    icono: '',
     acciones: ['VISITA_NEGOCIO', 'COMPRA_REALIZADA', 'RESERVA_HECHA'],
   },
   {
     id: 'comunidad',
     nombre: 'Comunidad',
-    icono: '🤝',
+    icono: '',
     acciones: ['NEGOCIO_SEGUIDO', 'PROMOCION_CANJEADA'],
   },
 ];

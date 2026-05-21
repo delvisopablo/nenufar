@@ -840,3 +840,38 @@
     min-width: unset;
   }
 }
+
+/* ── Lock SVG icon ───────────────────────────────────────── */
+.lock-svg {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: middle;
+  opacity: 0.65;
+}
+
+.lock-svg--modal {
+  width: 2rem;
+  height: 2rem;
+  opacity: 0.8;
+}
+
+.nivel-lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text2);
+}
+
+.oculto-egg {
+  font-size: 1.4rem;
+  color: #f2e3bb;
+}
+
+.oculto-unknown {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text2);
+}

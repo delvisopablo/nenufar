@@ -654,7 +654,7 @@ export class PerfilNegocioComponent implements OnInit {
   }
 
   irAEditarNegocio(): void {
-    void this.router.navigate(['/mi-negocio/NENUditar']);
+    void this.router.navigate(['/mi-negocio/Nenúditar']);
   }
 
   irADashboardNegocio(): void {

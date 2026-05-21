@@ -150,13 +150,12 @@ function resolveNegocioNenufarAsset(
   fallback: string,
 ): string {
   const candidates = [
+    negocio?.nenufarAsset,
     negocio?.nenufarActivo,
     negocio?.assetNenufar,
-    negocio?.nenufarAsset,
     negocio?.imagenNenufar,
     negocio?.nenufarKey,
     negocio?.nenufarColor,
-    negocio?.fotoPerfil,
   ];
 
   for (const candidate of candidates) {
