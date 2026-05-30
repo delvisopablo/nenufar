@@ -54,6 +54,15 @@ describe('CredentialsInterceptor', () => {
     req.flush([]);
   });
 
+  it('adds withCredentials for relative /api requests', () => {
+    http.get('/api/auth/me').subscribe();
+
+    const req = httpMock.expectOne('/api/auth/me');
+    expect(req.request.withCredentials).toBeTrue();
+    expect(req.request.headers.has('Authorization')).toBeFalse();
+    req.flush({});
+  });
+
   it('does not modify requests outside the API base URL', () => {
     http.get('https://example.com/health').subscribe();
 

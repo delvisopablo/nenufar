@@ -2,8 +2,12 @@ import { HttpInterceptorFn } from '@angular/common/http';
 import { API_BASE_URL } from '../../config/api.config';
 import { clearAccessToken } from './auth.storage';
 
+function isBackendApiRequest(url: string): boolean {
+  return url.startsWith(API_BASE_URL) || url === '/api' || url.startsWith('/api/');
+}
+
 export const CredentialsInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!req.url.startsWith(API_BASE_URL)) {
+  if (!isBackendApiRequest(req.url)) {
     return next(req);
   }
 
