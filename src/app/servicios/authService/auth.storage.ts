@@ -6,19 +6,6 @@ function hasStorage(): boolean {
   return typeof localStorage !== 'undefined';
 }
 
-function normalizeStoredToken(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  const normalized = value.trim();
-  if (!normalized || normalized === 'undefined' || normalized === 'null') {
-    return null;
-  }
-
-  return normalized;
-}
-
 function removeLegacyAccessTokenKeys(): void {
   if (!hasStorage()) {
     return;
@@ -30,18 +17,7 @@ function removeLegacyAccessTokenKeys(): void {
 }
 
 export function writeAccessToken(token: string | null | undefined): void {
-  if (!hasStorage()) {
-    return;
-  }
-
-  const normalized = normalizeStoredToken(token);
-  if (!normalized) {
-    clearAccessToken();
-    return;
-  }
-
-  localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, normalized);
-  removeLegacyAccessTokenKeys();
+  clearAccessToken();
 }
 
 export function readAccessToken(): string | null {
@@ -49,25 +25,7 @@ export function readAccessToken(): string | null {
     return null;
   }
 
-  const stableToken = normalizeStoredToken(
-    localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY),
-  );
-  if (stableToken) {
-    removeLegacyAccessTokenKeys();
-    return stableToken;
-  }
-
-  for (const key of LEGACY_ACCESS_TOKEN_STORAGE_KEYS) {
-    const legacyToken = normalizeStoredToken(localStorage.getItem(key));
-    if (legacyToken) {
-      writeAccessToken(legacyToken);
-      return legacyToken;
-    }
-
-    localStorage.removeItem(key);
-  }
-
-  localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+  clearAccessToken();
   return null;
 }
 

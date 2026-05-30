@@ -34,6 +34,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   email = '';
   password = '';
+  rememberMe = false;
 
   modalOpen = signal(false);
   loginPending = signal(false);
@@ -102,6 +103,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   closeModal(): void {
     this.loginError.set('');
+    this.rememberMe = false;
     this.modalOpen.set(false);
   }
 
@@ -122,11 +124,12 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loginPending.set(true);
     this.loginError.set('');
 
-    this.authService.login(email, password).subscribe({
+    this.authService.login(email, password, this.rememberMe).subscribe({
       next: () => {
         localStorage.setItem('accesoPermitido', 'true');
         localStorage.removeItem('guestMode');
         this.cuentaAtrasService.desbloquearAcceso();
+        this.rememberMe = false;
         this.modalOpen.set(false);
         this.loginPending.set(false);
         this.router.navigate(['/inicio']);

@@ -13,7 +13,7 @@ function initializeAuthSession(authService: AuthService) {
   return () =>
     firstValueFrom(
       authService.hydrateSession({
-        forceRemote: authService.hasSessionHint(),
+        forceRemote: true,
       }).pipe(
         map(() => void 0),
         catchError(() => of(void 0)),

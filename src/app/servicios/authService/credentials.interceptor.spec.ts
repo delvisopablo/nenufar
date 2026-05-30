@@ -29,26 +29,27 @@ describe('CredentialsInterceptor', () => {
     localStorage.clear();
   });
 
-  it('adds withCredentials and Authorization for API requests when accessToken exists', () => {
+  it('adds withCredentials for API requests and clears stale accessToken values', () => {
     localStorage.setItem('accessToken', 'live-access-token');
 
     http.get('http://localhost:3000/api/auth/me').subscribe();
 
     const req = httpMock.expectOne('http://localhost:3000/api/auth/me');
     expect(req.request.withCredentials).toBeTrue();
-    expect(req.request.headers.get('Authorization')).toBe('Bearer live-access-token');
+    expect(req.request.headers.has('Authorization')).toBeFalse();
+    expect(localStorage.getItem('accessToken')).toBeNull();
     req.flush({});
   });
 
-  it('migrates legacy token keys to accessToken before adding Authorization', () => {
+  it('clears legacy token keys before sending cookie-authenticated API requests', () => {
     localStorage.setItem('access_token', 'legacy-access-token');
 
     http.get('http://localhost:3000/api/reservas/mis-reservas').subscribe();
 
     const req = httpMock.expectOne('http://localhost:3000/api/reservas/mis-reservas');
     expect(req.request.withCredentials).toBeTrue();
-    expect(req.request.headers.get('Authorization')).toBe('Bearer legacy-access-token');
-    expect(localStorage.getItem('accessToken')).toBe('legacy-access-token');
+    expect(req.request.headers.has('Authorization')).toBeFalse();
+    expect(localStorage.getItem('accessToken')).toBeNull();
     expect(localStorage.getItem('access_token')).toBeNull();
     req.flush([]);
   });

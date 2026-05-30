@@ -175,6 +175,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
   loginModalOpen = false;
   loginEmail = '';
   loginPassword = '';
+  loginRememberMe = false;
   loginSubmitting = false;
   loginError = '';
   logoPath = 'assets/imagenes/logo_nenufar_small.png';
@@ -465,6 +466,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loginModalOpen = false;
     this.loginSubmitting = false;
     this.loginError = '';
+    this.loginRememberMe = false;
     this.cdr.detectChanges();
   }
 
@@ -480,6 +482,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loginModalOpen = false;
     this.loginSubmitting = false;
     this.loginError = '';
+    this.loginRememberMe = false;
     this.cdr.markForCheck();
     void this.router.navigate(['/inicio']);
   }
@@ -506,11 +509,12 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loginError = '';
     this.cdr.markForCheck();
 
-    this.authService.login(email, password).subscribe({
+    this.authService.login(email, password, this.loginRememberMe).subscribe({
       next: () => {
         this.habilitarAcceso();
         this.loginSubmitting = false;
         this.loginModalOpen = false;
+        this.loginRememberMe = false;
         this.cdr.markForCheck();
 
         void this.router.navigate(['/inicio']);

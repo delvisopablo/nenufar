@@ -135,13 +135,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    if (!this.authService.isAuthenticated()) {
-      this.cargando.set(false);
-      void this.router.navigate(['/estanque']);
-      return;
-    }
-
-    this.authService.me()
+    this.authService.hydrateSession({ forceRemote: !this.authService.isSessionResolved() })
       .pipe(
         switchMap((actual) => {
           if (!actual?.id) {
@@ -170,11 +164,12 @@ export class PerfilComponent implements OnInit, OnDestroy {
               return forkJoin({
                 resenas: resenas$,
                 logros: this.cargarLogros(perfil.id),
-                reservas: this.authService.hasAccessToken()
-                  ? this.reservaService.reservasPorUsuario(perfil.id).pipe(
-                      catchError(() => of([])),
-                    )
-                  : of([]),
+                reservas: this.reservaService.reservasPorUsuario(perfil.id).pipe(
+                  catchError((error: unknown) => {
+                    this.logDevSecondary('reservas', error);
+                    return of([]);
+                  }),
+                ),
                 codigoReferido: this.nenufarizar.loadCodigo().pipe(
                   catchError((error: unknown) => {
                     this.registrarErrorNenufarizar(error);
@@ -528,16 +523,15 @@ export class PerfilComponent implements OnInit, OnDestroy {
   }
 
   private registrarErrorNenufarizar(error: unknown): void {
-    if (this.nenufarizarError()) {
-      return;
-    }
+    this.nenufarizar.codigoReferido.set('');
+    this.nenufarizar.referidos.set([]);
+    this.logDevSecondary('referidos', error);
+  }
 
-    this.nenufarizarError.set(
-      getUserErrorMessage(
-        error,
-        'No hemos podido cargar tu zona de referidos ahora mismo.',
-      ),
-    );
+  private logDevSecondary(area: string, error: unknown): void {
+    if (!environment.production) {
+      console.warn(`[PerfilComponent] ${area} no disponible`, error);
+    }
   }
 
   private logDevError(error: unknown): void {

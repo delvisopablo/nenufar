@@ -352,6 +352,11 @@ export class HeaderComponent implements OnDestroy {
     void this.router.navigate(['/admin']);
   }
 
+  irAListaCompra(): void {
+    this.resetearBusqueda();
+    void this.router.navigate(['/Nenulista']);
+  }
+
   private searchWithState(value: string) {
     const normalized = normalizeSearchText(value);
     const filters = this.getFiltrosBusqueda();

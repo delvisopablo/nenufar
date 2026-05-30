@@ -96,6 +96,12 @@
                 Mis logros
               </a>
 
+              @if (esPerfilPropio()) {
+                <a class="follow-btn follow-btn--soft" routerLink="/Nenulista">
+                  Mi Nenulista
+                </a>
+              }
+
               @if (!esPerfilPropio()) {
                 <button class="follow-btn" type="button" (click)="toggleSeguirUsuario()">
                   {{ siguiendoUsuario() ? 'Siguiendo' : 'Seguir' }}

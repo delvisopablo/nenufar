@@ -30,7 +30,7 @@
   }
 
   @if (puedeGestionar && editorAbierto()) {
-    <form class="catalog-form" [formGroup]="form" (ngSubmit)="guardarProducto()">
+    <form class="catalog-form" novalidate (submit)="$event.preventDefault(); guardarProducto()">
       <div class="catalog-form__head">
         <h3>{{ productoEditandoId() ? 'Editar producto' : 'Nuevo producto' }}</h3>
         <p>El catálogo se guardará asociado a {{ negocio?.nombre || 'tu negocio' }}.</p>
@@ -39,7 +39,13 @@
       <div class="catalog-grid">
         <label class="field">
           <span>Nombre</span>
-          <input type="text" formControlName="nombre" placeholder="Corte de pelo" />
+          <input
+            type="text"
+            [value]="form.controls.nombre.value ?? ''"
+            placeholder="Corte de pelo"
+            (input)="actualizarCampoTextoProducto('nombre', $any($event.target).value)"
+            (blur)="marcarProductoControlTocado('nombre')"
+          />
           @if (form.controls.nombre.invalid && (form.controls.nombre.dirty || form.controls.nombre.touched)) {
             <small class="field-error">El nombre es obligatorio.</small>
           }
@@ -47,7 +53,14 @@
 
         <label class="field">
           <span>Precio</span>
-          <input type="number" formControlName="precio" min="0" step="0.01" />
+          <input
+            type="number"
+            [value]="form.controls.precio.value ?? ''"
+            min="0"
+            step="0.01"
+            (input)="actualizarPrecioProducto($any($event.target).value)"
+            (blur)="marcarProductoControlTocado('precio')"
+          />
           @if (form.controls.precio.invalid && (form.controls.precio.dirty || form.controls.precio.touched)) {
             <small class="field-error">Indica un precio válido.</small>
           }
@@ -55,17 +68,35 @@
 
         <label class="field field--full">
           <span>Descripción opcional</span>
-          <textarea formControlName="descripcion" rows="3" placeholder="Cuenta qué incluye el servicio o producto."></textarea>
+          <textarea
+            rows="3"
+            [value]="form.controls.descripcion.value ?? ''"
+            placeholder="Cuenta qué incluye el servicio o producto."
+            (input)="actualizarCampoTextoProducto('descripcion', $any($event.target).value)"
+            (blur)="marcarProductoControlTocado('descripcion')"
+          ></textarea>
         </label>
 
         <label class="field">
           <span>Código de producto</span>
-          <input type="text" formControlName="codigoSKU" placeholder="CORT-001" />
+          <input
+            type="text"
+            [value]="form.controls.codigoSKU.value ?? ''"
+            placeholder="CORT-001"
+            (input)="actualizarCampoTextoProducto('codigoSKU', $any($event.target).value)"
+            (blur)="marcarProductoControlTocado('codigoSKU')"
+          />
         </label>
 
         <label class="field">
           <span>Foto opcional</span>
-          <input type="url" formControlName="foto" placeholder="https://..." />
+          <input
+            type="url"
+            [value]="form.controls.foto.value ?? ''"
+            placeholder="https://..."
+            (input)="actualizarCampoTextoProducto('foto', $any($event.target).value)"
+            (blur)="marcarProductoControlTocado('foto')"
+          />
           <small class="field-hint">Por ahora usamos URL pública para la imagen.</small>
         </label>
       </div>
@@ -104,7 +135,13 @@
     } @else {
       <div class="catalog-list">
         @for (producto of productosOrdenados(); track producto.id) {
-          <article class="catalog-card">
+          <article
+            class="catalog-card catalog-card--interactive"
+            role="button"
+            tabindex="0"
+            (click)="abrirDetalleProducto(producto)"
+            (keydown)="manejarTeclaProducto($event, producto)"
+          >
             <div class="catalog-card__head">
               @if (getProductImage(producto); as productImage) {
                 <img class="catalog-card__image" [src]="productImage" [alt]="producto.nombre" />
@@ -119,7 +156,7 @@
                   <p class="catalog-card__title">{{ producto.nombre }}</p>
                   <span class="catalog-card__price">{{ formatPrice(producto.precio) }}</span>
                 </div>
-                @if (getProductCode(producto); as productCode) {
+                @if (puedeGestionar && getProductCode(producto); as productCode) {
                   <p class="catalog-card__code">Código: {{ productCode }}</p>
                 }
               </div>
@@ -129,12 +166,27 @@
               <p class="catalog-card__desc">{{ producto.descripcion }}</p>
             }
 
+            <div class="catalog-card__quick-actions">
+              <button
+                type="button"
+                class="catalog-favorite-chip"
+                [class.catalog-favorite-chip--active]="esFavorito(producto)"
+                [disabled]="favoritoPendienteId() === producto.id"
+                (click)="$event.stopPropagation(); toggleFavorito(producto)"
+              >
+                <svg class="catalog-star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+                {{ esFavorito(producto) ? 'Guardado en favoritos' : 'Guardar como favorito' }}
+              </button>
+            </div>
+
             @if (puedeGestionar) {
               <div class="catalog-card__actions">
-                <button type="button" class="catalog-secondary-btn" (click)="editarProducto(producto)">
+                <button type="button" class="catalog-secondary-btn" (click)="$event.stopPropagation(); editarProducto(producto)">
                   Editar
                 </button>
-                <button type="button" class="catalog-danger-btn" (click)="eliminarProducto(producto)">
+                <button type="button" class="catalog-danger-btn" (click)="$event.stopPropagation(); eliminarProducto(producto)">
                   Eliminar
                 </button>
               </div>
@@ -204,5 +256,105 @@
         </div>
       }
     </section>
+  }
+
+  @if (productoDetalle(); as detalle) {
+    <div class="product-detail-backdrop" (click)="cerrarDetalleProducto()">
+      <article
+        class="product-detail"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-detail-title"
+        (click)="$event.stopPropagation()"
+      >
+        <button
+          type="button"
+          class="product-detail__close"
+          aria-label="Cerrar detalle de producto"
+          (click)="cerrarDetalleProducto()"
+        >
+          ×
+        </button>
+
+        <div class="product-detail__media">
+          @if (getProductImage(detalle); as detailImage) {
+            <img [src]="detailImage" [alt]="detalle.nombre" />
+          } @else {
+            <div class="product-detail__placeholder" aria-hidden="true">
+              {{ detalle.nombre.charAt(0) }}
+            </div>
+          }
+        </div>
+
+        <div class="product-detail__body">
+          <p class="product-detail__business">{{ getProductBusinessName(detalle) }}</p>
+          <h3 id="product-detail-title">{{ detalle.nombre }}</h3>
+          <p class="product-detail__price">{{ formatPrice(detalle.precio) }}</p>
+
+          @if (detalle.descripcion) {
+            <p class="product-detail__description">{{ detalle.descripcion }}</p>
+          } @else {
+            <p class="product-detail__description product-detail__description--muted">
+              Este producto aún no tiene descripción ampliada.
+            </p>
+          }
+
+          <div class="product-detail__quantity" aria-label="Cantidad">
+            <button type="button" (click)="ajustarCantidadDetalle(-1)" [disabled]="cantidadDetalle() <= 1">
+              −
+            </button>
+            <label>
+              <span>Cantidad</span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                [value]="cantidadDetalle()"
+                (input)="actualizarCantidadDetalle($event)"
+              />
+            </label>
+            <button type="button" (click)="ajustarCantidadDetalle(1)">
+              +
+            </button>
+          </div>
+
+          <div class="product-detail__actions">
+            <button
+              type="button"
+              class="catalog-secondary-btn catalog-secondary-btn--favorite"
+              [class.catalog-secondary-btn--active]="esFavorito(detalle)"
+              [disabled]="favoritoPendienteId() === detalle.id"
+              (click)="toggleFavorito(detalle)"
+            >
+              <svg class="catalog-star-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+              {{ esFavorito(detalle) ? 'Guardado en favoritos' : 'Guardar como favorito' }}
+            </button>
+
+            <button
+              type="button"
+              class="catalog-primary-btn"
+              [disabled]="listaPendiente()"
+              (click)="anadirDetalleALista()"
+            >
+              {{ listaPendiente() ? 'Añadiendo...' : 'Añadir a Mi Nenulista' }}
+            </button>
+          </div>
+
+          @if (errorMensaje()) {
+            <p class="catalog-feedback catalog-feedback--error" role="alert">
+              {{ errorMensaje() }}
+            </p>
+          }
+
+          @if (exitoMensaje()) {
+            <p class="catalog-feedback catalog-feedback--success" role="status">
+              {{ exitoMensaje() }}
+            </p>
+          }
+        </div>
+      </article>
+    </div>
   }
 </section>

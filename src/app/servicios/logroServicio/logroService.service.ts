@@ -96,23 +96,35 @@ export class LogroServiceService {
   private readonly http = inject(HttpClient);
 
   create(payload: CreateLogroPayload): Observable<Logro> {
-    return this.http.post<Logro>(buildApiUrl('/logros'), payload);
+    return this.http.post<Logro>(
+      buildApiUrl('/logros'),
+      payload,
+      { withCredentials: true },
+    );
   }
 
   findAll(): Observable<Logro[]> {
     return this.http
-      .get<Logro[] | ApiListResponse<Logro>>(buildApiUrl('/logros'))
+      .get<Logro[] | ApiListResponse<Logro>>(
+        buildApiUrl('/logros'),
+        { withCredentials: true },
+      )
       .pipe(map((response) => extractItems(response)));
   }
 
   update(id: number, payload: UpdateLogroPayload): Observable<Logro> {
-    return this.http.patch<Logro>(buildApiUrl(`/logros/${id}`), payload);
+    return this.http.patch<Logro>(
+      buildApiUrl(`/logros/${id}`),
+      payload,
+      { withCredentials: true },
+    );
   }
 
   asignar(logroId: number, usuarioId: number): Observable<LogroUsuario> {
     return this.http.post<LogroUsuario>(
       buildApiUrl(`/logros/${logroId}/usuario/${usuarioId}`),
       {},
+      { withCredentials: true },
     );
   }
 
@@ -120,18 +132,25 @@ export class LogroServiceService {
     return this.http
       .get<LogroUsuario[] | ApiListResponse<LogroUsuario>>(
         buildApiUrl(`/logros/usuario/${usuarioId}`),
+        { withCredentials: true },
       )
       .pipe(map((response) => extractItems(response)));
   }
 
   misLogros(): Observable<MiLogro[]> {
     return this.http
-      .get<MiLogro[] | ApiListResponse<MiLogro>>(buildApiUrl('/me/logros'))
+      .get<MiLogro[] | ApiListResponse<MiLogro>>(
+        buildApiUrl('/me/logros'),
+        { withCredentials: true },
+      )
       .pipe(map((response) => extractItems(response)));
   }
 
   miProgreso(): Observable<ProgresoEscalera[]> {
-    return this.http.get<ProgresoEscalera[]>(buildApiUrl('/me/logros/progreso'));
+    return this.http.get<ProgresoEscalera[]>(
+      buildApiUrl('/me/logros/progreso'),
+      { withCredentials: true },
+    );
   }
 
   findOne(id: number): Observable<Logro> {
@@ -139,6 +158,9 @@ export class LogroServiceService {
   }
 
   remove(id: number): Observable<unknown> {
-    return this.http.delete<unknown>(buildApiUrl(`/logros/${id}`));
+    return this.http.delete<unknown>(
+      buildApiUrl(`/logros/${id}`),
+      { withCredentials: true },
+    );
   }
 }

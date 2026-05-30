@@ -1,10 +1,13 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { PondBackgroundComponent } from '../shared/pond-background/pond-background.component';
 import { RutaLocalSearchService } from './ruta-local-search.service';
+import {
+  ListaCompraService,
+  ListaCompraItem,
+} from '../../servicios/listaCompraServicio/lista-compra.service';
 
 export type RouteMode = 'recados' | 'cerveza' | 'gastro' | 'tarde' | 'improvisar';
 export type Screen = 'tipo' | 'improvisar-setup' | 'home' | 'ruta' | 'add' | 'resumen';
@@ -13,6 +16,8 @@ export interface RouteItem {
   name: string;
   qty: number;
   note?: string;
+  nenulistaItemId?: number | string;
+  completado?: boolean;
 }
 
 export interface Parada {
@@ -214,14 +219,18 @@ const SAMPLE_ROUTES: SavedRoute[] = [
 @Component({
   selector: 'app-ruta-local',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, PondBackgroundComponent],
+  imports: [RouterLink, PondBackgroundComponent],
   templateUrl: './ruta-local.component.html',
   styleUrl: './ruta-local.component.scss'
 })
 export class RutaLocalComponent implements OnDestroy {
   private readonly searchService = inject(RutaLocalSearchService);
+  private readonly listaCompraService = inject(ListaCompraService);
 
   private searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  readonly cargandoNenulista = signal(false);
+  readonly nenulistaError = signal('');
 
   readonly brandLogoSrc = 'assets/imagenes/flor_logo.png';
 
@@ -274,6 +283,135 @@ export class RutaLocalComponent implements OnDestroy {
     if (this.searchTimeout) {
       clearTimeout(this.searchTimeout);
     }
+  }
+
+  cargarDesdeNenulista(): void {
+    this.cargandoNenulista.set(true);
+    this.nenulistaError.set('');
+
+    this.listaCompraService
+      .getLista()
+      .pipe(finalize(() => this.cargandoNenulista.set(false)))
+      .subscribe({
+        next: (items: ListaCompraItem[]) => {
+          const pendientes = items.filter(
+            (item) => !item.completado && !item.completada,
+          );
+
+          if (!pendientes.length) {
+            this.nenulistaError.set('No hay productos pendientes en Mi Nenulista.');
+            return;
+          }
+
+          const grupos = new Map<string, { nombre: string; items: ListaCompraItem[] }>();
+          const sinNegocio: ListaCompraItem[] = [];
+
+          for (const item of pendientes) {
+            const negocioNombre =
+              String(item.negocio?.nombre ?? '').trim() ||
+              String(item.producto?.negocio?.nombre ?? '').trim();
+            if (negocioNombre) {
+              if (!grupos.has(negocioNombre)) {
+                grupos.set(negocioNombre, { nombre: negocioNombre, items: [] });
+              }
+              grupos.get(negocioNombre)!.items.push(item);
+            } else {
+              sinNegocio.push(item);
+            }
+          }
+
+          const paradas: Parada[] = [];
+          let idCounter = 1;
+
+          grupos.forEach((grupo) => {
+            paradas.push({
+              id: idCounter++,
+              placeName: grupo.nombre,
+              placeAddress: 'Desde Mi Nenulista',
+              items: grupo.items.map((item) => ({
+                name:
+                  String(item.nombre ?? '').trim() ||
+                  String(item.producto?.nombre ?? '').trim() ||
+                  'Producto',
+                qty: Math.max(1, Math.floor(Number(item.cantidad ?? 1))),
+                note: String(item.nota ?? '').trim() || undefined,
+                nenulistaItemId: item.id,
+                completado: false,
+              })),
+              done: false,
+              current: false,
+            });
+          });
+
+          if (sinNegocio.length) {
+            paradas.push({
+              id: idCounter++,
+              placeName: 'Sin negocio',
+              placeAddress: 'Productos sin negocio asignado',
+              items: sinNegocio.map((item) => ({
+                name:
+                  String(item.nombre ?? '').trim() ||
+                  String(item.producto?.nombre ?? '').trim() ||
+                  'Producto manual',
+                qty: Math.max(1, Math.floor(Number(item.cantidad ?? 1))),
+                note: String(item.nota ?? '').trim() || undefined,
+                nenulistaItemId: item.id,
+                completado: false,
+              })),
+              done: false,
+              current: false,
+            });
+          }
+
+          if (paradas.length > 0) {
+            paradas[0].current = true;
+            paradas[0].startTime = this.nowTime();
+          }
+
+          this.activeParadas.set(paradas);
+          this.activeParadaIndex.set(0);
+          this.routeStartTime.set(this.nowTime());
+          this.showInlineSearch.set(false);
+          this.currentScreen.set('ruta');
+        },
+        error: () => {
+          this.nenulistaError.set(
+            'No se pudo cargar Mi Nenulista. Comprueba que has iniciado sesión.',
+          );
+        },
+      });
+  }
+
+  getParadaIndex(parada: Parada): number {
+    return this.activeParadas().findIndex((p) => p.id === parada.id);
+  }
+
+  toggleNenulistaItem(paradaIndex: number, itemIndex: number): void {
+    const paradas = this.activeParadas().map((p) => ({
+      ...p,
+      items: p.items.map((i) => ({ ...i })),
+    }));
+    const parada = paradas[paradaIndex];
+    if (!parada) return;
+    const item = parada.items[itemIndex];
+    if (!item?.nenulistaItemId) return;
+
+    item.completado = !item.completado;
+    this.activeParadas.set(paradas);
+
+    this.listaCompraService
+      .updateItem(item.nenulistaItemId, { completado: item.completado })
+      .subscribe({
+        error: () => {
+          item.completado = !item.completado;
+          this.activeParadas.set(
+            this.activeParadas().map((p) => ({
+              ...p,
+              items: p.items.map((i) => ({ ...i })),
+            })),
+          );
+        },
+      });
   }
 
   goScreen(screen: Screen): void {

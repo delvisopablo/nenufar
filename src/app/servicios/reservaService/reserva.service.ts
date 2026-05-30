@@ -106,7 +106,10 @@ export class ReservaService {
     if (options.limit) params = params.set('limit', String(options.limit));
 
     return this.http
-      .get<unknown>(buildApiUrl('/reservas/mis-reservas'), { params })
+      .get<unknown>(
+        buildApiUrl('/reservas/mis-reservas'),
+        { params, withCredentials: true },
+      )
       .pipe(
         map((response) => this.normalizeReservaCollection(response)),
         catchError((error: unknown) => {
@@ -115,7 +118,10 @@ export class ReservaService {
           }
 
           return this.http
-            .get<unknown>(buildApiUrl('/me/reservas'), { params })
+            .get<unknown>(
+              buildApiUrl('/me/reservas'),
+              { params, withCredentials: true },
+            )
             .pipe(map((response) => this.normalizeReservaCollection(response)));
         }),
       );
@@ -149,7 +155,11 @@ export class ReservaService {
     };
 
     return this.http
-      .post<unknown>(buildApiUrl('/reservas'), payload)
+      .post<unknown>(
+        buildApiUrl('/reservas'),
+        payload,
+        { withCredentials: true },
+      )
       .pipe(
         map((response) => this.normalizeReserva(response)),
         catchError((error: unknown) => {
@@ -167,6 +177,7 @@ export class ReservaService {
                 numPersonas: payload.numPersonas,
                 recursoId: payload.recursoId,
               },
+              { withCredentials: true },
             )
             .pipe(map((response) => this.normalizeReserva(response)));
         }),
@@ -180,9 +191,10 @@ export class ReservaService {
           return throwError(() => error);
         }
 
-        return this.http.delete(buildApiUrl(`/reservas/${id}`)).pipe(
-          map(() => null),
-        );
+          return this.http.delete(
+            buildApiUrl(`/reservas/${id}`),
+            { withCredentials: true },
+          ).pipe(map(() => null));
       }),
     );
   }
@@ -193,7 +205,7 @@ export class ReservaService {
     if (recursoId !== undefined) params = params.set('recursoId', String(recursoId));
     return this.http.get<AvailabilityResponse>(
       buildApiUrl(`/negocios/${negocioId}/availability`),
-      { params },
+      { params, withCredentials: true },
     );
   }
 
@@ -210,7 +222,7 @@ export class ReservaService {
     return this.http
       .get<unknown>(
         buildApiUrl(`/negocios/${negocioId}/reservas`),
-        { params },
+        { params, withCredentials: true },
       )
       .pipe(map((response) => this.normalizeReservaCollection(response)));
   }
@@ -222,7 +234,10 @@ export class ReservaService {
   /** GET /api/reservas/:id */
   getById(id: number): Observable<ReservaRecord> {
     return this.http
-      .get<unknown>(buildApiUrl(`/reservas/${id}`))
+      .get<unknown>(
+        buildApiUrl(`/reservas/${id}`),
+        { withCredentials: true },
+      )
       .pipe(map((response) => this.normalizeReserva(response)));
   }
 
@@ -237,7 +252,11 @@ export class ReservaService {
     };
 
     return this.http
-      .patch<unknown>(buildApiUrl(`/reservas/${id}`), normalizedPayload)
+      .patch<unknown>(
+        buildApiUrl(`/reservas/${id}`),
+        normalizedPayload,
+        { withCredentials: true },
+      )
       .pipe(map((response) => this.normalizeReserva(response)));
   }
 
@@ -253,7 +272,11 @@ export class ReservaService {
     };
 
     return this.http
-      .patch<unknown>(buildApiUrl(`/reservas/${id}/estado`), payload)
+      .patch<unknown>(
+        buildApiUrl(`/reservas/${id}/estado`),
+        payload,
+        { withCredentials: true },
+      )
       .pipe(
         map((response) => this.normalizeReserva(response)),
         catchError((error: unknown) => {
@@ -262,7 +285,11 @@ export class ReservaService {
           }
 
           return this.http
-            .patch<unknown>(buildApiUrl(`/reservas/${id}`), payload)
+            .patch<unknown>(
+              buildApiUrl(`/reservas/${id}`),
+              payload,
+              { withCredentials: true },
+            )
             .pipe(map((response) => this.normalizeReserva(response)));
         }),
       );

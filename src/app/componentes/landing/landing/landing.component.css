@@ -129,6 +129,67 @@
   box-shadow: 0 0 0 3px rgba(58, 128, 176, 0.18);
 }
 
+.remember-row {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 16px auto;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  gap: 9px;
+  margin: 0 auto 16px 0;
+  color: #90c8e8;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.remember-row input {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.remember-box {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #2a5a7a;
+  border-radius: 4px;
+  background: #02090f;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.remember-box::after {
+  content: '';
+  width: 4px;
+  height: 8px;
+  border: solid #d7edf9;
+  border-width: 0 2px 2px 0;
+  opacity: 0;
+  transform: translateY(-1px) rotate(45deg);
+  transition: opacity 0.2s;
+}
+
+.remember-row input:checked + .remember-box {
+  border-color: #3a80b0;
+  background: #0e3a5a;
+  box-shadow: 0 0 0 3px rgba(58, 128, 176, 0.18);
+}
+
+.remember-row input:checked + .remember-box::after {
+  opacity: 1;
+}
+
+.remember-row input:focus-visible + .remember-box {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(58, 128, 176, 0.22);
+}
+
 .feedback {
   color: #d7edf9;
   font-size: 0.8rem;

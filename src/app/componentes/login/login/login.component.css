@@ -118,6 +118,73 @@
   transform: translateY(-1px);
 }
 
+.remember-row {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 1.15rem auto;
+  align-items: center;
+  width: fit-content;
+  min-height: 2rem;
+  gap: 0.58rem;
+  color: rgba(244, 248, 255, 0.9);
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.remember-row input {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.remember-box {
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.remember-box::after {
+  content: '';
+  width: 0.32rem;
+  height: 0.58rem;
+  border: solid #fff8fc;
+  border-width: 0 2px 2px 0;
+  opacity: 0;
+  transform: translateY(-1px) rotate(45deg);
+  transition: opacity 160ms ease;
+}
+
+.remember-row input:checked + .remember-box {
+  border-color: rgba(244, 92, 156, 0.78);
+  background: #f45c9c;
+  box-shadow: 0 0 0 4px rgba(244, 92, 156, 0.16);
+}
+
+.remember-row input:checked + .remember-box::after {
+  opacity: 1;
+}
+
+.remember-row input:focus-visible + .remember-box {
+  outline: none;
+  box-shadow:
+    0 0 0 4px rgba(244, 92, 156, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
 .field-error,
 .form-feedback {
   font-size: 0.86rem;

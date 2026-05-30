@@ -25,6 +25,7 @@ export class NenufarizarService {
     return this.http
       .get<{ codigoReferido?: string | null }>(
         buildApiUrl('/usuarios/me/codigo-referido'),
+        { withCredentials: true },
       )
       .pipe(
         map((response) => String(response?.codigoReferido ?? '').trim()),
@@ -37,6 +38,7 @@ export class NenufarizarService {
       .post<{ codigoReferido?: string | null }>(
         buildApiUrl('/usuarios/me/codigo-referido/regenerar'),
         {},
+        { withCredentials: true },
       )
       .pipe(
         map((response) => String(response?.codigoReferido ?? '').trim()),
@@ -48,6 +50,7 @@ export class NenufarizarService {
     return this.http
       .get<Referido[] | ApiListResponse<Referido>>(
         buildApiUrl('/usuarios/me/referidos'),
+        { withCredentials: true },
       )
       .pipe(
         map((response) =>

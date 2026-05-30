@@ -1,10 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, map, of, switchMap } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
+import { AuthService } from '../../servicios/authService/auth.service';
 import {
   AccionLogro,
+  Logro,
+  LogroUsuario,
   LogroServiceService,
   MiLogro,
   NivelProgreso,
@@ -155,6 +159,7 @@ const LOGROS_OCULTOS: LogroOculto[] = [
   styleUrl: './mis-logros.component.css',
 })
 export class MisLogrosComponent implements OnInit {
+  private readonly authService = inject(AuthService);
   private readonly logroSvc = inject(LogroServiceService);
   private readonly petalosSvc = inject(PetalosService);
 
@@ -212,24 +217,129 @@ export class MisLogrosComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    forkJoin({
-      escaleras: this.logroSvc.miProgreso().pipe(catchError(() => of([]))),
-      logros: this.logroSvc.misLogros().pipe(catchError(() => of([]))),
-      balance: this.petalosSvc.balance().pipe(catchError(() => of({ saldo: 0 }))),
-    }).subscribe({
-      next: ({ escaleras, logros, balance }) => {
-        this.escaleras.set(escaleras);
-        this.misLogros.set(logros);
-        this.saldoPetalos.set(balance.saldo ?? 0);
-        this.cargando.set(false);
-      },
-      error: (error: unknown) => {
-        this.cargando.set(false);
-        this.errorMensaje.set(
-          getUserErrorMessage(error, 'No hemos podido cargar tus logros.'),
+    this.authService
+      .hydrateSession({ forceRemote: !this.authService.isSessionResolved() })
+      .pipe(
+        switchMap((usuario) => {
+          const usuarioId = Number(usuario?.id ?? this.authService.obtenerUsuario()?.id ?? 0);
+
+          if (!Number.isFinite(usuarioId) || usuarioId <= 0) {
+            return of({
+              escaleras: [] as ProgresoEscalera[],
+              logros: [] as MiLogro[],
+              balance: { saldo: 0 },
+            });
+          }
+
+          return forkJoin({
+            escaleras: this.logroSvc.miProgreso().pipe(
+              catchError((error: unknown) => {
+                this.logDevSecondary('progreso de logros', error);
+                return of([] as ProgresoEscalera[]);
+              }),
+            ),
+            logros: this.cargarMisLogros(usuarioId),
+            balance: this.petalosSvc.balance().pipe(
+              catchError((error: unknown) => {
+                this.logDevSecondary('balance de pétalos', error);
+                return of({ saldo: 0 });
+              }),
+            ),
+          });
+        }),
+        catchError((error: unknown) => {
+          this.logDevSecondary('sesión de logros', error);
+          return of({
+            escaleras: [] as ProgresoEscalera[],
+            logros: [] as MiLogro[],
+            balance: { saldo: 0 },
+          });
+        }),
+      )
+      .subscribe({
+        next: ({ escaleras, logros, balance }) => {
+          this.escaleras.set(escaleras);
+          this.misLogros.set(logros);
+          this.saldoPetalos.set(balance.saldo ?? 0);
+          this.cargando.set(false);
+        },
+        error: (error: unknown) => {
+          this.cargando.set(false);
+          this.errorMensaje.set(
+            getUserErrorMessage(error, 'No hemos podido cargar tus logros.'),
+          );
+        },
+      });
+  }
+
+  private cargarMisLogros(usuarioId: number) {
+    return this.logroSvc.misLogros().pipe(
+      catchError((error: unknown) => {
+        this.logDevSecondary('mis logros', error);
+        return forkJoin({
+          asignados: this.logroSvc.porUsuario(usuarioId).pipe(
+            catchError((fallbackError: unknown) => {
+              this.logDevSecondary('logros antiguos del usuario', fallbackError);
+              return of([] as LogroUsuario[]);
+            }),
+          ),
+          catalogo: this.logroSvc.findAll().pipe(
+            catchError((fallbackError: unknown) => {
+              this.logDevSecondary('catálogo de logros', fallbackError);
+              return of([] as Logro[]);
+            }),
+          ),
+        }).pipe(
+          map(({ asignados, catalogo }) => this.mapLogrosFallback(asignados, catalogo)),
         );
-      },
-    });
+      }),
+    );
+  }
+
+  private mapLogrosFallback(asignados: LogroUsuario[], catalogo: Logro[]): MiLogro[] {
+    const catalogoPorId = new Map(catalogo.map((logro) => [logro.id, logro]));
+
+    return asignados
+      .map((item, index): MiLogro | null => {
+        const raw = item as Record<string, unknown>;
+        const logroRaw =
+          raw['logro'] && typeof raw['logro'] === 'object'
+            ? raw['logro'] as Logro
+            : catalogoPorId.get(item.logroId);
+
+        if (!logroRaw) {
+          return null;
+        }
+
+        const logroUsuarioId = Number(raw['id']);
+        const logro = {
+          id: logroRaw.id,
+          titulo: logroRaw.titulo,
+          descripcion: logroRaw.descripcion,
+          tipo: logroRaw.tipo,
+          dificultad: logroRaw.dificultad,
+          umbral: logroRaw.umbral,
+          recompensaPuntos: logroRaw.recompensaPuntos,
+          accion: typeof logroRaw['accion'] === 'string'
+            ? logroRaw['accion']
+            : undefined,
+        } satisfies MiLogro['logro'];
+
+        return {
+          id: Number.isFinite(logroUsuarioId) && logroUsuarioId > 0
+            ? logroUsuarioId
+            : Number(`${item.usuarioId}${item.logroId}${index}`),
+          conseguidoEn: String(raw['conseguidoEn'] ?? raw['createdAt'] ?? new Date().toISOString()),
+          logro,
+        } satisfies MiLogro;
+      })
+      .filter((item): item is MiLogro => item !== null);
+  }
+
+  private logDevSecondary(area: string, error: unknown): void {
+    if (!environment.production) {
+      console.warn(`[MisLogrosComponent] ${area} no disponible`, error);
+    }
   }
 
   escalerasDe(categoria: CategoriaLogros): ProgresoEscalera[] {

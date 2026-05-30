@@ -85,6 +85,12 @@
   border: 1px solid rgba(247, 255, 249, 0.14);
 }
 
+.follow-btn--soft {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f7fff9;
+  border: 1px solid rgba(247, 255, 249, 0.14);
+}
+
 .back-link:hover,
 .edit-btn:hover,
 .save-btn:hover,

@@ -38,6 +38,16 @@
           }
         </label>
 
+        <label class="remember-row" for="rememberMe">
+          <input
+            id="rememberMe"
+            type="checkbox"
+            formControlName="rememberMe"
+          >
+          <span class="remember-box" aria-hidden="true"></span>
+          <span>Recuérdame</span>
+        </label>
+
         @if (loginError()) {
           <p class="form-feedback" role="alert">{{ loginError() }}</p>
         }

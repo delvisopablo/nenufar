@@ -32,7 +32,10 @@ export class PetalosService {
 
   /** GET /api/me/petalos/balance */
   balance(): Observable<PetalosBalance> {
-    return this.http.get<PetalosBalance>(buildApiUrl('/me/petalos/balance'));
+    return this.http.get<PetalosBalance>(
+      buildApiUrl('/me/petalos/balance'),
+      { withCredentials: true },
+    );
   }
 
   /** GET /api/me/petalos/tx */
@@ -44,7 +47,7 @@ export class PetalosService {
     return this.http
       .get<PetalosTx[] | ApiListResponse<PetalosTx>>(
         buildApiUrl('/me/petalos/tx'),
-        { params },
+        { params, withCredentials: true },
       )
       .pipe(map((response) => extractItems(response)));
   }

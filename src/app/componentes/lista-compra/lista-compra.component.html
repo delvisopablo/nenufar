@@ -1,0 +1,401 @@
+<div class="shopping-shell">
+  <app-estanque-background class="shopping-bg" />
+
+  <main class="shopping-page">
+    <nav class="shopping-topbar">
+      <a routerLink="/mi-perfil" class="shopping-back">Mi perfil</a>
+      <a routerLink="/inicio" class="shopping-back shopping-back--soft">Inicio</a>
+    </nav>
+
+    <header class="shopping-header">
+      <div>
+        <p class="shopping-kicker">Nenulista privada</p>
+        <h1>Mi Nenulista</h1>
+        <p>Productos pendientes, favoritos y compras rápidas en un solo sitio.</p>
+      </div>
+
+      <div class="shopping-summary" aria-label="Resumen de Mi Nenulista">
+        <button
+          type="button"
+          class="summary-chip"
+          [class.summary-chip--active]="vistaActiva() === 'pendientes'"
+          (click)="setVistaActiva('pendientes')"
+        >
+          <strong>{{ pendientes().length }}</strong>
+          pendientes
+        </button>
+        <button
+          type="button"
+          class="summary-chip"
+          [class.summary-chip--active]="vistaActiva() === 'completados'"
+          (click)="setVistaActiva('completados')"
+        >
+          <strong>{{ completados().length }}</strong>
+          completados
+        </button>
+      </div>
+    </header>
+
+    @if (authNotice()) {
+      <p class="auth-note" role="status">
+        <span>{{ authNotice() }}</span>
+        <a routerLink="/estanque">Iniciar sesión</a>
+      </p>
+    }
+
+    @if (errorMensaje()) {
+      <p class="shopping-feedback shopping-feedback--error" role="alert">{{ errorMensaje() }}</p>
+    }
+
+    @if (exitoMensaje()) {
+      <p class="shopping-feedback shopping-feedback--success" role="status">{{ exitoMensaje() }}</p>
+    }
+
+    <section class="catalog-panel" aria-labelledby="buscar-productos-title">
+      <div class="section-head section-head--catalog">
+        <div>
+          <p class="section-kicker">Catálogo Nenúfar</p>
+          <h2 id="buscar-productos-title">Añadir desde catálogo</h2>
+        </div>
+        <span class="count-pill">{{ busquedaResultados().length }} productos</span>
+      </div>
+
+      <label class="field search-field-wrap">
+        <span>Buscar productos</span>
+        <input
+          type="text"
+          class="search-field"
+          placeholder="Buscar por nombre, negocio o producto..."
+          [value]="busquedaQuery()"
+          (input)="onBusqueda($any($event.target).value)"
+        />
+      </label>
+
+      @if (buscando()) {
+        <p class="search-status">Cargando productos...</p>
+      } @else if (busquedaResultados().length > 0) {
+        <div class="product-carousel" aria-label="Productos disponibles">
+          @for (producto of busquedaResultados(); track producto.id) {
+            <article class="product-card">
+              <button
+                type="button"
+                class="favorite-toggle"
+                [class.favorite-toggle--active]="esFavoritoProducto(producto)"
+                [disabled]="favoritoPendienteProductoId() === producto.id"
+                (click)="toggleFavoritoProducto(producto)"
+              >
+                <span class="favorite-toggle__icon" aria-hidden="true"></span>
+                {{ esFavoritoProducto(producto) ? 'Guardado' : 'Favorito' }}
+              </button>
+
+              <div class="product-card__media">
+                @if (getBusquedaImage(producto); as img) {
+                  <img [src]="img" [alt]="producto.nombre" />
+                } @else {
+                  <span aria-hidden="true">{{ producto.nombre.charAt(0) }}</span>
+                }
+              </div>
+
+              <div class="product-card__body">
+                <h3>{{ producto.nombre }}</h3>
+                <p>{{ getProductoNegocio(producto) }}</p>
+                <span class="price-tag">{{ formatPrice(producto.precio) }}</span>
+              </div>
+
+              <button
+                type="button"
+                class="primary-btn primary-btn--compact"
+                [disabled]="busquedaProductoPendienteId() === producto.id"
+                (click)="anadirBusquedaALista(producto)"
+              >
+                {{ busquedaProductoPendienteId() === producto.id ? 'Añadiendo...' : 'Añadir' }}
+              </button>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="search-empty">No hay productos disponibles ahora mismo.</p>
+      }
+    </section>
+
+    <section class="manual-panel" aria-labelledby="manual-item-title">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Rápido</p>
+          <h2 id="manual-item-title">Producto sin catálogo</h2>
+        </div>
+      </div>
+
+      <form class="manual-form" novalidate (submit)="$event.preventDefault(); anadirManual()">
+        <label class="field">
+          <span>Nombre</span>
+          <input
+            type="text"
+            [value]="manualForm.controls.nombre.value ?? ''"
+            placeholder="Pan, leche, champú..."
+            (input)="actualizarManualTexto('nombre', $any($event.target).value)"
+            (blur)="marcarManualTocado('nombre')"
+          />
+          @if (manualForm.controls.nombre.invalid && (manualForm.controls.nombre.dirty || manualForm.controls.nombre.touched)) {
+            <small>El nombre es obligatorio.</small>
+          }
+        </label>
+
+        <label class="field field--quantity">
+          <span>Cantidad</span>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            [value]="manualForm.controls.cantidad.value ?? ''"
+            (input)="actualizarManualCantidad($any($event.target).value)"
+            (blur)="marcarManualTocado('cantidad')"
+          />
+        </label>
+
+        <label class="field field--note">
+          <span>Nota opcional</span>
+          <input
+            type="text"
+            [value]="manualForm.controls.nota.value ?? ''"
+            placeholder="Marca o recordatorio"
+            (input)="actualizarManualTexto('nota', $any($event.target).value)"
+            (blur)="marcarManualTocado('nota')"
+          />
+        </label>
+
+        <button class="primary-btn" type="submit" [disabled]="guardandoManual()">
+          {{ guardandoManual() ? 'Añadiendo...' : 'Añadir producto' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="listings-panel" aria-labelledby="shopping-list-title">
+      <div class="section-head">
+        <div>
+          <p class="section-kicker">Tus listados</p>
+          <h2 id="shopping-list-title">Pendientes, completados y favoritos</h2>
+        </div>
+
+        @if (vistaActiva() === 'completados' && completados().length) {
+          <button
+            type="button"
+            class="soft-btn"
+            [disabled]="limpiandoCompletados()"
+            (click)="limpiarCompletados()"
+          >
+            {{ limpiandoCompletados() ? 'Limpiando...' : 'Limpiar completados' }}
+          </button>
+        }
+      </div>
+
+      <div class="list-tabs" role="tablist" aria-label="Secciones de Mi Nenulista">
+        <button
+          type="button"
+          class="list-tab"
+          [class.list-tab--active]="vistaActiva() === 'pendientes'"
+          (click)="setVistaActiva('pendientes')"
+        >
+          Pendientes
+        </button>
+        <button
+          type="button"
+          class="list-tab"
+          [class.list-tab--active]="vistaActiva() === 'completados'"
+          (click)="setVistaActiva('completados')"
+        >
+          Completados
+        </button>
+        <button
+          type="button"
+          class="list-tab"
+          [class.list-tab--active]="vistaActiva() === 'favoritos'"
+          (click)="setVistaActiva('favoritos')"
+        >
+          Favoritos
+        </button>
+      </div>
+
+      @if (!estaAutenticado() && sesionListaResuelta()) {
+        <div class="empty-state empty-state--soft">
+          <strong>Inicia sesión para ver tu Nenulista</strong>
+          <span>El catálogo seguirá visible, pero tus pendientes y favoritos son privados.</span>
+        </div>
+      } @else if (cargando()) {
+        <div class="empty-state">
+          <strong>Cargando Mi Nenulista...</strong>
+          <span>Estamos preparando tus productos guardados.</span>
+        </div>
+      } @else if (vistaActiva() === 'pendientes') {
+        @if (!pendientes().length) {
+          <div class="empty-state">
+            <strong>No tienes productos pendientes</strong>
+            <span>Añade productos desde el carrusel o crea uno manual.</span>
+          </div>
+        } @else {
+          <div class="shopping-grid">
+            @for (item of pendientes(); track item.id) {
+              <article class="shopping-item">
+                <div class="shopping-item__media">
+                  @if (getItemImage(item); as image) {
+                    <img [src]="image" [alt]="getItemName(item)" />
+                  } @else {
+                    <span aria-hidden="true">{{ getItemName(item).charAt(0) }}</span>
+                  }
+                </div>
+
+                <div class="shopping-item__body">
+                  <div class="shopping-item__head">
+                    <div>
+                      <h3>{{ getItemName(item) }}</h3>
+                      <p>{{ getItemBusiness(item) }}</p>
+                    </div>
+                    <span class="price-tag">{{ formatPrice(getItemPrice(item)) }}</span>
+                  </div>
+
+                  @if (item.nota) {
+                    <p class="shopping-note">{{ item.nota }}</p>
+                  }
+
+                  <div class="shopping-controls">
+                    <label class="quantity-control">
+                      <span>Cantidad</span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        [value]="getItemQuantity(item)"
+                        [disabled]="itemPendienteId() === item.id"
+                        (change)="actualizarCantidad(item, $event)"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      class="status-btn"
+                      [disabled]="itemPendienteId() === item.id"
+                      (click)="toggleCompletado(item)"
+                    >
+                      Conseguido
+                    </button>
+
+                    <button
+                      type="button"
+                      class="danger-btn"
+                      [disabled]="itemPendienteId() === item.id"
+                      (click)="eliminarItem(item)"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      } @else if (vistaActiva() === 'completados') {
+        @if (!completados().length) {
+          <div class="empty-state">
+            <strong>Aún no hay completados</strong>
+            <span>Marca productos como conseguidos para verlos aquí.</span>
+          </div>
+        } @else {
+          <div class="shopping-grid">
+            @for (item of completados(); track item.id) {
+              <article class="shopping-item shopping-item--done">
+                <div class="shopping-item__media">
+                  @if (getItemImage(item); as image) {
+                    <img [src]="image" [alt]="getItemName(item)" />
+                  } @else {
+                    <span aria-hidden="true">{{ getItemName(item).charAt(0) }}</span>
+                  }
+                </div>
+
+                <div class="shopping-item__body">
+                  <div class="shopping-item__head">
+                    <div>
+                      <h3>{{ getItemName(item) }}</h3>
+                      <p>{{ getItemBusiness(item) }}</p>
+                    </div>
+                    <span class="price-tag">{{ formatPrice(getItemPrice(item)) }}</span>
+                  </div>
+
+                  @if (item.nota) {
+                    <p class="shopping-note">{{ item.nota }}</p>
+                  }
+
+                  <div class="shopping-controls">
+                    <span class="done-pill">Completado</span>
+                    <button
+                      type="button"
+                      class="status-btn status-btn--done"
+                      [disabled]="itemPendienteId() === item.id"
+                      (click)="toggleCompletado(item)"
+                    >
+                      Marcar pendiente
+                    </button>
+                    <button
+                      type="button"
+                      class="danger-btn"
+                      [disabled]="itemPendienteId() === item.id"
+                      (click)="eliminarItem(item)"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      } @else {
+        @if (!favoritos().length) {
+          <div class="empty-state empty-state--soft">
+            <strong>Aún no tienes favoritos</strong>
+            <span>Guarda productos desde el catálogo de un negocio o desde el carrusel.</span>
+          </div>
+        } @else {
+          <div class="favorites-grid">
+            @for (favorito of favoritos(); track getFavoriteTrack(favorito, $index)) {
+              <article class="favorite-card">
+                <div class="favorite-card__media">
+                  @if (getFavoriteImage(favorito); as image) {
+                    <img [src]="image" [alt]="getFavoriteName(favorito)" />
+                  } @else {
+                    <span aria-hidden="true">{{ getFavoriteName(favorito).charAt(0) }}</span>
+                  }
+                </div>
+
+                <div class="favorite-card__body">
+                  <h3>{{ getFavoriteName(favorito) }}</h3>
+                  <p>{{ getFavoriteBusiness(favorito) }}</p>
+                  <span class="price-tag">{{ formatPrice(getFavoritePrice(favorito)) }}</span>
+
+                  <div class="favorite-card__actions">
+                    <button
+                      type="button"
+                      class="primary-btn primary-btn--compact"
+                      [disabled]="listaPendienteProductoId() === getFavoriteProductoId(favorito)"
+                      (click)="anadirFavoritoALista(favorito)"
+                    >
+                      {{ listaPendienteProductoId() === getFavoriteProductoId(favorito) ? 'Añadiendo...' : 'Añadir' }}
+                    </button>
+
+                    <button
+                      type="button"
+                      class="soft-btn soft-btn--compact"
+                      [disabled]="favoritoPendienteProductoId() === getFavoriteProductoId(favorito)"
+                      (click)="quitarFavorito(favorito)"
+                    >
+                      Quitar de favoritos
+                    </button>
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      }
+    </section>
+  </main>
+</div>

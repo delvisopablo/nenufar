@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   Component,
   Input,
@@ -8,9 +7,14 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, Validators } from '@angular/forms';
 import { catchError, finalize, of } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
+import { AuthService } from '../../servicios/authService/auth.service';
+import {
+  ListaCompraService,
+  AddListaCompraItemPayload,
+} from '../../servicios/listaCompraServicio/lista-compra.service';
 import { PondBusinessSnapshot } from '../../servicios/estanqueFeed/estanque-feed.service';
 import {
   CreateProductoPayload,
@@ -19,14 +23,20 @@ import {
   SolicitudProducto,
 } from '../../servicios/productoServicio/productoService.service';
 import {
+  ProductoFavorito,
+  ProductoFavoritoService,
+} from '../../servicios/productoFavoritoServicio/producto-favorito.service';
+import {
   PendingProductSuggestionRequest,
   ReviewProductMetaService,
 } from '../../servicios/reviewProductMeta/review-product-meta.service';
 
+type CatalogoFormControlName = 'nombre' | 'descripcion' | 'precio' | 'codigoSKU' | 'foto';
+
 @Component({
   selector: 'app-catalogo-negocio-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [],
   templateUrl: './catalogo-negocio-modal.component.html',
   styleUrl: './catalogo-negocio-modal.component.css',
 })
@@ -38,12 +48,21 @@ export class CatalogoNegocioModalComponent implements OnChanges {
 
   private readonly fb = inject(FormBuilder);
   private readonly productoService = inject(ProductoServiceService);
+  private readonly productoFavoritoService = inject(ProductoFavoritoService);
+  private readonly listaCompraService = inject(ListaCompraService);
+  private readonly authService = inject(AuthService);
   private readonly reviewProductMeta = inject(ReviewProductMetaService);
 
   readonly productos = signal<Producto[]>([]);
   readonly solicitudes = signal<PendingProductSuggestionRequest[]>([]);
+  readonly productoDetalle = signal<Producto | null>(null);
+  readonly cantidadDetalle = signal(1);
+  readonly favoritosProductoIds = signal<ReadonlySet<number>>(new Set<number>());
   readonly cargando = signal(false);
   readonly guardando = signal(false);
+  readonly favoritosCargando = signal(false);
+  readonly favoritoPendienteId = signal<number | null>(null);
+  readonly listaPendiente = signal(false);
   readonly errorMensaje = signal('');
   readonly exitoMensaje = signal('');
   readonly editorAbierto = signal(false);
@@ -124,6 +143,141 @@ export class CatalogoNegocioModalComponent implements OnChanges {
       foto: '',
     });
     this.errorMensaje.set('');
+  }
+
+  abrirDetalleProducto(producto: Producto): void {
+    if (!producto?.id) {
+      return;
+    }
+
+    this.productoDetalle.set(producto);
+    this.cantidadDetalle.set(1);
+    this.errorMensaje.set('');
+    this.exitoMensaje.set('');
+  }
+
+  cerrarDetalleProducto(): void {
+    this.productoDetalle.set(null);
+    this.cantidadDetalle.set(1);
+  }
+
+  manejarTeclaProducto(event: KeyboardEvent, producto: Producto): void {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    event.preventDefault();
+    this.abrirDetalleProducto(producto);
+  }
+
+  actualizarCantidadDetalle(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.cantidadDetalle.set(this.normalizarCantidad(input.value));
+  }
+
+  ajustarCantidadDetalle(delta: number): void {
+    this.cantidadDetalle.update((value) => this.normalizarCantidad(value + delta));
+  }
+
+  esFavorito(producto: Producto | null | undefined): boolean {
+    const productoId = Number(producto?.id ?? 0);
+
+    if (!Number.isFinite(productoId) || productoId <= 0) {
+      return false;
+    }
+
+    const favoritoBackend = this.readFavoriteFlag(producto);
+    return favoritoBackend ?? this.favoritosProductoIds().has(productoId);
+  }
+
+  toggleFavorito(producto: Producto | null | undefined): void {
+    const productoId = Number(producto?.id ?? 0);
+
+    if (!producto || !Number.isFinite(productoId) || productoId <= 0) {
+      return;
+    }
+
+    if (!this.authService.isAuthenticated()) {
+      this.errorMensaje.set('Necesitas iniciar sesión para guardar productos favoritos.');
+      this.exitoMensaje.set('');
+      return;
+    }
+
+    if (this.favoritoPendienteId() === productoId) {
+      return;
+    }
+
+    const favoritoActual = this.esFavorito(producto);
+    const request$ = favoritoActual
+      ? this.productoFavoritoService.quitarFavorito(productoId)
+      : this.productoFavoritoService.marcarFavorito(productoId);
+
+    this.favoritoPendienteId.set(productoId);
+    this.errorMensaje.set('');
+    this.exitoMensaje.set('');
+
+    request$
+      .pipe(finalize(() => this.favoritoPendienteId.set(null)))
+      .subscribe({
+        next: () => {
+          this.setFavoriteState(productoId, !favoritoActual);
+          this.exitoMensaje.set(
+            favoritoActual
+              ? 'Producto quitado de favoritos.'
+              : 'Producto guardado en favoritos.',
+          );
+        },
+        error: (error: unknown) => {
+          this.errorMensaje.set(
+            getUserErrorMessage(error, 'No hemos podido actualizar favoritos.'),
+          );
+        },
+      });
+  }
+
+  anadirDetalleALista(): void {
+    const producto = this.productoDetalle();
+    const productoId = Number(producto?.id ?? 0);
+
+    if (!producto || !Number.isFinite(productoId) || productoId <= 0) {
+      return;
+    }
+
+    if (!this.authService.isAuthenticated()) {
+      this.errorMensaje.set('Necesitas iniciar sesión para añadir productos a tu lista.');
+      this.exitoMensaje.set('');
+      return;
+    }
+
+    if (this.listaPendiente()) {
+      return;
+    }
+
+    const cantidad = this.normalizarCantidad(this.cantidadDetalle());
+    const negocioId = Number(producto.negocioId ?? this.negocioId);
+    const payload: AddListaCompraItemPayload = {
+      productoId,
+      cantidad,
+      ...(Number.isFinite(negocioId) && negocioId > 0 ? { negocioId } : {}),
+    };
+
+    this.listaPendiente.set(true);
+    this.errorMensaje.set('');
+    this.exitoMensaje.set('');
+
+    this.listaCompraService
+      .addItem(payload)
+      .pipe(finalize(() => this.listaPendiente.set(false)))
+      .subscribe({
+        next: () => {
+          this.exitoMensaje.set('Producto añadido a tu lista');
+        },
+        error: (error: unknown) => {
+          this.errorMensaje.set(
+            getUserErrorMessage(error, 'No hemos podido añadir el producto a tu lista.'),
+          );
+        },
+      });
   }
 
   guardarProducto(): void {
@@ -211,6 +365,24 @@ export class CatalogoNegocioModalComponent implements OnChanges {
         );
       },
     });
+  }
+
+  actualizarCampoTextoProducto(
+    control: Exclude<CatalogoFormControlName, 'precio'>,
+    value: string,
+  ): void {
+    this.form.controls[control].setValue(value);
+    this.form.controls[control].markAsDirty();
+  }
+
+  actualizarPrecioProducto(value: string): void {
+    const normalized = value.trim() === '' ? null : Number(value);
+    this.form.controls.precio.setValue(Number.isFinite(normalized) ? normalized : null);
+    this.form.controls.precio.markAsDirty();
+  }
+
+  marcarProductoControlTocado(control: CatalogoFormControlName): void {
+    this.form.controls[control].markAsTouched();
   }
 
   aprobarSolicitud(solicitud: PendingProductSuggestionRequest): void {
@@ -334,6 +506,11 @@ export class CatalogoNegocioModalComponent implements OnChanges {
     return codigo || null;
   }
 
+  getProductBusinessName(producto: Partial<Producto> | null | undefined): string {
+    const negocioNombre = String(producto?.negocio?.nombre ?? '').trim();
+    return negocioNombre || this.negocio?.nombre || 'Negocio';
+  }
+
   getSolicitudContexto(solicitud: PendingProductSuggestionRequest): string {
     const partes = [
       solicitud.usuarioNombre ? `Sugerido por ${solicitud.usuarioNombre}` : '',
@@ -357,6 +534,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
       .subscribe({
         next: (productos) => {
           this.productos.set(productos);
+          this.sincronizarFavoritosCatalogo(productos);
         },
         error: (error: unknown) => {
           this.productos.set([]);
@@ -365,6 +543,161 @@ export class CatalogoNegocioModalComponent implements OnChanges {
           );
         },
       });
+  }
+
+  private sincronizarFavoritosCatalogo(productos: Producto[]): void {
+    const favoriteFlags = new Map<number, boolean>();
+
+    for (const producto of productos) {
+      const productoId = Number(producto.id ?? 0);
+      const favoriteFlag = this.readFavoriteFlag(producto);
+
+      if (Number.isFinite(productoId) && productoId > 0 && favoriteFlag !== null) {
+        favoriteFlags.set(productoId, favoriteFlag);
+      }
+    }
+
+    if (favoriteFlags.size) {
+      this.favoritosProductoIds.update((current) => {
+        const next = new Set(current);
+        favoriteFlags.forEach((favorito, productoId) => {
+          if (favorito) {
+            next.add(productoId);
+          } else {
+            next.delete(productoId);
+          }
+        });
+        return next;
+      });
+    }
+
+    const todosTraenFavorito =
+      productos.length > 0 &&
+      productos.every((producto) => this.readFavoriteFlag(producto) !== null);
+
+    if (!todosTraenFavorito) {
+      this.cargarFavoritosUsuario();
+    }
+  }
+
+  private cargarFavoritosUsuario(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.favoritosProductoIds.set(new Set<number>());
+      return;
+    }
+
+    this.favoritosCargando.set(true);
+
+    this.productoFavoritoService
+      .getFavoritos()
+      .pipe(finalize(() => this.favoritosCargando.set(false)))
+      .subscribe({
+        next: (favoritos) => {
+          const ids = favoritos
+            .map((favorito) => this.getFavoriteProductoId(favorito))
+            .filter((id): id is number => id !== null && Number.isFinite(id) && id > 0);
+          this.favoritosProductoIds.set(new Set(ids));
+        },
+        error: () => {
+          this.favoritosProductoIds.set(new Set<number>());
+        },
+      });
+  }
+
+  private getFavoriteProductoId(favorito: ProductoFavorito): number | null {
+    const productoId = Number(favorito.productoId ?? favorito.producto?.id ?? favorito.id ?? 0);
+    return Number.isFinite(productoId) && productoId > 0 ? productoId : null;
+  }
+
+  private setFavoriteState(productoId: number, favorito: boolean): void {
+    this.favoritosProductoIds.update((current) => {
+      const next = new Set(current);
+      if (favorito) {
+        next.add(productoId);
+      } else {
+        next.delete(productoId);
+      }
+      return next;
+    });
+
+    this.productos.update((items) =>
+      items.map((item) =>
+        item.id === productoId
+          ? {
+              ...item,
+              favorito,
+              esFavorito: favorito,
+              isFavorite: favorito,
+              isFavorited: favorito,
+            }
+          : item,
+      ),
+    );
+
+    const detalle = this.productoDetalle();
+    if (detalle?.id === productoId) {
+      this.productoDetalle.set({
+        ...detalle,
+        favorito,
+        esFavorito: favorito,
+        isFavorite: favorito,
+        isFavorited: favorito,
+      });
+    }
+  }
+
+  private readFavoriteFlag(producto: Partial<Producto> | null | undefined): boolean | null {
+    if (!producto) {
+      return null;
+    }
+
+    const values = [
+      producto.favorito,
+      producto.esFavorito,
+      producto.isFavorite,
+      producto.isFavorited,
+    ];
+
+    for (const value of values) {
+      const parsed = this.parseBoolean(value);
+      if (parsed !== null) {
+        return parsed;
+      }
+    }
+
+    return null;
+  }
+
+  private parseBoolean(value: unknown): boolean | null {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', '1', 'si', 'sí', 'yes'].includes(normalized)) {
+        return true;
+      }
+      if (['false', '0', 'no'].includes(normalized)) {
+        return false;
+      }
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      if (value === 1) {
+        return true;
+      }
+      if (value === 0) {
+        return false;
+      }
+    }
+
+    return null;
+  }
+
+  private normalizarCantidad(value: unknown): number {
+    const parsed = Math.floor(Number(value));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
   }
 
   private cargarSolicitudes(): void {

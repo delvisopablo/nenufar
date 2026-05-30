@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import {
   Observable,
@@ -7,14 +7,13 @@ import {
   map,
   of,
   shareReplay,
+  switchMap,
   tap,
 } from 'rxjs';
 import { buildApiUrl } from '../../config/api.config';
 import {
   clearAccessToken,
-  hasAccessToken as hasStoredAccessToken,
   readAccessToken,
-  writeAccessToken,
 } from './auth.storage';
 
 export interface AuthBusiness {
@@ -79,6 +78,8 @@ export interface AuthResponse {
 }
 
 export type LoginResponse = AuthResponse | AuthUser;
+
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
 export interface RegisterPayload {
   nombre?: string;
@@ -175,6 +176,13 @@ function removeStorageKey(key: string): void {
 export class AuthService {
   private sessionHydrated = false;
   private hydrationRequest$: Observable<AuthUser | null> | null = null;
+  private readonly usuarioSignal = signal<AuthUser | null>(
+    readStorageJson<AuthUser>('usuarioLogueado'),
+  );
+  private readonly authStatusSignal = signal<AuthStatus>('loading');
+
+  readonly usuarioActual = this.usuarioSignal.asReadonly();
+  readonly authStatus = this.authStatusSignal.asReadonly();
 
   constructor(private http: HttpClient) {
     readAccessToken();
@@ -190,14 +198,31 @@ export class AuthService {
     );
   }
 
-  login(email: string, password: string): Observable<LoginResponse> {
+  login(
+    email: string,
+    password: string,
+    rememberMe = false,
+  ): Observable<LoginResponse | AuthUser | null> {
+    this.authStatusSignal.set('loading');
+
     return this.http
       .post<LoginResponse>(
         buildApiUrl('/auth/login'),
-        { email, password }
+        { email, password, rememberMe },
+        { withCredentials: true },
       )
       .pipe(
-        tap((response) => this.persistirUsuarioDesdeRespuesta(response))
+        tap((response) => this.persistirUsuarioDesdeRespuesta(response)),
+        switchMap((response) =>
+          this.me().pipe(map((usuario) => usuario ?? response)),
+        ),
+        tap({
+          error: () => {
+            this.authStatusSignal.set(
+              this.obtenerUsuario() ? 'authenticated' : 'unauthenticated',
+            );
+          },
+        }),
       );
   }
 
@@ -206,14 +231,18 @@ export class AuthService {
       typeof data.codigoReferido === 'string' ? data.codigoReferido.trim() : '';
 
     return this.http
-      .post<AuthResponse>(buildApiUrl('/auth/registro'), {
-        nombre: data.nombre,
-        nickname: data.nickname,
-        email: data.email,
-        password: data.password,
-        biografia: data.biografia,
-        ...(codigoReferido ? { codigoReferido } : {}),
-      })
+      .post<AuthResponse>(
+        buildApiUrl('/auth/registro'),
+        {
+          nombre: data.nombre,
+          nickname: data.nickname,
+          email: data.email,
+          password: data.password,
+          biografia: data.biografia,
+          ...(codigoReferido ? { codigoReferido } : {}),
+        },
+        { withCredentials: true },
+      )
       .pipe(
         tap((response) => this.persistirUsuarioDesdeRespuesta(response))
       );
@@ -272,7 +301,11 @@ export class AuthService {
     };
 
     return this.http
-      .post<AuthResponse>(buildApiUrl('/auth/registro-negocio'), payload)
+      .post<AuthResponse>(
+        buildApiUrl('/auth/registro-negocio'),
+        payload,
+        { withCredentials: true },
+      )
       .pipe(
         tap((response) => this.persistirUsuarioDesdeRespuesta(response))
       );
@@ -282,14 +315,22 @@ export class AuthService {
     const usuario = this.obtenerUsuario();
 
     if (usuario && (!options.forceRemote || this.sessionHydrated)) {
+      this.usuarioSignal.set(usuario);
+      if (this.sessionHydrated) {
+        this.authStatusSignal.set('authenticated');
+      }
       return of(usuario);
     }
 
     if (!options.forceRemote) {
+      if (this.sessionHydrated) {
+        this.authStatusSignal.set('unauthenticated');
+      }
       return of(null);
     }
 
     if (this.sessionHydrated) {
+      this.authStatusSignal.set(usuario ? 'authenticated' : 'unauthenticated');
       return of(usuario);
     }
 
@@ -297,6 +338,7 @@ export class AuthService {
       return this.hydrationRequest$;
     }
 
+    this.authStatusSignal.set('loading');
     this.hydrationRequest$ = this.me().pipe(
       tap(() => {
         this.sessionHydrated = true;
@@ -311,11 +353,30 @@ export class AuthService {
   }
 
   hasSessionHint(): boolean {
-    return this.hasAccessToken();
+    clearAccessToken();
+    return Boolean(this.obtenerUsuario());
   }
 
   isAuthenticated(): boolean {
-    return Boolean(this.obtenerUsuario() || this.hasAccessToken());
+    const status = this.authStatusSignal();
+
+    if (status === 'authenticated') {
+      return true;
+    }
+
+    if (status === 'unauthenticated') {
+      return false;
+    }
+
+    return Boolean(this.usuarioSignal() || this.obtenerUsuario());
+  }
+
+  isAuthLoading(): boolean {
+    return this.authStatusSignal() === 'loading';
+  }
+
+  isSessionResolved(): boolean {
+    return this.sessionHydrated;
   }
 
   esAdmin(usuario: AuthUser | null | undefined = this.obtenerUsuario()): boolean {
@@ -323,7 +384,10 @@ export class AuthService {
   }
 
   me(): Observable<AuthUser | null> {
-    return this.http.get<unknown>(buildApiUrl('/auth/me')).pipe(
+    return this.http.get<unknown>(
+      buildApiUrl('/auth/me'),
+      { withCredentials: true },
+    ).pipe(
       map((response) => this.normalizarUsuario(response)),
       tap((usuario) => {
         this.sessionHydrated = true;
@@ -333,7 +397,8 @@ export class AuthService {
           return;
         }
 
-        removeStorageKey('usuarioLogueado');
+        this.clearStoredUser();
+        this.authStatusSignal.set('unauthenticated');
       }),
       catchError((error: unknown) => {
         this.sessionHydrated = true;
@@ -343,16 +408,16 @@ export class AuthService {
           return of(null);
         }
 
+        this.authStatusSignal.set(
+          this.obtenerUsuario() ? 'authenticated' : 'unauthenticated',
+        );
         return of(null);
       })
     );
   }
 
   persistirUsuarioDesdeRespuesta(response: unknown): void {
-    const accessToken = this.extraerAccessToken(response);
-    if (accessToken) {
-      writeAccessToken(accessToken);
-    }
+    clearAccessToken();
 
     const usuario = this.normalizarUsuario(response);
 
@@ -363,24 +428,31 @@ export class AuthService {
 
   clearStoredUser(): void {
     removeStorageKey('usuarioLogueado');
+    this.usuarioSignal.set(null);
   }
 
   clearStoredAuth(): void {
     clearAccessToken();
     this.clearStoredUser();
+    this.authStatusSignal.set('unauthenticated');
   }
 
   clearSession(): void {
     clearAccessToken();
-    removeStorageKey('usuarioLogueado');
+    this.clearStoredUser();
     removeStorageKey('accesoPermitido');
     removeStorageKey('guestMode');
     this.hydrationRequest$ = null;
-    this.sessionHydrated = false;
+    this.sessionHydrated = true;
+    this.authStatusSignal.set('unauthenticated');
   }
 
   logout(): Observable<unknown> {
-    return this.http.post(buildApiUrl('/auth/logout'), {}).pipe(
+    return this.http.post(
+      buildApiUrl('/auth/logout'),
+      {},
+      { withCredentials: true },
+    ).pipe(
       catchError(() => of(null)),
       tap(() => this.clearSession())
     );
@@ -388,7 +460,13 @@ export class AuthService {
 
   guardarUsuario(usuario: AuthUser): void {
     writeStorageJson('usuarioLogueado', usuario);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('accesoPermitido', 'true');
+      localStorage.removeItem('guestMode');
+    }
+    this.usuarioSignal.set(usuario);
     this.sessionHydrated = true;
+    this.authStatusSignal.set('authenticated');
   }
 
   obtenerAccessToken(): string | null {
@@ -396,7 +474,7 @@ export class AuthService {
   }
 
   hasAccessToken(): boolean {
-    return hasStoredAccessToken();
+    return this.isAuthenticated();
   }
 
   obtenerUsuario(): AuthUser | null {

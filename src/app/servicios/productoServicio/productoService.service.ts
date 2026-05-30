@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, catchError, map } from 'rxjs';
+import { Observable, catchError, map, of } from 'rxjs';
 import {
   ApiListResponse,
   buildApiUrl,
@@ -20,7 +20,27 @@ export interface Producto {
   stockDisponible?: number;
   stockReservado?: number;
   negocioId?: number;
+  negocio?: {
+    id?: number | string | null;
+    nombre?: string | null;
+    slug?: string | null;
+    nickname?: string | null;
+  } | null;
+  favorito?: boolean;
+  esFavorito?: boolean;
+  isFavorite?: boolean;
+  isFavorited?: boolean;
   [key: string]: unknown;
+}
+
+export interface ProductoBusqueda extends Producto {
+  nenufarActivo?: string | null;
+  nenufarAsset?: string | null;
+}
+
+export interface ResultadoBusqueda {
+  items: ProductoBusqueda[];
+  total: number;
 }
 
 export interface CreateProductoPayload {
@@ -101,6 +121,7 @@ export class ProductoServiceService {
     return this.http.post<Producto>(
       buildApiUrl(`/negocios/${negocioId}/productos`),
       payload,
+      { withCredentials: true },
     );
   }
 
@@ -109,18 +130,26 @@ export class ProductoServiceService {
   }
 
   update(id: number, payload: UpdateProductoPayload): Observable<Producto> {
-    return this.http.patch<Producto>(buildApiUrl(`/productos/${id}`), payload);
+    return this.http.patch<Producto>(
+      buildApiUrl(`/productos/${id}`),
+      payload,
+      { withCredentials: true },
+    );
   }
 
   adjustStock(id: number, payload: UpdateStockPayload): Observable<Producto> {
     return this.http.patch<Producto>(
       buildApiUrl(`/productos/${id}/stock`),
       payload,
+      { withCredentials: true },
     );
   }
 
   remove(id: number): Observable<unknown> {
-    return this.http.delete<unknown>(buildApiUrl(`/productos/${id}`));
+    return this.http.delete<unknown>(
+      buildApiUrl(`/productos/${id}`),
+      { withCredentials: true },
+    );
   }
 
   getSolicitudesProducto(negocioId: number): Observable<SolicitudProducto[]> {
@@ -129,12 +158,13 @@ export class ProductoServiceService {
     return this.http
       .get<SolicitudProducto[] | ApiListResponse<SolicitudProducto>>(
         buildApiUrl(`/negocios/${negocioId}/solicitudes-producto`),
+        { withCredentials: true },
       )
       .pipe(
         catchError(() =>
           this.http.get<SolicitudProducto[] | ApiListResponse<SolicitudProducto>>(
             buildApiUrl('/solicitudes-producto'),
-            { params },
+            { params, withCredentials: true },
           ),
         ),
         map((response) => extractItems(response)),
@@ -148,6 +178,7 @@ export class ProductoServiceService {
     return this.http.patch<Producto | SolicitudProducto>(
       buildApiUrl(`/solicitudes-producto/${id}/aprobar`),
       payload,
+      { withCredentials: true },
     );
   }
 
@@ -158,16 +189,29 @@ export class ProductoServiceService {
     return this.http.patch<SolicitudProducto | unknown>(
       buildApiUrl(`/solicitudes-producto/${id}/rechazar`),
       payload,
+      { withCredentials: true },
     );
   }
 
-  buscarProductos(q: string): Observable<Producto[]> {
-    const params = new HttpParams().set('q', q);
+  /**
+   * Buscar productos de todo el sistema
+   */
+  buscarProductos(
+    q: string,
+    limit: number = 20,
+  ): Observable<ResultadoBusqueda> {
+    const params = new HttpParams()
+      .set('q', q)
+      .set('limit', String(limit));
 
-    return this.http
-      .get<Producto[] | ApiListResponse<Producto>>(buildApiUrl('/productos/buscar'), {
-        params,
-      })
-      .pipe(map((response) => extractItems(response)));
+    return this.http.get<ResultadoBusqueda>(
+      buildApiUrl('/productos/buscar'),
+      { params, withCredentials: true },
+    ).pipe(
+      catchError((error) => {
+        console.error('Error al buscar productos:', error);
+        return of({ items: [], total: 0 });
+      }),
+    );
   }
 }

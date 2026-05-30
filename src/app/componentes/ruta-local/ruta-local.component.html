@@ -126,52 +126,64 @@
             type="text"
             class="search-input"
             placeholder="Bares, tiendas, cines o cafeterias"
-            [ngModel]="improvisarSearchQuery()"
-            (ngModelChange)="onImprovisarSearch($event)"
+            [value]="improvisarSearchQuery()"
+            (input)="onImprovisarSearch($any($event.target).value)"
           >
-          <div class="search-spinner" *ngIf="improvisarSearching()">⋯</div>
+          @if (improvisarSearching()) {
+            <div class="search-spinner">⋯</div>
+          }
         </div>
       </div>
 
-      <div class="preselected-row" *ngIf="improvisarPreselected().length > 0">
-        <div class="preselected-label">Paradas guardadas para salir</div>
-        <div class="preselected-chips">
-          <span
-            class="pre-chip"
-            *ngFor="let result of improvisarPreselected(); trackBy: trackById"
-            (click)="togglePreselect(result)"
-          >
-            {{ result.emoji }} {{ result.name }} ✕
-          </span>
-        </div>
-      </div>
-
-      <div class="search-results" *ngIf="improvisarSearchResults().length > 0">
-        <button
-          type="button"
-          class="search-result-item"
-          *ngFor="let result of improvisarSearchResults(); trackBy: trackById"
-          [class.selected]="isPreselected(result)"
-          (click)="togglePreselect(result)"
-        >
-          <span class="sr-emoji">{{ result.emoji }}</span>
-          <div class="sr-info">
-            <div class="sr-name">{{ result.name }}</div>
-            <div class="sr-sub">{{ result.type }} · {{ result.address }}</div>
+      @if (improvisarPreselected().length > 0) {
+        <div class="preselected-row">
+          <div class="preselected-label">Paradas guardadas para salir</div>
+          <div class="preselected-chips">
+            @for (result of improvisarPreselected(); track result.id) {
+              <span
+                class="pre-chip"
+                (click)="togglePreselect(result)"
+              >
+                {{ result.emoji }} {{ result.name }} ✕
+              </span>
+            }
           </div>
-          <div class="sr-right">
-            <span class="sr-dist">{{ result.distance }}</span>
-            <span class="sr-check" *ngIf="isPreselected(result)">✓</span>
-          </div>
-        </button>
-      </div>
-
-      <div class="improv-hint" *ngIf="!improvisarSearchQuery()">
-        <div class="hint-icon">🗺️</div>
-        <div class="hint-text">
-          Busca un sitio para salir con una base o empieza sin nada y deja que la ruta se construya sobre la marcha.
         </div>
-      </div>
+      }
+
+      @if (improvisarSearchResults().length > 0) {
+        <div class="search-results">
+          @for (result of improvisarSearchResults(); track result.id) {
+            <button
+              type="button"
+              class="search-result-item"
+              [class.selected]="isPreselected(result)"
+              (click)="togglePreselect(result)"
+            >
+              <span class="sr-emoji">{{ result.emoji }}</span>
+              <div class="sr-info">
+                <div class="sr-name">{{ result.name }}</div>
+                <div class="sr-sub">{{ result.type }} · {{ result.address }}</div>
+              </div>
+              <div class="sr-right">
+                <span class="sr-dist">{{ result.distance }}</span>
+                @if (isPreselected(result)) {
+                  <span class="sr-check">✓</span>
+                }
+              </div>
+            </button>
+          }
+        </div>
+      }
+
+      @if (!improvisarSearchQuery()) {
+        <div class="improv-hint">
+          <div class="hint-icon">🗺️</div>
+          <div class="hint-text">
+            Busca un sitio para salir con una base o empieza sin nada y deja que la ruta se construya sobre la marcha.
+          </div>
+        </div>
+      }
 
       <div class="improv-actions">
         <button type="button" class="btn-primary" (click)="startImprovisar()">
@@ -208,39 +220,63 @@
           </svg>
           {{ modeConfig().startBtn }}
         </button>
+
+        @if (currentMode() === 'recados') {
+          <button
+            type="button"
+            class="btn-outline nenulista-btn"
+            [disabled]="cargandoNenulista()"
+            (click)="cargarDesdeNenulista()"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
+              <rect x="9" y="3" width="6" height="4" rx="1" ry="1"></rect>
+              <line x1="9" y1="12" x2="15" y2="12"></line>
+              <line x1="9" y1="16" x2="12" y2="16"></line>
+            </svg>
+            {{ cargandoNenulista() ? 'Cargando...' : 'Usar Mi Nenulista' }}
+          </button>
+
+          @if (nenulistaError()) {
+            <p class="nenulista-error">{{ nenulistaError() }}</p>
+          }
+        }
       </div>
 
       <div class="sec-title">Rutas recientes</div>
 
-      <div *ngIf="filteredSavedRoutes().length === 0" class="empty-state">
-        <div>{{ modeConfig().icon }}</div>
-        <p>Aun no tienes rutas guardadas de este tipo.</p>
-      </div>
+      @if (filteredSavedRoutes().length === 0) {
+        <div class="empty-state">
+          <div>{{ modeConfig().icon }}</div>
+          <p>Aun no tienes rutas guardadas de este tipo.</p>
+        </div>
+      }
 
-      <button
-        type="button"
-        class="route-card"
-        *ngFor="let route of filteredSavedRoutes(); trackBy: trackById"
-        (click)="openSavedRoute(route)"
-      >
-        <div class="rcard-top">
-          <div>
-            <div class="rcard-name">{{ route.name }}</div>
-            <div class="rcard-date">{{ route.date }}</div>
+      @for (route of filteredSavedRoutes(); track route.id) {
+        <button
+          type="button"
+          class="route-card"
+          (click)="openSavedRoute(route)"
+        >
+          <div class="rcard-top">
+            <div>
+              <div class="rcard-name">{{ route.name }}</div>
+              <div class="rcard-date">{{ route.date }}</div>
+            </div>
+            <div class="rcard-badge">{{ route.paradas.length || 3 }} paradas</div>
           </div>
-          <div class="rcard-badge">{{ route.paradas.length || 3 }} paradas</div>
-        </div>
-        <div class="rcard-stats">
-          <div class="rstat">
-            <span>{{ modeConfig().icon }}</span>
-            <span><strong>{{ route.totalItems }}</strong> {{ modeConfig().statUnit }}</span>
+          <div class="rcard-stats">
+            <div class="rstat">
+              <span>{{ modeConfig().icon }}</span>
+              <span><strong>{{ route.totalItems }}</strong> {{ modeConfig().statUnit }}</span>
+            </div>
+            <div class="rstat">
+              <span>⏱</span>
+              <span><strong>{{ route.duration }}</strong></span>
+            </div>
           </div>
-          <div class="rstat">
-            <span>⏱</span>
-            <span><strong>{{ route.duration }}</strong></span>
-          </div>
-        </div>
-      </button>
+        </button>
+      }
     </div>
 
     <div class="screen screen--ruta" [class.active]="currentScreen() === 'ruta'">
@@ -263,7 +299,7 @@
       <div class="mini-map" [style.background]="modeConfig().mapBg">
         <div class="map-grid"></div>
         <div class="map-route">
-          <ng-container *ngFor="let parada of activeParadas(); let index = index; trackBy: trackById">
+          @for (parada of activeParadas(); track parada.id; let index = $index) {
             <div
               class="map-dot"
               [class.done]="parada.done"
@@ -271,107 +307,135 @@
               [style.left.%]="activeParadas().length > 1 ? (index / (activeParadas().length - 1)) * 80 + 5 : 50"
               [style.background]="parada.done ? '#85C1E9' : parada.current ? modeConfig().color : '#1A5276'"
             ></div>
-          </ng-container>
+          }
           <div class="map-line"></div>
         </div>
       </div>
 
       <div class="sec-title">Paradas</div>
 
-      <div *ngIf="activeParadas().length === 0" class="improv-empty-ruta">
-        <div class="improv-empty-icon">📍</div>
-        <p>Todavia no has anadido paradas. Empieza buscando un sitio o crea una parada manual.</p>
-      </div>
-
-      <div
-        class="parada-item"
-        [class.parada-item--current]="parada.current && !parada.done"
-        [class.parada-item--done]="parada.done"
-        *ngFor="let parada of activeParadas(); let index = index; trackBy: trackById"
-        (click)="parada.current && !parada.done ? openAddItem(parada) : null"
-      >
-        <div class="pnum" [class.pnum--done]="parada.done" [class.pnum--current]="parada.current && !parada.done">
-          {{ parada.done ? '✓' : index + 1 }}
+      @if (activeParadas().length === 0) {
+        <div class="improv-empty-ruta">
+          <div class="improv-empty-icon">📍</div>
+          <p>Todavia no has anadido paradas. Empieza buscando un sitio o crea una parada manual.</p>
         </div>
-        <div class="pinfo">
-          <div class="pname">{{ parada.placeName }}</div>
-          <div class="psub">
-            {{ parada.placeAddress }}{{ parada.startTime ? ' · ' + parada.startTime : '' }}
+      }
+
+      @for (parada of activeParadas(); track parada.id; let index = $index) {
+        <div
+          class="parada-item"
+          [class.parada-item--current]="parada.current && !parada.done"
+          [class.parada-item--done]="parada.done"
+          (click)="parada.current && !parada.done ? openAddItem(parada) : null"
+        >
+          <div class="pnum" [class.pnum--done]="parada.done" [class.pnum--current]="parada.current && !parada.done">
+            {{ parada.done ? '✓' : index + 1 }}
           </div>
-          <div class="ptags" *ngIf="parada.items.length > 0">
-            <span class="ptag" *ngFor="let item of parada.items; trackBy: trackByIdx">
-              {{ item.qty }}× {{ item.name }}{{ item.note ? ' · ' + item.note : '' }}
-            </span>
-          </div>
-        </div>
-        <div class="parada-actions">
-          <span class="padd-tag" *ngIf="parada.current && !parada.done">+ anadir</span>
-          <button
-            type="button"
-            class="mark-done-btn"
-            *ngIf="parada.current && !parada.done"
-            (click)="$event.stopPropagation(); markParadaDone(index)"
-          >
-            Hecho
-          </button>
-        </div>
-      </div>
-
-      <div *ngIf="currentMode() === 'improvisar' && showInlineSearch()" class="inline-search-panel">
-        <div class="search-box">
-          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input
-            type="text"
-            class="search-input"
-            placeholder="A donde vas ahora"
-            [ngModel]="inlineSearchQuery()"
-            (ngModelChange)="onInlineSearch($event)"
-          >
-        </div>
-
-        <div class="search-results search-results--inline">
-          <button
-            type="button"
-            class="search-result-item"
-            *ngFor="let result of inlineSearchResults(); trackBy: trackById"
-            (click)="addNewStop(result)"
-          >
-            <span class="sr-emoji">{{ result.emoji }}</span>
-            <div class="sr-info">
-              <div class="sr-name">{{ result.name }}</div>
-              <div class="sr-sub">{{ result.type }} · {{ result.distance }}</div>
+          <div class="pinfo">
+            <div class="pname">{{ parada.placeName }}</div>
+            <div class="psub">
+              {{ parada.placeAddress }}{{ parada.startTime ? ' · ' + parada.startTime : '' }}
             </div>
-          </button>
+            @if (parada.items.length > 0) {
+              <div class="ptags">
+                @for (item of parada.items; track $index) {
+                  @if (item.nenulistaItemId) {
+                    <button
+                      type="button"
+                      class="ptag ptag--check"
+                      [class.ptag--done]="item.completado"
+                      (click)="$event.stopPropagation(); toggleNenulistaItem(getParadaIndex(parada), $index)"
+                    >
+                      <svg class="ptag-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      {{ item.qty }}&#x00D7; {{ item.name }}{{ item.note ? ' · ' + item.note : '' }}
+                    </button>
+                  } @else {
+                    <span class="ptag">
+                      {{ item.qty }}&#x00D7; {{ item.name }}{{ item.note ? ' · ' + item.note : '' }}
+                    </span>
+                  }
+                }
+              </div>
+            }
+          </div>
+          <div class="parada-actions">
+            @if (parada.current && !parada.done) {
+              <span class="padd-tag">+ anadir</span>
+              <button
+                type="button"
+                class="mark-done-btn"
+                (click)="$event.stopPropagation(); markParadaDone(index)"
+              >
+                Hecho
+              </button>
+            }
+          </div>
         </div>
+      }
 
-        <button type="button" class="btn-outline" (click)="addEmptyStop()">Anadir sin nombre</button>
-      </div>
+      @if (currentMode() === 'improvisar' && showInlineSearch()) {
+        <div class="inline-search-panel">
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="A donde vas ahora"
+              [value]="inlineSearchQuery()"
+              (input)="onInlineSearch($any($event.target).value)"
+            >
+          </div>
+
+          <div class="search-results search-results--inline">
+            @for (result of inlineSearchResults(); track result.id) {
+              <button
+                type="button"
+                class="search-result-item"
+                (click)="addNewStop(result)"
+              >
+                <span class="sr-emoji">{{ result.emoji }}</span>
+                <div class="sr-info">
+                  <div class="sr-name">{{ result.name }}</div>
+                  <div class="sr-sub">{{ result.type }} · {{ result.distance }}</div>
+                </div>
+              </button>
+            }
+          </div>
+
+          <button type="button" class="btn-outline" (click)="addEmptyStop()">Anadir sin nombre</button>
+        </div>
+      }
 
       <div class="ruta-footer-btns">
-        <button type="button" class="dashed-btn" *ngIf="currentMode() !== 'improvisar'" (click)="addEmptyStop()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="16"></line>
-            <line x1="8" y1="12" x2="16" y2="12"></line>
-          </svg>
-          {{ modeConfig().addStopLabel }}
-        </button>
+        @if (currentMode() !== 'improvisar') {
+          <button type="button" class="dashed-btn" (click)="addEmptyStop()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+            {{ modeConfig().addStopLabel }}
+          </button>
+        }
 
-        <button
-          type="button"
-          class="dashed-btn dashed-btn--improv"
-          *ngIf="currentMode() === 'improvisar'"
-          (click)="showInlineSearch.set(!showInlineSearch())"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          {{ showInlineSearch() ? 'Cancelar busqueda' : 'Buscar sitio cercano' }}
-        </button>
+        @if (currentMode() === 'improvisar') {
+          <button
+            type="button"
+            class="dashed-btn dashed-btn--improv"
+            (click)="showInlineSearch.set(!showInlineSearch())"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            {{ showInlineSearch() ? 'Cancelar busqueda' : 'Buscar sitio cercano' }}
+          </button>
+        }
 
         <button type="button" class="btn-green" (click)="endRoute()" [disabled]="!activeParadas().length">
           <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
@@ -402,20 +466,21 @@
             class="text-input"
             type="text"
             [placeholder]="modeConfig().itemPlaceholder"
-            [ngModel]="addItemName()"
-            (ngModelChange)="addItemName.set($event)"
+            [value]="addItemName()"
+            (input)="addItemName.set($any($event.target).value)"
           >
 
           <div class="chips">
-            <button
-              type="button"
-              class="chip"
-              *ngFor="let chip of modeConfig().itemChips; trackBy: trackByIdx"
-              [class.chip--selected]="addItemName() === chip"
-              (click)="selectChip(chip)"
-            >
-              {{ chip }}
-            </button>
+            @for (chip of modeConfig().itemChips; track chip) {
+              <button
+                type="button"
+                class="chip"
+                [class.chip--selected]="addItemName() === chip"
+                (click)="selectChip(chip)"
+              >
+                {{ chip }}
+              </button>
+            }
           </div>
 
           <span class="form-label">{{ modeConfig().qtyLabel }}</span>
@@ -432,8 +497,8 @@
             class="text-input"
             type="text"
             [placeholder]="modeConfig().notePlaceholder"
-            [ngModel]="addItemNote()"
-            (ngModelChange)="addItemNote.set($event)"
+            [value]="addItemNote()"
+            (input)="addItemNote.set($any($event.target).value)"
           >
 
           <button type="button" class="btn-dark" (click)="saveItem()">
@@ -454,15 +519,17 @@
         @if (parada.items.length) {
           <div class="already-added">
             <div class="sec-title sec-title--reset">Ya apuntado aqui</div>
-            <div class="added-item" *ngFor="let item of parada.items; trackBy: trackByIdx">
-              <div class="check-circle">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#85C1E9" stroke-width="3" stroke-linecap="round">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
+            @for (item of parada.items; track $index) {
+              <div class="added-item">
+                <div class="check-circle">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#85C1E9" stroke-width="3" stroke-linecap="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <span class="added-name">{{ item.qty }}× {{ item.name }}</span>
+                <span class="added-note">{{ item.note }}</span>
               </div>
-              <span class="added-name">{{ item.qty }}× {{ item.name }}</span>
-              <span class="added-note">{{ item.note }}</span>
-            </div>
+            }
           </div>
         }
       } @else {
@@ -499,31 +566,38 @@
       <div class="badge-row">
         <div class="badge"><span class="badge-icon">{{ modeConfig().trophy }}</span><span class="badge-lbl">Completado</span></div>
         <div class="badge"><span class="badge-icon">🗺️</span><span class="badge-lbl">{{ summaryStats().stops || 3 }} paradas</span></div>
-        <div class="badge" *ngIf="currentMode() === 'improvisar'"><span class="badge-icon">⚡</span><span class="badge-lbl">Improvisador</span></div>
+        @if (currentMode() === 'improvisar') {
+          <div class="badge"><span class="badge-icon">⚡</span><span class="badge-lbl">Improvisador</span></div>
+        }
         <div class="badge"><span class="badge-icon">⭐</span><span class="badge-lbl">Ruta local</span></div>
       </div>
 
       <div class="sec-title">Recorrido</div>
       <div class="timeline">
-        <div
-          class="tl-item"
-          *ngFor="let parada of (activeParadas().length ? activeParadas() : getDemoParadas()); let index = index; let last = last; trackBy: trackById"
-        >
-          <div class="tl-line" *ngIf="!last"></div>
-          <div class="tl-dot">{{ index + 1 }}</div>
-          <div class="tl-content">
-            <div class="tl-name">{{ parada.placeName }}</div>
-            <div class="tl-detail">
-              {{ parada.placeAddress }}{{ parada.startTime ? ' · ' + parada.startTime : '' }}
-            </div>
-            <div class="tl-tags">
-              <span class="tl-tag" *ngFor="let item of parada.items; trackBy: trackByIdx">
-                {{ item.qty }}× {{ item.name }}{{ item.note ? ' (' + item.note + ')' : '' }}
-              </span>
-              <span class="tl-tag tl-tag--empty" *ngIf="parada.items.length === 0">Sin registros</span>
+        @for (parada of (activeParadas().length ? activeParadas() : getDemoParadas()); track parada.id; let index = $index; let last = $last) {
+          <div class="tl-item">
+            @if (!last) {
+              <div class="tl-line"></div>
+            }
+            <div class="tl-dot">{{ index + 1 }}</div>
+            <div class="tl-content">
+              <div class="tl-name">{{ parada.placeName }}</div>
+              <div class="tl-detail">
+                {{ parada.placeAddress }}{{ parada.startTime ? ' · ' + parada.startTime : '' }}
+              </div>
+              <div class="tl-tags">
+                @for (item of parada.items; track $index) {
+                  <span class="tl-tag">
+                    {{ item.qty }}× {{ item.name }}{{ item.note ? ' (' + item.note + ')' : '' }}
+                  </span>
+                }
+                @if (parada.items.length === 0) {
+                  <span class="tl-tag tl-tag--empty">Sin registros</span>
+                }
+              </div>
             </div>
           </div>
-        </div>
+        }
       </div>
 
       <div class="res-actions">

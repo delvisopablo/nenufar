@@ -136,22 +136,15 @@ export class PerfilUsuarioComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    this.authService.hydrateSession().subscribe({
-      next: (usuario) => {
-        this.usuarioActual.set(usuario);
-        const perfil = this.usuario();
-        if (perfil) {
-          this.cargarSeguimiento(perfil);
-          if (this.esUsuarioActual(perfil)) {
-            this.cargarNenufarizar();
-          }
-        }
-      },
-    });
-
     this.route.paramMap
       .pipe(
-        switchMap((params) => {
+        switchMap((params) =>
+          this.authService
+            .hydrateSession({ forceRemote: !this.authService.isSessionResolved() })
+            .pipe(map((usuario) => ({ params, usuario }))),
+        ),
+        switchMap(({ params, usuario }) => {
+          this.usuarioActual.set(usuario);
           const nickname = params.get('nickname')?.trim();
 
           if (!nickname) {
@@ -177,8 +170,13 @@ export class PerfilUsuarioComponent implements OnInit, OnDestroy {
                       catchError(() => of([])),
                     );
               const logros$ = this.cargarLogros(perfil.id);
-              const reservas$ = this.esUsuarioActual(perfil) && this.authService.hasAccessToken()
-                ? this.reservaService.reservasPorUsuario(perfil.id).pipe(catchError(() => of([])))
+              const reservas$ = this.esUsuarioActual(perfil)
+                ? this.reservaService.reservasPorUsuario(perfil.id).pipe(
+                    catchError((error: unknown) => {
+                      this.logDevSecondary('reservas', error);
+                      return of([]);
+                    }),
+                  )
                 : of([]);
 
               return forkJoin({
@@ -611,16 +609,15 @@ export class PerfilUsuarioComponent implements OnInit, OnDestroy {
   }
 
   private registrarErrorNenufarizar(error: unknown): void {
-    if (this.nenufarizarError()) {
-      return;
-    }
+    this.nenufarizar.codigoReferido.set('');
+    this.nenufarizar.referidos.set([]);
+    this.logDevSecondary('referidos', error);
+  }
 
-    this.nenufarizarError.set(
-      getUserErrorMessage(
-        error,
-        'No hemos podido cargar tu zona de referidos ahora mismo.',
-      ),
-    );
+  private logDevSecondary(area: string, error: unknown): void {
+    if (!environment.production) {
+      console.warn(`[PerfilUsuarioComponent] ${area} no disponible`, error);
+    }
   }
 
   private logDevError(error: unknown): void {

@@ -7,20 +7,18 @@ export const adminGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.esAdmin()) {
-    return true;
-  }
+  return authService
+    .hydrateSession({ forceRemote: !authService.isSessionResolved() })
+    .pipe(
+      map((usuario) => {
+        if (!usuario && !authService.isAuthenticated()) {
+          return router.createUrlTree(['/estanque']);
+        }
 
-  if (!authService.hasSessionHint()) {
-    return router.createUrlTree(['/estanque']);
-  }
-
-  return authService.me().pipe(
-    map((usuario) =>
-      usuario?.rolGlobal === 'ADMIN'
-        ? true
-        : (router.createUrlTree(['/mi-perfil']) as UrlTree),
-    ),
-    catchError(() => of(router.createUrlTree(['/mi-perfil']))),
-  );
+        return authService.esAdmin(usuario ?? authService.obtenerUsuario())
+          ? true
+          : (router.createUrlTree(['/mi-perfil']) as UrlTree);
+      }),
+      catchError(() => of(router.createUrlTree(['/estanque']))),
+    );
 };

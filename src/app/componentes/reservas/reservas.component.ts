@@ -118,21 +118,32 @@ export class ReservasComponent implements OnInit, OnChanges {
 
   private lastContextKey = '';
   private mineLookupInFlight = false;
+  private authReady = false;
 
   ngOnInit(): void {
     this.authService
-      .hydrateSession({ forceRemote: this.authService.hasSessionHint() })
+      .hydrateSession({ forceRemote: !this.authService.isSessionResolved() })
       .subscribe({
         next: (usuario) => {
           this.usuarioActual = usuario;
+          this.authReady = true;
+          this.lastContextKey = '';
+          this.ensureContext();
+        },
+        error: () => {
+          this.usuarioActual = null;
+          this.authReady = true;
+          this.lastContextKey = '';
           this.ensureContext();
         },
       });
-
-    this.ensureContext();
   }
 
   ngOnChanges(_changes: SimpleChanges): void {
+    if (!this.authReady && !this.authService.isSessionResolved()) {
+      return;
+    }
+
     this.ensureContext();
   }
 
@@ -618,7 +629,7 @@ export class ReservasComponent implements OnInit, OnChanges {
     const negocio$ = targetBusinessId
       ? this.getBusinessContext(targetBusinessId).pipe(catchError(() => of(null)))
       : of(null);
-    const misReservas$ = this.authService.hasAccessToken()
+    const misReservas$ = this.canUsePrivateSession()
       ? this.reservaService.getMisReservas({ limit: 50 }).pipe(catchError(() => of([])))
       : of([]);
 
@@ -647,7 +658,7 @@ export class ReservasComponent implements OnInit, OnChanges {
 
   private loadBusinessDayData(negocioId: number): void {
     forkJoin({
-      reservas: this.authService.hasAccessToken()
+      reservas: this.canUsePrivateSession()
         ? this.reservaService
             .getReservasPorNegocio(negocioId, {
               from: this.startOfDayIso(this.fechaSeleccionada),
@@ -675,7 +686,7 @@ export class ReservasComponent implements OnInit, OnChanges {
   }
 
   private loadMyReservations(): void {
-    if (!this.authService.hasAccessToken()) {
+    if (!this.canUsePrivateSession()) {
       this.misReservas = [];
       return;
     }
@@ -715,6 +726,10 @@ export class ReservasComponent implements OnInit, OnChanges {
         );
       },
     });
+  }
+
+  private canUsePrivateSession(): boolean {
+    return Boolean(this.usuarioActual?.id || this.authService.isAuthenticated());
   }
 
   private refreshCurrentData(): void {

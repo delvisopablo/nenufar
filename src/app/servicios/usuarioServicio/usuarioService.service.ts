@@ -128,6 +128,7 @@ export class UsuarioServiceService {
     return this.http.patch<PerfilUsuarioResponse>(
       buildApiUrl(`/usuario/${id}`),
       payload,
+      { withCredentials: true },
     );
   }
 
@@ -139,6 +140,7 @@ export class UsuarioServiceService {
       .post<FotoPerfilUploadResponse | PerfilUsuarioResponse>(
         buildApiUrl('/usuario/me/foto-perfil'),
         formData,
+        { withCredentials: true },
       )
       .pipe(
         map((response) =>
@@ -182,17 +184,27 @@ export class UsuarioServiceService {
 
   /** POST /api/usuario/:id/seguir */
   seguir(id: number): Observable<unknown> {
-    return this.http.post<unknown>(buildApiUrl(`/usuario/${id}/seguir`), {});
+    return this.http.post<unknown>(
+      buildApiUrl(`/usuario/${id}/seguir`),
+      {},
+      { withCredentials: true },
+    );
   }
 
   /** DELETE /api/usuario/:id/seguir */
   dejarDeSeguir(id: number): Observable<unknown> {
-    return this.http.delete<unknown>(buildApiUrl(`/usuario/${id}/seguir`));
+    return this.http.delete<unknown>(
+      buildApiUrl(`/usuario/${id}/seguir`),
+      { withCredentials: true },
+    );
   }
 
   /** DELETE /api/usuario/:id */
   borrar(id: number): Observable<unknown> {
-    return this.http.delete<unknown>(buildApiUrl(`/usuario/${id}`));
+    return this.http.delete<unknown>(
+      buildApiUrl(`/usuario/${id}`),
+      { withCredentials: true },
+    );
   }
 
 }

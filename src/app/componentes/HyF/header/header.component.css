@@ -125,6 +125,12 @@
   box-shadow: 0 14px 24px rgba(112, 187, 120, 0.22);
 }
 
+.top-action--shopping {
+  background: linear-gradient(135deg, rgba(242, 227, 187, 0.96), rgba(118, 196, 110, 0.96));
+  color: #244331;
+  box-shadow: 0 14px 24px rgba(118, 196, 110, 0.2);
+}
+
 .top-action--admin {
   background: linear-gradient(135deg, rgba(245, 205, 115, 0.96), rgba(208, 140, 52, 0.96));
   color: #4b2c00;

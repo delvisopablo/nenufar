@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Component } from '@angular/core';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { ErrorObservabilityService } from '../../../core/errors/error-observability.service';
 import { httpErrorInterceptor } from '../../../core/errors/http-error.interceptor';
 import { CredentialsInterceptor } from '../../../servicios/authService/credentials.interceptor';
@@ -16,10 +16,17 @@ import { LoginComponent } from './login.component';
 })
 class MockEstanqueBackgroundComponent {}
 
+@Component({
+  standalone: true,
+  template: '',
+})
+class BlankRouteComponent {}
+
 describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
   let httpMock: HttpTestingController;
+  let router: Router;
 
   beforeEach(async () => {
     localStorage.setItem('accesoPermitido', 'true');
@@ -28,7 +35,7 @@ describe('LoginComponent', () => {
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: 'inicio', component: BlankRouteComponent }]),
         provideHttpClient(withInterceptors([CredentialsInterceptor, httpErrorInterceptor])),
         provideHttpClientTesting(),
         { provide: ErrorObservabilityService, useValue: observability },
@@ -43,6 +50,9 @@ describe('LoginComponent', () => {
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
     httpMock = TestBed.inject(HttpTestingController);
+    router = TestBed.inject(Router);
+    spyOn(router, 'navigate').and.resolveTo(true);
+    spyOn(router, 'navigateByUrl').and.resolveTo(true);
     fixture.detectChanges();
   });
 
@@ -59,12 +69,18 @@ describe('LoginComponent', () => {
     component.loginForm.setValue({
       email: 'demo@example.com',
       password: 'wrong-password',
+      rememberMe: false,
     });
 
     component.iniciarSesion();
 
     const request = httpMock.expectOne((req) => req.url.endsWith('/auth/login'));
     expect(request.request.withCredentials).toBeTrue();
+    expect(request.request.body).toEqual({
+      email: 'demo@example.com',
+      password: 'wrong-password',
+      rememberMe: false,
+    });
     request.flush(
       {
         ok: false,
@@ -80,5 +96,26 @@ describe('LoginComponent', () => {
 
     const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement | null;
     expect(alert?.textContent).toContain('Correo o contraseña incorrectos.');
+  });
+
+  it('envia rememberMe cuando el usuario marca el checkbox', () => {
+    component.loginForm.setValue({
+      email: 'demo@example.com',
+      password: 'secret123',
+      rememberMe: true,
+    });
+
+    component.iniciarSesion();
+
+    const request = httpMock.expectOne((req) => req.url.endsWith('/auth/login'));
+    expect(request.request.body).toEqual({
+      email: 'demo@example.com',
+      password: 'secret123',
+      rememberMe: true,
+    });
+    request.flush({ usuario: { id: 7, email: 'demo@example.com' } });
+
+    const meRequest = httpMock.expectOne((req) => req.url.endsWith('/auth/me'));
+    meRequest.flush({ usuario: { id: 7, email: 'demo@example.com' } });
   });
 });

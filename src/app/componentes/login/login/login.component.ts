@@ -239,7 +239,8 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly loginForm = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
-    password: ['', Validators.required]
+    password: ['', Validators.required],
+    rememberMe: [false]
   });
   readonly loginError = signal('');
   readonly loginSubmitting = signal(false);
@@ -283,6 +284,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const email = this.loginForm.controls.email.value.trim().toLowerCase();
     const password = this.loginForm.controls.password.value;
+    const rememberMe = this.loginForm.controls.rememberMe.value;
 
     if (!email || !password) {
       this.loginForm.markAllAsTouched();
@@ -291,13 +293,9 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.loginSubmitting.set(true);
 
-    this.authService.login(email, password).subscribe({
+    this.authService.login(email, password, rememberMe).subscribe({
       next: () => {
         this.persistirSesion();
-        console.info(
-          '[auth][login] access token disponible tras login:',
-          this.authService.hasAccessToken(),
-        );
         this.loginSubmitting.set(false);
         void this.redirigirTrasLogin();
       },
