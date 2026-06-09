@@ -244,9 +244,21 @@ export class AuthService {
       )
       .pipe(
         tap((response) => this.persistirUsuarioDesdeRespuesta(response)),
-        switchMap((response) =>
-          this.me().pipe(map((usuario) => usuario ?? response)),
-        ),
+        switchMap((response) => {
+          // Snapshot the user stored from the login response before calling me().
+          // If me() returns 401 (cross-origin cookie not yet propagated) it calls
+          // clearStoredAuth(), wiping the just-persisted session. We detect that
+          // and restore from the login response so the user stays authenticated.
+          const loginUser = this.obtenerUsuario();
+          return this.me().pipe(
+            map((usuario) => {
+              if (!usuario && loginUser) {
+                this.guardarUsuario(loginUser);
+              }
+              return usuario ?? response;
+            }),
+          );
+        }),
         tap({
           error: () => {
             this.authStatusSignal.set(

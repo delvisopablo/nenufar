@@ -1,13 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { NavigationEnd, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import {
   Subscription,
   catchError,
   debounceTime,
   distinctUntilChanged,
-  filter,
   firstValueFrom,
   map,
   of,
@@ -74,7 +73,7 @@ export class HeaderComponent implements OnDestroy {
   readonly accessModalAbierto = signal(false);
   readonly accessModalMessage = signal('Necesitas iniciar sesion para seguir negocios y guardar tus favoritos.');
   readonly navigationError = signal('');
-  readonly usuarioActual = signal<AuthUser | null>(this.authService.obtenerUsuario());
+  readonly usuarioActual = computed(() => this.authService.usuarioActual());
   readonly mostrarMiPerfil = computed(() => this.authService.isAuthenticated());
   readonly mostrarAccesoAdmin = computed(
     () => this.usuarioActual()?.rolGlobal === 'ADMIN',
@@ -110,7 +109,6 @@ export class HeaderComponent implements OnDestroy {
   });
 
   private readonly searchSubscription: Subscription;
-  private readonly routerSubscription: Subscription;
 
   constructor() {
     this.searchSubscription = this.searchControl.valueChanges
@@ -149,16 +147,11 @@ export class HeaderComponent implements OnDestroy {
         this.busquedaEstado.set(status);
       });
 
-    this.syncUsuarioActual();
     this.cargarCategorias();
-    this.routerSubscription = this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => this.syncUsuarioActual());
   }
 
   ngOnDestroy(): void {
     this.searchSubscription.unsubscribe();
-    this.routerSubscription.unsubscribe();
   }
 
   async buscarPrimerNegocio(): Promise<void> {
@@ -395,10 +388,6 @@ export class HeaderComponent implements OnDestroy {
     this.resultadosBusqueda.set([]);
     this.busquedaEstado.set('idle');
     this.filtrosAbiertos.set(false);
-  }
-
-  private syncUsuarioActual(): void {
-    this.usuarioActual.set(this.authService.obtenerUsuario());
   }
 
   private getFiltrosBusqueda(): { categoriaId?: number; subcategoriaId?: number } {
