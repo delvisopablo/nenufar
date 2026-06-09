@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   AfterViewInit,
   Component,
@@ -287,6 +288,10 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   registrarUsuario(): void {
+    if (this.registrando()) {
+      return;
+    }
+
     this.errorMensaje.set('');
 
     if (this.registroForm.invalid) {
@@ -319,8 +324,6 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
 
           localStorage.setItem('accesoPermitido', 'true');
           localStorage.removeItem('guestMode');
-          // Verify session via HttpOnly cookie before navigating to ensure
-          // the profile guard finds an authenticated user immediately
           this.auth.me().subscribe({
             next: () => {
               this.registrando.set(false);
@@ -334,6 +337,12 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.registrando.set(false);
+
+          if (error instanceof HttpErrorResponse && error.status === 409) {
+            this.errorMensaje.set('Ese email o nombre de usuario ya está registrado.');
+            return;
+          }
+
           this.errorMensaje.set(this.extraerMensajeError(error));
         }
       });
