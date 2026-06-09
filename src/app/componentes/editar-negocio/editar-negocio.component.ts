@@ -119,7 +119,7 @@ export class EditarNegocioComponent implements OnInit, OnDestroy {
       next: (negocio) => {
         if (!negocio?.id) {
           this.cargando = false;
-          this.errorMensaje = 'No hemos podido identificar el negocio para Nenúditar.';
+          this.errorMensaje = 'Falta el identificador del negocio para Nenúditar.';
           return;
         }
         this.negocioId = negocio.id;
@@ -127,7 +127,7 @@ export class EditarNegocioComponent implements OnInit, OnDestroy {
       },
       error: (error: unknown) => {
         this.cargando = false;
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido identificar el negocio.');
+        this.errorMensaje = getUserErrorMessage(error, 'El negocio no se identificó.');
       },
     });
   }
@@ -186,7 +186,7 @@ export class EditarNegocioComponent implements OnInit, OnDestroy {
       },
       error: (error: unknown) => {
         this.cargando = false;
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
+        this.errorMensaje = getUserErrorMessage(error, 'El negocio no se cargó para editarlo.');
       },
     });
   }
@@ -245,7 +245,7 @@ export class EditarNegocioComponent implements OnInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.guardando = false;
-          this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar el negocio.');
+          this.errorMensaje = getUserErrorMessage(error, 'Los cambios del negocio no se guardaron.');
         },
       });
   }
@@ -281,7 +281,7 @@ export class EditarNegocioComponent implements OnInit, OnDestroy {
         this.confirmandoBorrar = false;
         this.errorMensaje = getUserErrorMessage(
           error,
-          'No hemos podido eliminar el negocio. Si el problema persiste, contacta con soporte.',
+          'El negocio no se eliminó. Si el problema persiste, contacta con soporte.',
         );
       },
     });

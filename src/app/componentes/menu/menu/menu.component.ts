@@ -39,7 +39,7 @@ export class MenuComponent {
   irANegocio(negocio: { id?: number | null; slug?: string | null; nickname?: string | null }) {
     const negocioRoute = resolveNegocioRouteCommands(negocio);
     if (!negocioRoute) {
-      this.errorMensaje = 'No hemos podido abrir ese negocio todavía.';
+      this.errorMensaje = 'Ese negocio no se abrió porque aún no tiene una ruta pública.';
       return;
     }
 

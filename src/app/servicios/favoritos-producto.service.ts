@@ -43,7 +43,7 @@ export class FavoritosProductoService {
         catchError((error) => {
           console.error('Error al obtener favoritos:', error);
           return throwError(
-            () => new Error('No se pudo obtener los favoritos'),
+            () => new Error('La lista de productos favoritos no se cargó.'),
           );
         }),
       );
@@ -64,7 +64,7 @@ export class FavoritosProductoService {
         catchError((error) => {
           console.error('Error al marcar favorito:', error);
           return throwError(
-            () => new Error('No se pudo marcar como favorito'),
+            () => new Error('El producto no se añadió a favoritos.'),
           );
         }),
       );
@@ -81,7 +81,7 @@ export class FavoritosProductoService {
       catchError((error) => {
         console.error('Error al quitar favorito:', error);
         return throwError(
-          () => new Error('No se pudo quitar el favorito'),
+          () => new Error('El producto no se quitó de favoritos.'),
         );
       }),
     );

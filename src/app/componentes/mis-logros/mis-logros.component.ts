@@ -266,7 +266,7 @@ export class MisLogrosComponent implements OnInit {
         error: (error: unknown) => {
           this.cargando.set(false);
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido cargar tus logros.'),
+            getUserErrorMessage(error, 'Tus logros no se cargaron.'),
           );
         },
       });

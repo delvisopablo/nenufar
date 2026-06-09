@@ -3,7 +3,7 @@
   "outputDirectory": "dist/nenufar/browser",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }
   ]

@@ -79,6 +79,9 @@ type LilyPadBody = NenufarEntity<number> & {
   glowMesh?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   haloMesh?: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   isOriginal: boolean;
+  isSurvey?: boolean;
+  surveyUrl?: string;
+  surveyLabel?: string;
   lastTouchedAt: number;
   linearDamping: number;
   maxSpeed: number;
@@ -171,6 +174,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
   hudReady = false;
   hudVisible = false;
   popupViews: PopupView[] = [];
+  surveyTooltip: { label: string; x: number; y: number } | null = null;
 
   loginModalOpen = false;
   loginEmail = '';
@@ -259,6 +263,8 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
   private waterMaterial?: THREE.ShaderMaterial;
   private waterMesh?: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
 
+  private infoTexture?: THREE.Texture;
+
   private bgCanvas?: HTMLCanvasElement;
   private bgCtx?: CanvasRenderingContext2D | null;
   private ambientDrifters: AmbientDrifter[] = [];
@@ -300,6 +306,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.loginModalOpen) {
       this.hoverPad = null;
       this.setCanvasCursor('default');
+      this.clearSurveyTooltip();
       return;
     }
 
@@ -311,12 +318,36 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       this.hoverPad = hoveredPad;
       this.setCanvasCursor(hoveredPad ? 'pointer' : 'default');
     }
+
+    if (hoveredPad?.isSurvey) {
+      const projected = this.projectWorldToScreen(hoveredPad.pos);
+      if (projected) {
+        this.ngZone.run(() => {
+          this.surveyTooltip = { label: hoveredPad.surveyLabel ?? '', x: projected.x, y: projected.y };
+          this.cdr.markForCheck();
+        });
+      }
+    } else {
+      this.clearSurveyTooltip();
+    }
   };
 
   private readonly onPointerLeave = (): void => {
     this.hoverPad = null;
     this.setCanvasCursor('default');
+    this.clearSurveyTooltip();
   };
+
+  private clearSurveyTooltip(): void {
+    if (this.surveyTooltip === null) {
+      return;
+    }
+
+    this.ngZone.run(() => {
+      this.surveyTooltip = null;
+      this.cdr.markForCheck();
+    });
+  }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
     if (this.loginModalOpen) {
@@ -338,6 +369,11 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.applyImpulseFromImpact(hit.pad, hit.point, elapsed);
+
+    if (hit.pad.isSurvey && hit.pad.surveyUrl) {
+      window.open(hit.pad.surveyUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
 
     if (hit.pad.isOriginal) {
       this.ngZone.run(() => {
@@ -443,6 +479,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     this.waterMaterial?.dispose();
     this.mustioTexture?.dispose();
     this.originalTexture?.dispose();
+    this.infoTexture?.dispose();
     this.padShadowTexture?.dispose();
     this.focusHaloTexture?.dispose();
     this.glowTexture?.dispose();
@@ -524,7 +561,7 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
         this.loginError =
           isAppErrorModel(error) && error.kind === 'auth'
             ? 'Correo o contraseña incorrectos.'
-            : getUserErrorMessage(error, 'No hemos podido iniciar sesión. Revisa los datos.');
+            : getUserErrorMessage(error, 'El inicio de sesión no se completó. Revisa correo y contraseña.');
         this.cdr.markForCheck();
       }
     });
@@ -937,6 +974,57 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.recenterInitialPadCluster();
+
+    this.infoTexture = await this.loadPadTexture(
+      'assets/imagenes/nenufar_info.png',
+      {
+        backgroundMode: 'remove-white-background',
+        fallbackColors: {
+          dark: '#2a6b72',
+          light: '#7ec8d0',
+          vein: '#d0f0f4'
+        }
+      }
+    );
+
+    if (!this.destroyed) {
+      const surveyRadius = 0.52;
+
+      const surveyUsersPad = this.buildPad(
+        new THREE.Vector2(-3.4, 0.3),
+        surveyRadius,
+        false,
+        0.1,
+        {
+          isSurvey: true,
+          surveyUrl: 'https://forms.gle/CvNh89wqu9YuE5cX7',
+          surveyLabel: 'Encuesta de usuarios',
+          overrideTexture: this.infoTexture,
+          driftStrengthOverride: 0.025,
+          maxSpeedOverride: 0.35
+        }
+      );
+      this.lilyPads.push(surveyUsersPad);
+      this.padById.set(surveyUsersPad.id, surveyUsersPad);
+
+      const surveyBusinessPad = this.buildPad(
+        new THREE.Vector2(3.4, -0.3),
+        surveyRadius,
+        false,
+        0.2,
+        {
+          isSurvey: true,
+          surveyUrl: 'https://forms.gle/CHekoQM7vyWKt8PR6',
+          surveyLabel: 'Encuesta de negocios',
+          overrideTexture: this.infoTexture,
+          driftStrengthOverride: 0.025,
+          maxSpeedOverride: 0.35
+        }
+      );
+      this.lilyPads.push(surveyBusinessPad);
+      this.padById.set(surveyBusinessPad.id, surveyBusinessPad);
+    }
+
     this.syncWakeUniforms(0);
   }
 
@@ -944,13 +1032,24 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     position: THREE.Vector2,
     radius: number,
     isOriginal: boolean,
-    spawnDelayUntil: number
+    spawnDelayUntil: number,
+    options?: {
+      isSurvey?: boolean;
+      surveyUrl?: string;
+      surveyLabel?: string;
+      overrideTexture?: THREE.Texture;
+      driftStrengthOverride?: number;
+      maxSpeedOverride?: number;
+    }
   ): LilyPadBody {
+    const padTexture = options?.overrideTexture
+      ?? (isOriginal ? this.originalTexture! : this.mustioTexture!);
+
     const material = new THREE.MeshBasicMaterial({
       alphaTest: 0.06,
       color: new THREE.Color(isOriginal ? '#ffffff' : '#eef6eb'),
       depthWrite: false,
-      map: isOriginal ? this.originalTexture! : this.mustioTexture!,
+      map: padTexture,
       transparent: true
     });
     const shadowMesh = new THREE.Mesh(
@@ -1026,16 +1125,19 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
       boundsMode: 'wrap',
       collisionEnabled: true,
       driftDir: direction.clone(),
-      driftStrength: THREE.MathUtils.randFloat(0.06, 0.12),
+      driftStrength: options?.driftStrengthOverride ?? THREE.MathUtils.randFloat(0.06, 0.12),
       flowInfluence: THREE.MathUtils.randFloat(0.9, 1.45),
       glowMesh,
       haloMesh,
       id: this.lilyPads.length,
-      isMustio: !isOriginal,
+      isMustio: !isOriginal && !options?.isSurvey,
       isOriginal,
+      isSurvey: options?.isSurvey,
+      surveyUrl: options?.surveyUrl,
+      surveyLabel: options?.surveyLabel,
       lastTouchedAt: -10,
       linearDamping: isOriginal ? 0.9914 : 0.9908,
-      maxSpeed: this.maxSpeed,
+      maxSpeed: options?.maxSpeedOverride ?? this.maxSpeed,
       maxSpin: this.maxSpin,
       mesh,
       microPhase: Math.random() * Math.PI * 2,

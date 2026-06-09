@@ -110,7 +110,7 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
           const usuarioId = Number(params.get('id'));
 
           if (!Number.isFinite(usuarioId) || usuarioId <= 0) {
-            this.error.set('No hemos podido identificar el perfil de usuario.');
+            this.error.set('Falta el identificador del perfil de usuario.');
             this.cargando.set(false);
             return of(null);
           }
@@ -146,7 +146,7 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
               this.usuario.set(null);
               this.resenas.set([]);
               this.logros.set([]);
-              this.error.set(getUserErrorMessage(error, 'No hemos podido cargar este perfil de usuario.'));
+              this.error.set(getUserErrorMessage(error, 'Este perfil de usuario no se cargó.'));
               return of(null);
             }),
           );
@@ -206,7 +206,7 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
         this.seguidoresTotal.update((value) => Math.max(0, value + (nextValue ? 1 : -1)));
       },
       error: (error: unknown) => {
-        this.error.set(getUserErrorMessage(error, 'No hemos podido actualizar el seguimiento.'));
+        this.error.set(getUserErrorMessage(error, 'El seguimiento de este usuario no se actualizó.'));
       },
     });
   }

@@ -54,7 +54,7 @@ export class ProductoComponent implements OnInit, OnChanges {
       },
       error: (err: unknown) => {
         this.cargando.set(false);
-        this.errorMensaje.set(getUserErrorMessage(err, 'No hemos podido cargar los productos.'));
+        this.errorMensaje.set(getUserErrorMessage(err, 'Los productos no se cargaron.'));
       }
     });
   }

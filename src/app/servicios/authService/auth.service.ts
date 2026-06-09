@@ -35,6 +35,9 @@ export interface AuthUser {
   nombre?: string;
   nickname?: string;
   email?: string;
+  emailVerificado?: boolean;
+  emailVerified?: boolean;
+  email_verificado?: boolean;
   rolGlobal?: GlobalRole | string;
   rol?: string;
   biografia?: string;
@@ -68,6 +71,20 @@ export function resolvePrivateProfileRoute(
   return resolveOwnedBusinessId(usuario) ? ['/mi-negocio'] : ['/mi-perfil'];
 }
 
+export function requiresPendingEmailVerification(
+  usuario: AuthUser | null | undefined,
+): boolean {
+  if (!usuario) {
+    return false;
+  }
+
+  return [
+    usuario.emailVerificado,
+    usuario.emailVerified,
+    usuario.email_verificado,
+  ].some((value) => value === false);
+}
+
 export interface AuthResponse {
   access_token?: string;
   accessToken?: string;
@@ -75,11 +92,25 @@ export interface AuthResponse {
   usuario?: AuthUser;
   user?: AuthUser;
   data?: AuthUser;
+  requiresEmailVerification?: boolean;
+  emailVerification?: {
+    email?: string;
+    expiresInMinutes?: number;
+  };
 }
 
 export type LoginResponse = AuthResponse | AuthUser;
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
+export interface EmailVerificationPayload {
+  email: string;
+  code: string;
+}
+
+export interface ResendEmailCodePayload {
+  email: string;
+}
 
 export interface RegisterPayload {
   nombre?: string;
@@ -419,6 +450,12 @@ export class AuthService {
   persistirUsuarioDesdeRespuesta(response: unknown): void {
     clearAccessToken();
 
+    if (this.responseRequiresEmailVerification(response)) {
+      this.clearStoredUser();
+      this.authStatusSignal.set('unauthenticated');
+      return;
+    }
+
     const usuario = this.normalizarUsuario(response);
 
     if (usuario) {
@@ -486,9 +523,31 @@ export class AuthService {
     return this.http.post<unknown>(buildApiUrl('/auth/refresh'), {});
   }
 
-  /** POST /api/auth/verify-email — body: { token } */
-  verifyEmail(token: string): Observable<unknown> {
-    return this.http.post<unknown>(buildApiUrl('/auth/verify-email'), { token });
+  /** POST /api/auth/verificar-email — body: { email, code } */
+  verifyEmail(payload: EmailVerificationPayload): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(
+        buildApiUrl('/auth/verificar-email'),
+        {
+          email: payload.email,
+          code: payload.code,
+        },
+        { withCredentials: true },
+      )
+      .pipe(
+        tap((response) => this.persistirUsuarioDesdeRespuesta(response))
+      );
+  }
+
+  /** POST /api/auth/reenviar-codigo-email — body: { email } */
+  resendEmailCode(payload: ResendEmailCodePayload): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(
+      buildApiUrl('/auth/reenviar-codigo-email'),
+      {
+        email: payload.email,
+      },
+      { withCredentials: true },
+    );
   }
 
   /** POST /api/auth/forgot-password — body: { email } */
@@ -593,5 +652,13 @@ export class AuthService {
     return typeof tokenCandidate === 'string' && tokenCandidate.trim()
       ? tokenCandidate.trim()
       : null;
+  }
+
+  private responseRequiresEmailVerification(response: unknown): boolean {
+    if (!response || typeof response !== 'object') {
+      return false;
+    }
+
+    return (response as AuthResponse).requiresEmailVerification === true;
   }
 }

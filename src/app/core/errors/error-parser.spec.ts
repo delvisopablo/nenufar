@@ -54,7 +54,7 @@ describe('error-parser', () => {
 
     expect(appError.kind).toBe('not-found');
     expect(appError.code).toBe('NOT_FOUND');
-    expect(appError.message).toContain('No hemos encontrado');
+    expect(appError.message).toContain('ya no está disponible');
   });
 
   it('normaliza errores de red con status 0', () => {
@@ -81,4 +81,3 @@ describe('error-parser', () => {
     expect(getUserErrorMessage(new Error('Fallo visible'))).toBe('Fallo visible');
   });
 });
-

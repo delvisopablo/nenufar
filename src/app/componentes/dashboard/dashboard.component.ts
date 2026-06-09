@@ -83,7 +83,7 @@ export class DashboardComponent implements OnInit {
     this.negocioService.getMine().subscribe({
       next: (negocio) => {
         if (!negocio?.id) {
-          this.error.set('No hemos podido identificar el negocio de este dashboard.');
+          this.error.set('Falta el identificador del negocio para abrir el dashboard.');
           this.cargando.set(false);
           return;
         }
@@ -92,7 +92,7 @@ export class DashboardComponent implements OnInit {
         this.cargarNegocioBase(negocio.id);
       },
       error: () => {
-        this.error.set('No hemos podido identificar el negocio de este dashboard.');
+        this.error.set('Falta el identificador del negocio para abrir el dashboard.');
         this.cargando.set(false);
       },
     });
@@ -110,7 +110,7 @@ export class DashboardComponent implements OnInit {
         this.cargarReservas();
       },
       error: () => {
-        this.error.set('No hemos podido cargar el dashboard del negocio.');
+        this.error.set('El dashboard del negocio no se cargó.');
         this.cargando.set(false);
       }
     });
@@ -123,7 +123,7 @@ export class DashboardComponent implements OnInit {
         this.cargarDashboard();
       },
       error: () => {
-        this.error.set('No hemos podido resolver el negocio de este dashboard.');
+        this.error.set('El negocio del dashboard no se resolvió.');
         this.cargando.set(false);
       },
     });

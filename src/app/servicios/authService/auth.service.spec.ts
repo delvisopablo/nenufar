@@ -67,6 +67,29 @@ describe('AuthService', () => {
     expect(service.obtenerUsuario()?.id).toBe(21);
   });
 
+  it('register does not store the returned user while email verification is pending', () => {
+    service.register({
+      nombre: 'Pablo',
+      nickname: 'pablo',
+      email: 'pablo@example.com',
+      password: 'secret123',
+      biografia: 'Hola'
+    }).subscribe();
+
+    const req = httpMock.expectOne('http://localhost:3000/api/auth/registro');
+    req.flush({
+      user: { id: 21, nombre: 'Pablo', email: 'pablo@example.com' },
+      requiresEmailVerification: true,
+      emailVerification: {
+        email: 'pa***@example.com',
+        expiresInMinutes: 5,
+      },
+    });
+
+    expect(service.obtenerUsuario()).toBeNull();
+    expect(localStorage.getItem('accesoPermitido')).toBeNull();
+  });
+
   it('login uses /auth/login with rememberMe false by default, verifies /auth/me and stores the returned user', () => {
     service.login('pablo@example.com', 'secret123').subscribe();
 
@@ -242,6 +265,60 @@ describe('AuthService', () => {
         reservasActivas: true,
       }),
     );
+  });
+
+  it('verifyEmail uses /auth/verificar-email and stores the verified user when returned', () => {
+    service.verifyEmail({
+      email: 'pablo@example.com',
+      code: '123456',
+    }).subscribe();
+
+    const req = httpMock.expectOne('http://localhost:3000/api/auth/verificar-email');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.withCredentials).toBeTrue();
+    expect(req.request.body).toEqual({
+      email: 'pablo@example.com',
+      code: '123456',
+    });
+
+    req.flush({
+      user: {
+        id: 21,
+        email: 'pablo@example.com',
+        emailVerificado: true,
+      },
+    });
+
+    expect(service.obtenerUsuario()).toEqual(
+      jasmine.objectContaining({
+        id: 21,
+        email: 'pablo@example.com',
+        emailVerificado: true,
+      }),
+    );
+  });
+
+  it('resendEmailCode uses /auth/reenviar-codigo-email without storing a code', () => {
+    service.resendEmailCode({
+      email: 'pablo@example.com',
+    }).subscribe();
+
+    const req = httpMock.expectOne('http://localhost:3000/api/auth/reenviar-codigo-email');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.withCredentials).toBeTrue();
+    expect(req.request.body).toEqual({
+      email: 'pablo@example.com',
+    });
+
+    req.flush({
+      emailVerification: {
+        email: 'pa***@example.com',
+        expiresInMinutes: 5,
+      },
+    });
+
+    expect(localStorage.getItem('verificationCode')).toBeNull();
+    expect(service.obtenerUsuario()).toBeNull();
   });
 
   it('me hydrates the stored user and clears stale storage on 401', () => {

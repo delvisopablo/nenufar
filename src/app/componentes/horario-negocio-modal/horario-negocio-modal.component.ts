@@ -171,7 +171,7 @@ export class HorarioNegocioModalComponent implements OnChanges {
       error: (error: unknown) => {
         this.guardando.set(false);
         this.errorMensaje.set(
-          getUserErrorMessage(error, 'No hemos podido guardar el horario.'),
+          getUserErrorMessage(error, 'El horario del negocio no se guardó.'),
         );
 
         if (!environment.production) {

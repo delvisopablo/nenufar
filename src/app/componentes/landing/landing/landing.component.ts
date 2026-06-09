@@ -139,7 +139,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         this.loginError.set(
           isAppErrorModel(error) && error.kind === 'auth'
             ? 'Correo o contraseña incorrectos.'
-            : getUserErrorMessage(error, 'No hemos podido iniciar sesión. Revisa tus datos.')
+            : getUserErrorMessage(error, 'El inicio de sesión no se completó. Revisa correo y contraseña.')
         );
       }
     });

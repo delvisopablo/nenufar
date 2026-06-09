@@ -133,7 +133,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
       (actual.nickname?.trim().toLowerCase() ?? '') === perfil.nickname.trim().toLowerCase()
     );
   });
-
+  
   ngOnInit(): void {
     this.authService.hydrateSession({ forceRemote: !this.authService.isSessionResolved() })
       .pipe(
@@ -199,7 +199,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
               this.resenas.set([]);
               this.logros.set([]);
               this.reservas.set([]);
-              this.error.set(getUserErrorMessage(error, 'No hemos podido cargar tu perfil.'));
+              this.error.set(getUserErrorMessage(error, 'Tu perfil no se cargó.'));
               return of(null);
             }),
           );
@@ -311,7 +311,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
       },
       error: (error: unknown) => {
         this.logDevError(error);
-        this.perfilEditError.set(getUserErrorMessage(error, 'No hemos podido guardar los cambios del perfil.'));
+        this.perfilEditError.set(getUserErrorMessage(error, 'Los cambios del perfil no se guardaron.'));
       },
     });
   }
@@ -375,7 +375,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
           this.nenufarizarError.set(
             getUserErrorMessage(
               error,
-              'No hemos podido generar un código nuevo ahora mismo.',
+              'El nuevo código de invitación no se generó.',
             ),
           );
         },
@@ -503,7 +503,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
       this.nenufarizarError.set(
         getUserErrorMessage(
           error,
-          'No hemos podido copiar el contenido al portapapeles.',
+          'El contenido no se copió al portapapeles.',
         ),
       );
     }

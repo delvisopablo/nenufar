@@ -368,7 +368,7 @@ export class ResenaDetalleModalComponent implements OnChanges {
           this.likedByMe = previousLiked;
           this.likesCount = previousCount;
           this.togglingLike = false;
-          this.likeError = 'No se ha podido actualizar el like.';
+          this.likeError = 'El like de la reseña no se actualizó.';
           this.emitirLikeCambiado(reviewId);
           this.changeDetector.markForCheck();
         },
@@ -405,7 +405,7 @@ export class ResenaDetalleModalComponent implements OnChanges {
         error: () => {
           this.comentarios = [];
           this.loadingComentarios = false;
-          this.comentariosError = 'No hemos podido cargar los comentarios de esta reseña.';
+          this.comentariosError = 'Los comentarios de esta reseña no se cargaron.';
           this.changeDetector.markForCheck();
         },
       });

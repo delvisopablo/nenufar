@@ -99,7 +99,7 @@ export class TicketScannerService {
   submitTicket(input: TicketScannerSubmitInput): Observable<TicketScannerSubmitResult> {
     const negocioId = Number(input.negocioId);
     if (!Number.isInteger(negocioId) || negocioId <= 0) {
-      return throwError(() => new Error('No hemos podido identificar el negocio del ticket.'));
+      return throwError(() => new Error('El negocio del ticket no se identificó.'));
     }
 
     const items = input.items
@@ -190,7 +190,7 @@ export class TicketScannerService {
 
     return getUserErrorMessage(
       error,
-      'No hemos podido guardar la compra del ticket.',
+      'La compra del ticket no se guardó.',
     );
   }
 

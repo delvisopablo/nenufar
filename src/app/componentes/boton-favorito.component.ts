@@ -106,7 +106,7 @@ export class BotonoFavoritoComponent implements OnInit {
           this.loading = false;
         },
         error: () => {
-          this.errorMessage.emit('No se pudo quitar el favorito. Inténtalo de nuevo.');
+          this.errorMessage.emit('El producto no se quitó de favoritos. Vuelve a intentarlo.');
           this.loading = false;
         },
       });
@@ -118,7 +118,7 @@ export class BotonoFavoritoComponent implements OnInit {
           this.loading = false;
         },
         error: () => {
-          this.errorMessage.emit('No se pudo guardar el favorito. Inténtalo de nuevo.');
+          this.errorMessage.emit('El producto no se guardó como favorito. Vuelve a intentarlo.');
           this.loading = false;
         },
       });

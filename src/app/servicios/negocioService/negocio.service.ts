@@ -769,7 +769,7 @@ export class NegocioService {
       return normalized;
     }
 
-    throw new Error(`No se ha podido normalizar el negocio: ${label || 'sin etiqueta'}`);
+    throw new Error(`El negocio no se normalizó: ${label || 'sin etiqueta'}`);
   }
 
   private normalizarNegocioResumen(item: unknown): NegocioSummary | null {

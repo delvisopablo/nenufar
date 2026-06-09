@@ -77,7 +77,7 @@ export class AjustesComponent implements OnInit, OnDestroy {
       },
       error: (err: unknown) => {
         this.cargando.set(false);
-        this.errorMensaje.set(getUserErrorMessage(err, 'No hemos podido cargar tu perfil.'));
+        this.errorMensaje.set(getUserErrorMessage(err, 'Tu perfil no se cargó en ajustes.'));
       },
     });
   }
@@ -134,7 +134,7 @@ export class AjustesComponent implements OnInit, OnDestroy {
       },
       error: (err: unknown) => {
         this.logDevError(err);
-        this.errorMensaje.set(getUserErrorMessage(err, 'No hemos podido guardar los cambios.'));
+        this.errorMensaje.set(getUserErrorMessage(err, 'Los cambios de ajustes no se guardaron.'));
       }
     });
   }

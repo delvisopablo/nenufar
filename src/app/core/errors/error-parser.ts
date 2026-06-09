@@ -9,17 +9,17 @@ import {
 } from './api-error.types';
 
 const DEFAULT_MESSAGES: Record<AppErrorKind, string> = {
-  validation: 'Revisa los datos del formulario.',
-  auth: 'Tu sesión no es válida o ha caducado.',
-  permission: 'No tienes permisos para realizar esta acción.',
-  'not-found': 'No hemos encontrado el recurso solicitado.',
-  conflict: 'Hay un conflicto con el estado actual de los datos.',
-  'rate-limit': 'Demasiados intentos seguidos. Espera un momento y vuelve a probar.',
-  server: 'Ha ocurrido un error en el servidor.',
-  unavailable: 'El servicio no está disponible ahora mismo.',
-  network: 'No hay conexión con el servidor. Revisa tu conexión o inténtalo más tarde.',
-  timeout: 'La petición ha tardado demasiado. Inténtalo de nuevo.',
-  unknown: 'Ha ocurrido un error inesperado.',
+  validation: 'Hay campos pendientes o inválidos para completar esta acción.',
+  auth: 'La sesión caducó. Inicia sesión para continuar con esta acción.',
+  permission: 'Esta acción necesita permisos adicionales.',
+  'not-found': 'El contenido que intentas abrir ya no está disponible.',
+  conflict: 'Esta acción choca con datos que cambiaron recientemente.',
+  'rate-limit': 'Esta acción se intentó demasiadas veces seguidas. Espera un momento.',
+  server: 'El servidor no respondió correctamente a esta acción.',
+  unavailable: 'Esta acción está temporalmente fuera de servicio.',
+  network: 'La conexión interrumpió esta acción. Comprueba internet y repite el intento.',
+  timeout: 'Esta acción tardó demasiado en responder. Vuelve a intentarlo.',
+  unknown: 'Esta acción no se completó por un fallo inesperado.',
 };
 
 const STATUS_KIND: Record<number, AppErrorKind> = {
@@ -211,4 +211,3 @@ function isRetryable(kind: AppErrorKind): boolean {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
-

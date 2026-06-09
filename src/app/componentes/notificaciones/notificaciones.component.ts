@@ -44,7 +44,7 @@ export class NotificacionesComponent implements OnInit {
       catchError((error: unknown) => {
         this.items.set([]);
         this.errorMensaje.set(
-          getUserErrorMessage(error, 'No hemos podido cargar tus notificaciones.'),
+          getUserErrorMessage(error, 'Tus notificaciones no se cargaron.'),
         );
         this.cargando.set(false);
         return of([]);
@@ -71,7 +71,7 @@ export class NotificacionesComponent implements OnInit {
     this.notificaciones.markAsRead(n.id, true).pipe(
       catchError((error: unknown) => {
         this.errorMensaje.set(
-          getUserErrorMessage(error, 'No hemos podido marcar la notificación como leída.'),
+          getUserErrorMessage(error, 'La notificación no se marcó como leída.'),
         );
         return of(null);
       }),
@@ -95,7 +95,7 @@ export class NotificacionesComponent implements OnInit {
     this.notificaciones.markAllRead().pipe(
       catchError((error: unknown) => {
         this.errorMensaje.set(
-          getUserErrorMessage(error, 'No hemos podido actualizar tus notificaciones.'),
+          getUserErrorMessage(error, 'Tus notificaciones no se marcaron como leídas.'),
         );
         return of({ actualizadas: 0 });
       }),
@@ -111,7 +111,7 @@ export class NotificacionesComponent implements OnInit {
     this.notificaciones.remove(n.id).pipe(
       catchError((error: unknown) => {
         this.errorMensaje.set(
-          getUserErrorMessage(error, 'No hemos podido borrar la notificación.'),
+          getUserErrorMessage(error, 'La notificación no se borró.'),
         );
         return of(null);
       }),

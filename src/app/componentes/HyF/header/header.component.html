@@ -169,9 +169,9 @@
         } @else if (busquedaEstado() === 'loading') {
           <div class="search-empty">Buscando negocios...</div>
         } @else if (sinResultadosBusqueda()) {
-          <div class="search-empty">No hemos encontrado resultados con esos filtros.</div>
+          <div class="search-empty">La búsqueda no encontró resultados con esos filtros.</div>
         } @else if (errorBusqueda()) {
-          <div class="search-empty search-empty--error">No hemos podido cargar los resultados. Inténtalo de nuevo.</div>
+          <div class="search-empty search-empty--error">Los resultados de búsqueda no se cargaron. Vuelve a intentarlo.</div>
         }
 
         @if (navigationError()) {

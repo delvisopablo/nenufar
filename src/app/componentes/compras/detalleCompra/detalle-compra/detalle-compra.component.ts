@@ -50,7 +50,7 @@ export class DetalleCompraComponent implements OnInit {
       },
       error: (err: unknown) => {
         this.cargando.set(false);
-        this.errorMensaje.set(getUserErrorMessage(err, 'No hemos podido cargar el detalle de la compra.'));
+        this.errorMensaje.set(getUserErrorMessage(err, 'El detalle de la compra no se cargó.'));
       }
     });
   }

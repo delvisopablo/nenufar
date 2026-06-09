@@ -32,7 +32,7 @@ export class CompraComponent implements OnInit {
       },
       error: (err: unknown) => {
         this.cargando.set(false);
-        this.errorMensaje.set(getUserErrorMessage(err, 'No hemos podido cargar tus compras.'));
+        this.errorMensaje.set(getUserErrorMessage(err, 'Tus compras no se cargaron.'));
       }
     });
   }

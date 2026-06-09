@@ -148,7 +148,7 @@ export class PerfilUsuarioComponent implements OnInit, OnDestroy {
           const nickname = params.get('nickname')?.trim();
 
           if (!nickname) {
-            this.error.set('No hemos podido identificar el perfil de usuario.');
+            this.error.set('Falta el identificador del perfil de usuario.');
             this.cargando.set(false);
             return of(null);
           }
@@ -216,7 +216,7 @@ export class PerfilUsuarioComponent implements OnInit, OnDestroy {
               this.resenas.set([]);
               this.logros.set([]);
               this.reservas.set([]);
-              this.error.set(getUserErrorMessage(error, 'No hemos podido cargar este perfil de usuario.'));
+              this.error.set(getUserErrorMessage(error, 'Este perfil de usuario no se cargó.'));
               return of(null);
             }),
           );
@@ -285,7 +285,7 @@ export class PerfilUsuarioComponent implements OnInit, OnDestroy {
         this.seguidoresTotal.update((value) => Math.max(0, value + (nextValue ? 1 : -1)));
       },
       error: (error: unknown) => {
-        this.error.set(getUserErrorMessage(error, 'No hemos podido actualizar el seguimiento.'));
+        this.error.set(getUserErrorMessage(error, 'El seguimiento de este usuario no se actualizó.'));
       },
     });
   }
@@ -352,7 +352,7 @@ export class PerfilUsuarioComponent implements OnInit, OnDestroy {
       },
       error: (error: unknown) => {
         this.logDevError(error);
-        this.perfilEditError.set(getUserErrorMessage(error, 'No hemos podido guardar los cambios del perfil.'));
+        this.perfilEditError.set(getUserErrorMessage(error, 'Los cambios del perfil no se guardaron.'));
       },
     });
   }
@@ -418,7 +418,7 @@ export class PerfilUsuarioComponent implements OnInit, OnDestroy {
           this.nenufarizarError.set(
             getUserErrorMessage(
               error,
-              'No hemos podido generar un código nuevo ahora mismo.',
+              'El nuevo código de invitación no se generó.',
             ),
           );
         },
@@ -589,7 +589,7 @@ export class PerfilUsuarioComponent implements OnInit, OnDestroy {
       this.nenufarizarError.set(
         getUserErrorMessage(
           error,
-          'No hemos podido copiar el contenido al portapapeles.',
+          'El contenido no se copió al portapapeles.',
         ),
       );
     }

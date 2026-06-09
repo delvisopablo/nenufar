@@ -255,7 +255,7 @@ export class PromocionComponent implements OnChanges {
           this.errorMensaje.set(
             getUserErrorMessage(
               error,
-              'No hemos podido crear el producto básico.',
+              'El producto básico de la promoción no se creó.',
             ),
           );
         },
@@ -298,7 +298,7 @@ export class PromocionComponent implements OnChanges {
           this.errorMensaje.set(
             getUserErrorMessage(
               error,
-              'No hemos podido guardar la promoción.',
+              'La promoción no se guardó.',
             ),
           );
         },
@@ -337,7 +337,7 @@ export class PromocionComponent implements OnChanges {
           this.errorMensaje.set(
             getUserErrorMessage(
               error,
-              'No hemos podido eliminar la promoción.',
+              'La promoción no se eliminó.',
             ),
           );
         },
@@ -500,7 +500,7 @@ export class PromocionComponent implements OnChanges {
           this.errorMensaje.set(
             getUserErrorMessage(
               error,
-              'No hemos podido actualizar el estado de la promoción.',
+              'El estado de la promoción no se actualizó.',
             ),
           );
         },

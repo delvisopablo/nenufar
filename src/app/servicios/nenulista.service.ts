@@ -71,7 +71,7 @@ export class NenulistaService {
         catchError((error) => {
           console.error('Error al obtener Nenulista:', error);
           return throwError(
-            () => new Error('No se pudo obtener la Nenulista'),
+            () => new Error('Tu Nenulista no se cargó.'),
           );
         }),
       );
@@ -88,7 +88,7 @@ export class NenulistaService {
         catchError((error) => {
           console.error('Error al añadir a Nenulista:', error);
           return throwError(
-            () => new Error('No se pudo añadir el producto a la Nenulista'),
+            () => new Error('El producto no se añadió a tu Nenulista.'),
           );
         }),
       );
@@ -108,7 +108,7 @@ export class NenulistaService {
         catchError((error) => {
           console.error('Error al actualizar item de Nenulista:', error);
           return throwError(
-            () => new Error('No se pudo actualizar el item'),
+            () => new Error('El producto de tu Nenulista no se actualizó.'),
           );
         }),
       );
@@ -127,7 +127,7 @@ export class NenulistaService {
         catchError((error) => {
           console.error('Error al eliminar item de Nenulista:', error);
           return throwError(
-            () => new Error('No se pudo eliminar el item'),
+            () => new Error('El producto no se eliminó de tu Nenulista.'),
           );
         }),
       );
@@ -146,7 +146,7 @@ export class NenulistaService {
         catchError((error) => {
           console.error('Error al limpiar completados:', error);
           return throwError(
-            () => new Error('No se pudo limpiar los completados'),
+            () => new Error('Los productos completados no se limpiaron.'),
           );
         }),
       );

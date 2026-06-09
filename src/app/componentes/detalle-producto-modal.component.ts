@@ -394,7 +394,7 @@ export class DetalleProductoModalComponent implements OnChanges {
         setTimeout(() => { this.mensajeExito = null; }, 2000);
       },
       error: () => {
-        this.mensajeError = 'No se pudo añadir el producto. Inténtalo de nuevo.';
+        this.mensajeError = 'El producto no se añadió a tu lista. Vuelve a intentarlo.';
         this.agregandoNenulista = false;
       },
     });

@@ -143,7 +143,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
       // Ruta por slug/nickname
       this.cargarNegocioPorSlug(rawParam);
     } else {
-      this.errorMensaje = 'No hemos podido identificar el negocio.';
+      this.errorMensaje = 'Falta el identificador del negocio.';
     }
   }
 
@@ -329,7 +329,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
       },
       error: (error: unknown) => {
         this.guardandoNenufar = false;
-        this.nenufarError = getUserErrorMessage(error, 'No hemos podido actualizar el nenufar.');
+        this.nenufarError = getUserErrorMessage(error, 'El nenúfar del negocio no se actualizó.');
         this.nenufarSelector?.markAsSaved(previoAsset);
         this.negocio = {
           ...this.negocio,
@@ -428,7 +428,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
         .availability(this.negocioId, this.fechasSemana[dia])
         .pipe(
           catchError((error: unknown) => {
-            this.reservaError = getUserErrorMessage(error, 'No hemos podido cargar toda la disponibilidad.');
+            this.reservaError = getUserErrorMessage(error, 'La disponibilidad de reservas no se cargó completa.');
             return of({ date: this.fechasSemana[dia], intervalo: this.negocio?.intervaloReserva || 30, slots: [] });
           }),
         ),
@@ -506,14 +506,14 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   private cargarNegocioPorSlug(slug: string): void {
     const normalizedSlug = this.negocioService.normalizeRouteParam(slug);
     if (!normalizedSlug) {
-      this.errorMensaje = 'No hemos podido identificar el negocio.';
+      this.errorMensaje = 'Falta el identificador del negocio.';
       return;
     }
 
     this.negocioService.resolveNegocioFromRouteParam(normalizedSlug).subscribe({
       next: (data: any) => {
         if (!data?.id) {
-          this.errorMensaje = 'No hemos encontrado ningún negocio con esa dirección.';
+          this.errorMensaje = 'Esa dirección no corresponde a ningún negocio publicado.';
           return;
         }
         this.negocio = data;
@@ -527,7 +527,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
         this.cargarHorarioSiNecesario();
       },
       error: (error: unknown) => {
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
+        this.errorMensaje = getUserErrorMessage(error, 'El negocio no se cargó.');
       },
     });
   }
@@ -546,7 +546,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
         this.cargarHorarioSiNecesario();
       },
       error: (error: unknown) => {
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido cargar el negocio.');
+        this.errorMensaje = getUserErrorMessage(error, 'El negocio no se cargó.');
       },
     });
   }
@@ -582,7 +582,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
         }
       },
       error: (error: unknown) => {
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar las reseñas.');
+        this.errorMensaje = getUserErrorMessage(error, 'Las reseñas del negocio no se actualizaron.');
       },
     });
   }
@@ -636,7 +636,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
         }
       },
       error: (error: unknown) => {
-        this.errorMensaje = getUserErrorMessage(error, 'No hemos podido actualizar el seguimiento.');
+        this.errorMensaje = getUserErrorMessage(error, 'El seguimiento del negocio no se actualizó.');
       },
     });
   }
@@ -652,7 +652,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     if (!ok) return;
 
     const fechaBase = this.fechasSemana[dia];
-    if (!fechaBase) { this.reservaError = 'No hemos podido calcular la fecha de la reserva.'; return; }
+    if (!fechaBase) { this.reservaError = 'La fecha de la reserva no se calculó.'; return; }
 
     const fecha = new Date(`${fechaBase}T${hora}:00`);
     this.reservaError = '';
@@ -666,7 +666,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
         this.recargarReservas();
       },
       error: (error: unknown) => {
-        this.reservaError = getUserErrorMessage(error, 'Hubo un problema al hacer la reserva.');
+        this.reservaError = getUserErrorMessage(error, 'La reserva no se confirmó para ese horario.');
       },
     });
   }

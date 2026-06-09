@@ -175,7 +175,7 @@ export class HeaderComponent implements OnDestroy {
 
     const negocioRoute = this.getNegocioRoute(negocio);
     if (!negocioRoute) {
-      this.navigationError.set('No hemos podido abrir ese negocio todavía.');
+      this.navigationError.set('Ese negocio no se abrió porque aún no tiene una ruta pública.');
       return;
     }
 
@@ -291,7 +291,7 @@ export class HeaderComponent implements OnDestroy {
         );
       },
       error: () => {
-        this.accessModalMessage.set('No hemos podido actualizar el seguimiento del negocio.');
+        this.accessModalMessage.set('El seguimiento del negocio no se actualizó.');
         this.accessModalAbierto.set(true);
       },
     });

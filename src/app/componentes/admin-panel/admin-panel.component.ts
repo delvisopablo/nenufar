@@ -363,7 +363,7 @@ export class AdminPanelComponent implements OnInit {
           this.error.set(
             this.extractErrorMessage(
               error,
-              'No hemos podido cargar la información del panel de administración.',
+              'La información del panel de administración no se cargó.',
             ),
           );
         },
@@ -392,7 +392,7 @@ export class AdminPanelComponent implements OnInit {
           this.error.set(
             this.extractErrorMessage(
               error,
-              'No hemos podido completar la acción de administración.',
+              'La acción de administración no se completó.',
             ),
           );
         },

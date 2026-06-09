@@ -2,6 +2,17 @@
   <canvas #bgCanvas class="pond-bg" aria-hidden="true"></canvas>
   <div #viewport class="viewport" aria-hidden="true"></div>
 
+  @if (hudReady && surveyTooltip) {
+    <div
+      class="survey-tooltip"
+      aria-hidden="true"
+      [style.left.px]="surveyTooltip.x"
+      [style.top.px]="surveyTooltip.y"
+    >
+      {{ surveyTooltip.label }}
+    </div>
+  }
+
   @if (hudReady) {
     <aside class="hud" [class.is-visible]="hudVisible" [attr.aria-hidden]="!hudVisible">
       <div class="hud-row">

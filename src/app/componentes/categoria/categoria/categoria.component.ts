@@ -38,7 +38,7 @@ export class CategoriaComponent implements OnInit {
       },
       error: (err: unknown) => {
         this.cargando.set(false);
-        this.errorMensaje.set(getUserErrorMessage(err, 'No hemos podido cargar las categorías.'));
+        this.errorMensaje.set(getUserErrorMessage(err, 'Las categorías no se cargaron.'));
       }
     });
   }

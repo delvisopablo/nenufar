@@ -19,7 +19,8 @@ import {
 } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService } from '../../../servicios/authService/auth.service';
+import { AuthResponse, AuthService } from '../../../servicios/authService/auth.service';
+import { savePendingEmailVerification } from '../../../servicios/authService/email-verification.storage';
 import { getUserErrorMessage } from '../../../core/errors/error-parser';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
 
@@ -62,7 +63,7 @@ class PondBackgroundRenderer {
     const ctx = canvas.getContext('2d', { alpha: false });
 
     if (!ctx) {
-      throw new Error('No se pudo inicializar el fondo del estanque.');
+      throw new Error('El fondo interactivo del registro no se inició.');
     }
 
     this.ctx = ctx;
@@ -295,19 +296,27 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const datos = this.registroForm.getRawValue();
     const codigoReferido = this.codigoReferidoDesdeUrl;
+    const email = datos.email?.trim().toLowerCase() ?? '';
     this.registrando.set(true);
 
     this.auth
       .register({
         nombre: datos.nombre?.trim(),
         nickname: datos.nickname?.trim(),
-        email: datos.email?.trim(),
+        email,
         password: datos.password ?? '',
         biografia: datos.biografia?.trim() || '',
         ...(codigoReferido ? { codigoReferido } : {}),
       })
       .subscribe({
-        next: () => {
+        next: (response) => {
+          if (response.requiresEmailVerification === true) {
+            this.guardarVerificacionPendiente(response, email);
+            this.registrando.set(false);
+            void this.router.navigate(['/confirmar-email']);
+            return;
+          }
+
           localStorage.setItem('accesoPermitido', 'true');
           localStorage.removeItem('guestMode');
           // Verify session via HttpOnly cookie before navigating to ensure
@@ -388,7 +397,27 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
   private extraerMensajeError(error: unknown): string {
     return getUserErrorMessage(
       error,
-      'No hemos podido crear la cuenta ahora mismo. Revisa los datos e inténtalo otra vez.'
+      'La cuenta no se creó. Revisa los datos del registro.'
     );
+  }
+
+  private guardarVerificacionPendiente(response: AuthResponse, emailFormulario: string): void {
+    const emailReal = this.getEmailRealPendiente(response, emailFormulario);
+
+    savePendingEmailVerification({
+      email: emailReal,
+      maskedEmail: response.emailVerification?.email ?? emailReal,
+      expiresInMinutes: response.emailVerification?.expiresInMinutes ?? null,
+    });
+  }
+
+  private getEmailRealPendiente(response: AuthResponse, fallbackEmail: string): string {
+    const responseEmail =
+      response.user?.email ??
+      response.usuario?.email ??
+      response.data?.email ??
+      fallbackEmail;
+
+    return responseEmail.trim().toLowerCase();
   }
 }

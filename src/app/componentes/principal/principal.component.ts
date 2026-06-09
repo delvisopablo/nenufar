@@ -654,7 +654,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         this.patchReviewInteraction(reviewId, {
           ...this.getReviewInteraction(review),
           togglingLike: false,
-          error: 'No se ha podido actualizar el like.',
+          error: 'El like de la reseña no se actualizó.',
         });
       },
     });
@@ -705,7 +705,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         this.patchReviewInteraction(reviewId, {
           ...this.getReviewInteraction(review),
           submittingComment: false,
-          error: 'No se ha podido publicar el comentario.',
+          error: 'El comentario no se publicó.',
         });
       },
     });
@@ -740,7 +740,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       this.schedulePopup({
         kind: 'navigationError',
         title: 'Negocio no disponible',
-        message: 'No hemos podido abrir este negocio porque le falta una direccion pública.',
+        message: 'Este negocio no se abrió porque le falta una dirección pública.',
       });
       return;
     }
@@ -769,7 +769,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     this.schedulePopup({
       kind: 'navigationError',
       title: 'Negocio no disponible',
-      message: 'No hemos podido abrir este negocio porque le falta una direccion pública.',
+      message: 'Este negocio no se abrió porque le falta una dirección pública.',
     });
   }
 

@@ -1,4 +1,6 @@
-@if (!mostrarApp()) {
+@if (mostrarRutaIndependiente()) {
+  <router-outlet></router-outlet>
+} @else if (!mostrarApp()) {
   <!-- Estanque pantalla completa -->
   <div class="pantalla-landing">
     <app-estanque></app-estanque>

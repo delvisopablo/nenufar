@@ -189,7 +189,7 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
       },
       error: (error: unknown) => {
         this.cargandoNegocios.set(false);
-        this.errorMensaje.set(getUserErrorMessage(error, 'No hemos podido cargar los negocios.'));
+        this.errorMensaje.set(getUserErrorMessage(error, 'Los negocios para la reseña no se cargaron.'));
       }
     });
     this.sincronizarNegocioInicial();
@@ -331,12 +331,12 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
         },
         error: (error: unknown) => {
           if (error instanceof HttpErrorResponse && error.status === 409) {
-            this.errorMensaje.set('No hemos podido guardar la reseña ahora mismo.');
+            this.errorMensaje.set('La reseña no se guardó porque ya existe una reseña pendiente o publicada.');
             return;
           }
 
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido guardar la reseña.')
+            getUserErrorMessage(error, 'La reseña no se guardó.')
           );
         }
       });
@@ -539,7 +539,7 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
           if (this.negocioIdSeleccionado === normalizedId) {
             this.productosNegocio.set([]);
             this.errorProductos.set(
-              getUserErrorMessage(error, 'No hemos podido cargar los productos del negocio.'),
+              getUserErrorMessage(error, 'Los productos del negocio no se cargaron.'),
             );
           }
         },

@@ -229,7 +229,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido actualizar favoritos.'),
+            getUserErrorMessage(error, 'El estado de favoritos del producto no se actualizó.'),
           );
         },
       });
@@ -274,7 +274,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido añadir el producto a tu lista.'),
+            getUserErrorMessage(error, 'El producto no se añadió a tu lista.'),
           );
         },
       });
@@ -331,7 +331,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido guardar el producto.'),
+            getUserErrorMessage(error, 'El producto del catálogo no se guardó.'),
           );
         },
       });
@@ -361,7 +361,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
       },
       error: (error: unknown) => {
         this.errorMensaje.set(
-          getUserErrorMessage(error, 'No hemos podido eliminar el producto.'),
+          getUserErrorMessage(error, 'El producto no se eliminó del catálogo.'),
         );
       },
     });
@@ -413,7 +413,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
           },
           error: (error: unknown) => {
             this.errorMensaje.set(
-              getUserErrorMessage(error, 'No hemos podido aprobar la solicitud.'),
+              getUserErrorMessage(error, 'La solicitud de producto no se aprobó.'),
             );
           },
         });
@@ -435,7 +435,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido aprobar la solicitud.'),
+            getUserErrorMessage(error, 'La solicitud de producto no se aprobó.'),
           );
         },
       });
@@ -462,7 +462,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
           },
           error: (error: unknown) => {
             this.errorMensaje.set(
-              getUserErrorMessage(error, 'No hemos podido rechazar la solicitud.'),
+              getUserErrorMessage(error, 'La solicitud de producto no se rechazó.'),
             );
           },
         });
@@ -539,7 +539,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
         error: (error: unknown) => {
           this.productos.set([]);
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido cargar el catálogo.'),
+            getUserErrorMessage(error, 'El catálogo del negocio no se cargó.'),
           );
         },
       });

@@ -376,7 +376,7 @@ export class RutaLocalComponent implements OnDestroy {
         },
         error: () => {
           this.nenulistaError.set(
-            'No se pudo cargar Mi Nenulista. Comprueba que has iniciado sesión.',
+            'Mi Nenulista no se cargó. Comprueba que has iniciado sesión.',
           );
         },
       });

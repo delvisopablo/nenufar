@@ -389,7 +389,7 @@ export class ReservasComponent implements OnInit, OnChanges {
 
   crearReserva(): void {
     if (!this.negocioActual?.id) {
-      this.error = 'No hemos podido identificar el negocio. Recarga la página e inténtalo de nuevo.';
+      this.error = 'Falta el negocio para crear la reserva. Recarga la página y vuelve a intentarlo.';
       return;
     }
 
@@ -431,7 +431,7 @@ export class ReservasComponent implements OnInit, OnChanges {
         },
         error: (error: unknown) => {
           this.accionEnCurso = false;
-          this.error = getUserErrorMessage(error, 'No hemos podido crear la reserva.');
+          this.error = getUserErrorMessage(error, 'La reserva no se creó.');
         },
       });
   }
@@ -465,7 +465,7 @@ export class ReservasComponent implements OnInit, OnChanges {
       },
       error: (error: unknown) => {
         this.accionEnCurso = false;
-        this.error = getUserErrorMessage(error, 'No hemos podido cancelar la reserva.');
+        this.error = getUserErrorMessage(error, 'La reserva no se canceló.');
       },
     });
   }
@@ -619,7 +619,7 @@ export class ReservasComponent implements OnInit, OnChanges {
         this.cargando = false;
         this.error = getUserErrorMessage(
           error,
-          'No hemos podido cargar la configuración del negocio.',
+          'La configuración de reservas del negocio no se cargó.',
         );
       },
     });
@@ -651,7 +651,7 @@ export class ReservasComponent implements OnInit, OnChanges {
       },
       error: (error: unknown) => {
         this.cargando = false;
-        this.error = getUserErrorMessage(error, 'No hemos podido cargar las reservas.');
+        this.error = getUserErrorMessage(error, 'Tus reservas no se cargaron.');
       },
     });
   }
@@ -680,7 +680,7 @@ export class ReservasComponent implements OnInit, OnChanges {
       },
       error: (error: unknown) => {
         this.cargando = false;
-        this.error = getUserErrorMessage(error, 'No hemos podido cargar las reservas del negocio.');
+        this.error = getUserErrorMessage(error, 'Las reservas del negocio no se cargaron.');
       },
     });
   }
@@ -722,7 +722,7 @@ export class ReservasComponent implements OnInit, OnChanges {
         this.cargando = false;
         this.error = getUserErrorMessage(
           error,
-          'No hemos podido cargar la disponibilidad de este negocio.',
+          'La disponibilidad de este negocio no se cargó.',
         );
       },
     });
@@ -772,7 +772,7 @@ export class ReservasComponent implements OnInit, OnChanges {
         },
         error: (error: unknown) => {
           this.accionEnCurso = false;
-          this.error = getUserErrorMessage(error, 'No hemos podido actualizar el estado.');
+          this.error = getUserErrorMessage(error, 'El estado de la reserva no se actualizó.');
         },
       });
   }
@@ -800,7 +800,7 @@ export class ReservasComponent implements OnInit, OnChanges {
 
         if (!Number.isFinite(negocioId) || negocioId <= 0) {
           this.cargando = false;
-          this.error = 'No hemos podido identificar el negocio de esta cuenta.';
+          this.error = 'Esta cuenta no tiene un negocio identificable para gestionar reservas.';
           return;
         }
 
@@ -813,7 +813,7 @@ export class ReservasComponent implements OnInit, OnChanges {
         this.cargando = false;
         this.error = getUserErrorMessage(
           error,
-          'No hemos podido identificar el negocio de esta cuenta.',
+          'El negocio de esta cuenta no se identificó para gestionar reservas.',
         );
       },
     });

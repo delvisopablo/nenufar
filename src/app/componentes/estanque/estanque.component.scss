@@ -101,6 +101,25 @@
   }
 }
 
+.survey-tooltip {
+  position: fixed;
+  z-index: 8;
+  transform: translate(-50%, calc(-100% - 0.9rem));
+  padding: 0.38rem 0.72rem;
+  border: 1px solid rgba(31, 92, 80, 0.22);
+  border-radius: 999px;
+  background: rgba(203, 239, 246, 0.88);
+  backdrop-filter: blur(8px);
+  color: #0e3830;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+}
+
 .hud {
   position: absolute;
   right: max(1rem, env(safe-area-inset-right));

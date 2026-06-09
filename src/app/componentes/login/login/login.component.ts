@@ -56,7 +56,7 @@ class PondBackgroundRenderer {
     const ctx = canvas.getContext('2d', { alpha: false });
 
     if (!ctx) {
-      throw new Error('No se pudo inicializar el fondo del estanque.');
+      throw new Error('El fondo interactivo del acceso no se inició.');
     }
 
     this.ctx = ctx;
@@ -348,7 +348,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
 
     return getUserErrorMessage(
       error,
-      'No hemos podido iniciar sesión ahora mismo. Revisa los datos e inténtalo otra vez.'
+      'El inicio de sesión no se completó. Revisa correo y contraseña.'
     );
   }
 }

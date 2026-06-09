@@ -2,13 +2,14 @@ import { Injectable } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 export class LayoutService {
-  private noScrollRoutes = ['/', '/estanque', '/inicio'];
+  private noScrollRoutes = ['/', '/estanque', '/inicio', '/confirmar-email'];
   private rutasSinMenu = [
     '/',
     '/login',
     '/registro',
     '/registro-opciones',
     '/registro-negocio',
+    '/confirmar-email',
     '/holaaa',
     '/estanque'
   ];
@@ -19,6 +20,7 @@ export class LayoutService {
     '/registro',
     '/registro-opciones',
     '/registro-negocio',
+    '/confirmar-email',
     '/holaaa',
     '/estanque'
   ];
@@ -29,6 +31,7 @@ export class LayoutService {
     '/registro',
     '/registro-opciones',
     '/registro-negocio',
+    '/confirmar-email',
     '/holaaa',
     '/estanque'
   ];

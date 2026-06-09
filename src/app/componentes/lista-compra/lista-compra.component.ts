@@ -107,13 +107,13 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
     forkJoin({
       lista: this.listaCompraService.getLista().pipe(
         catchError((error: unknown) => {
-          this.gestionarErrorPrivado(error, 'No hemos podido cargar tu Nenulista.');
+          this.gestionarErrorPrivado(error, 'Tu Nenulista no se cargó.');
           return of([] as ListaCompraItem[]);
         }),
       ),
       favoritos: this.productoFavoritoService.getFavoritos().pipe(
         catchError((error: unknown) => {
-          this.gestionarErrorPrivado(error, 'No hemos podido cargar tus productos favoritos.');
+          this.gestionarErrorPrivado(error, 'Tus productos favoritos no se cargaron.');
           return of([] as ProductoFavorito[]);
         }),
       ),
@@ -167,7 +167,7 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido añadir el producto manual.'),
+            getUserErrorMessage(error, 'El producto manual no se añadió a tu Nenulista.'),
           );
         },
       });
@@ -238,7 +238,7 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido eliminar ese producto.'),
+            getUserErrorMessage(error, 'Ese producto no se eliminó de tu Nenulista.'),
           );
         },
       });
@@ -267,7 +267,7 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido limpiar los completados.'),
+            getUserErrorMessage(error, 'Los productos completados no se limpiaron.'),
           );
         },
       });
@@ -311,7 +311,7 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'No hemos podido añadir el favorito a tu lista.'),
+            getUserErrorMessage(error, 'El favorito no se añadió a tu lista.'),
           );
         },
       });
@@ -344,7 +344,7 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            this.obtenerMensajeErrorPrivado(error, 'No hemos podido quitar el favorito.'),
+            this.obtenerMensajeErrorPrivado(error, 'El favorito no se quitó de tu lista.'),
           );
         },
       });
@@ -492,7 +492,7 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            this.obtenerMensajeErrorPrivado(error, 'No hemos podido actualizar favoritos.'),
+            this.obtenerMensajeErrorPrivado(error, 'Tus favoritos no se actualizaron.'),
           );
         },
       });
@@ -582,7 +582,7 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            this.obtenerMensajeErrorPrivado(error, 'No hemos podido añadir el producto.'),
+            this.obtenerMensajeErrorPrivado(error, 'El producto no se añadió a tu Nenulista.'),
           );
         },
       });
@@ -623,7 +623,7 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.errorMensaje.set(
-            this.obtenerMensajeErrorPrivado(error, 'No hemos podido actualizar tu Nenulista.'),
+            this.obtenerMensajeErrorPrivado(error, 'Tu Nenulista no se actualizó.'),
           );
         },
       });
@@ -649,7 +649,7 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         this.authNotice.set('Inicia sesión para guardar tu Nenulista.');
       },
       error: (error: unknown) => {
-        this.registrarAuthWarning('No se pudo resolver la sesión de Nenulista.', error);
+        this.registrarAuthWarning('La sesión de Nenulista no se resolvió.', error);
         this.lista.set([]);
         this.favoritos.set([]);
         this.cargando.set(false);
@@ -667,7 +667,7 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         this.buscando.set(false);
       },
       error: (error: unknown) => {
-        this.registrarAuthWarning('No hemos podido cargar productos para Nenulista.', error);
+        this.registrarAuthWarning('Los productos para Nenulista no se cargaron.', error);
         this.busquedaResultados.set([]);
         this.buscando.set(false);
       },

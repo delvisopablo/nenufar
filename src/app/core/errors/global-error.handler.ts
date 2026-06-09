@@ -10,7 +10,7 @@ export class GlobalErrorHandler implements ErrorHandler {
     const appError = parseUnknownError(error, {
       source: 'angular',
       code: 'ANGULAR_UNHANDLED_ERROR',
-      message: 'La aplicacion ha encontrado un error inesperado.',
+      message: 'La pantalla no pudo completar la acción en curso.',
       kind: 'unknown',
     });
 
@@ -20,4 +20,3 @@ export class GlobalErrorHandler implements ErrorHandler {
     });
   }
 }
-

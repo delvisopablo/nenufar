@@ -25,6 +25,7 @@ export class AppComponent implements OnInit, OnDestroy {
   readonly ocultarMenu = signal(false);
   readonly ocultarLayout = signal(false);
   readonly bloquearScroll = signal(false);
+  readonly mostrarRutaIndependiente = signal(false);
 
   ngOnInit(): void {
     this.sincronizarAccesoPersistido();
@@ -63,11 +64,17 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private actualizarEstadoRuta(ruta: string): void {
+    const accesoDesbloqueado = this.tieneAccesoDesbloqueado();
     this.ocultarMenu.set(!this.layoutService.shouldShowMenu(ruta));
     this.ocultarLayout.set(!this.layoutService.shouldShowLayout(ruta));
+    this.mostrarRutaIndependiente.set(this.esRutaIndependiente(ruta));
     this.actualizarScrollRuta(ruta);
 
-    if (!this.tieneAccesoDesbloqueado() && !this.esRutaDeAcceso(ruta)) {
+    if (accesoDesbloqueado) {
+      this.mostrarApp.set(true);
+    }
+
+    if (!accesoDesbloqueado && !this.esRutaDeAcceso(ruta)) {
       void this.router.navigate(['/estanque']);
     }
   }
@@ -77,7 +84,29 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private esRutaDeAcceso(ruta: string): boolean {
-    return ['/', '/estanque'].includes(ruta);
+    return [
+      '/',
+      '/estanque',
+      '/login',
+      '/registro',
+      '/registro-opciones',
+      '/registro-negocio',
+      '/confirmar-email',
+    ].includes(this.normalizarRuta(ruta));
+  }
+
+  private esRutaIndependiente(ruta: string): boolean {
+    return [
+      '/login',
+      '/registro',
+      '/registro-opciones',
+      '/registro-negocio',
+      '/confirmar-email',
+    ].includes(this.normalizarRuta(ruta));
+  }
+
+  private normalizarRuta(ruta: string): string {
+    return ruta.split('?')[0].split('#')[0] || '/';
   }
 
   private actualizarScrollRuta(ruta: string): void {

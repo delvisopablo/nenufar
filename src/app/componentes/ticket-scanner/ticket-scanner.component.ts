@@ -156,7 +156,7 @@ export class TicketScannerComponent implements OnChanges, OnDestroy {
       }
       this.cameraActive = true;
     } catch {
-      this.errorMessage = 'No hemos podido acceder a la cámara. Prueba con una foto del ticket.';
+      this.errorMessage = 'La cámara no se activó. Prueba con una foto del ticket.';
     }
   }
 
@@ -184,7 +184,7 @@ export class TicketScannerComponent implements OnChanges, OnDestroy {
 
     const context = canvas.getContext('2d');
     if (!context) {
-      this.errorMessage = 'No hemos podido procesar la captura del ticket.';
+      this.errorMessage = 'La captura del ticket no se procesó.';
       return;
     }
 
@@ -345,7 +345,7 @@ export class TicketScannerComponent implements OnChanges, OnDestroy {
       .subscribe({
         next: (analysis) => this.applyAnalysis(analysis),
         error: () => {
-          this.errorMessage = 'No hemos podido preparar el ticket. Puedes completar los campos manualmente.';
+          this.errorMessage = 'El ticket no se preparó automáticamente. Puedes completar los campos manualmente.';
           if (this.itemsArray.length === 0) {
             this.addEmptyItem();
           }

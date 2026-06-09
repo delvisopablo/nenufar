@@ -17,6 +17,7 @@ export const routes: Routes = [
   { path: 'registro-opciones', loadComponent: () => import('./componentes/registro/eleccion-registro/eleccion-registro.component').then((m) => m.EleccionRegistroComponent) },
   { path: 'registro', loadComponent: () => import('./componentes/registro/registro/registro.component').then((m) => m.RegistroComponent) },
   { path: 'registro-negocio', loadComponent: () => import('./componentes/registro-negocio/RegistroNegocio.component').then((m) => m.RegistroNegocioComponent) },
+  { path: 'confirmar-email', loadComponent: () => import('./componentes/confirmar-email/confirmar-email.component').then((m) => m.ConfirmarEmailComponent) },
   { path: 'perfil', redirectTo: 'mi-perfil', pathMatch: 'full' },
   { path: 'perfil/Nenuditar', loadComponent: () => import('./componentes/perfil/perfil/perfil.component').then((m) => m.PerfilComponent), canActivate: [authToEstanqueGuard] },
   { path: 'mi-perfil', loadComponent: () => import('./componentes/perfil/perfil/perfil.component').then((m) => m.PerfilComponent), canActivate: [authToEstanqueGuard] },

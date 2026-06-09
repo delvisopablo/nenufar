@@ -27,6 +27,7 @@ import {
   AuthUser,
   RegisterPayload,
 } from '../../servicios/authService/auth.service';
+import { savePendingEmailVerification } from '../../servicios/authService/email-verification.storage';
 import {
   ConfigHorarioPayload,
   NegocioService,
@@ -191,6 +192,13 @@ export class RegistroNegocioComponent implements OnInit {
 
     this.auth.registerNegocio(payload).subscribe({
       next: (response: AuthResponse) => {
+        if (response.requiresEmailVerification === true) {
+          this.guardarVerificacionPendiente(response, payload.email);
+          this.registrando.set(false);
+          void this.router.navigate(['/confirmar-email']);
+          return;
+        }
+
         localStorage.setItem('accesoPermitido', 'true');
         localStorage.removeItem('guestMode');
         this.sincronizarSesionTrasRegistro(response, payload);
@@ -397,7 +405,7 @@ export class RegistroNegocioComponent implements OnInit {
       error: (error: unknown) => {
         this.cargandoSubcategorias.set(false);
         this.subcategoriasError.set(
-          getUserErrorMessage(error, 'No hemos podido cargar las subcategorías.')
+          getUserErrorMessage(error, 'Las subcategorías del registro no se cargaron.')
         );
       }
     });
@@ -412,7 +420,7 @@ export class RegistroNegocioComponent implements OnInit {
       error: (error: unknown) => {
         this.cargandoCategorias.set(false);
         this.categoriasError.set(
-          getUserErrorMessage(error, 'No hemos podido cargar las categorías.')
+          getUserErrorMessage(error, 'Las categorías del registro no se cargaron.')
         );
       }
     });
@@ -421,22 +429,22 @@ export class RegistroNegocioComponent implements OnInit {
   private extraerMensajeError(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
       if (error.status === 409) {
-        return 'Ese email o nickname ya está en uso. Prueba con otro.';
+        return 'Ese email o nickname ya pertenece a otra cuenta de negocio.';
       }
       if (error.status === 400) {
-        return 'Hay datos pendientes o inválidos. Revisa el formulario e inténtalo otra vez.';
+        return 'El alta del negocio tiene datos pendientes o inválidos.';
       }
       if (error.status === 401) {
-        return 'No hemos podido iniciar la sesión del nuevo negocio. Inténtalo de nuevo.';
+        return 'La sesión del nuevo negocio no se inició. Vuelve a entrar con esa cuenta.';
       }
       if (error.status >= 500) {
-        return 'Ahora mismo el servidor no puede completar el alta. Prueba en unos minutos.';
+        return 'El servidor no completó el alta del negocio. Repite el registro en unos minutos.';
       }
     }
 
     return getUserErrorMessage(
       error,
-      'No hemos podido registrar el negocio ahora mismo. Revisa los datos e inténtalo otra vez.'
+      'El negocio no se registró. Revisa los datos del alta.'
     );
   }
 
@@ -554,7 +562,7 @@ export class RegistroNegocioComponent implements OnInit {
         this.errorMensaje.set(
           getUserErrorMessage(
             error,
-            'Tu negocio se creó, pero no hemos podido guardar el horario. Abre tu perfil e inténtalo de nuevo.',
+            'Tu negocio se creó, pero el horario no se guardó. Abre tu perfil para completarlo.',
           ),
         );
       },
@@ -564,6 +572,25 @@ export class RegistroNegocioComponent implements OnInit {
   private finalizarRegistroExitoso(): void {
     this.registrando.set(false);
     void this.router.navigate(['/inicio']);
+  }
+
+  private guardarVerificacionPendiente(
+    response: AuthResponse,
+    emailFormulario: unknown,
+  ): void {
+    const usuario = this.getUsuarioDesdeRespuesta(response);
+    const emailReal =
+      typeof usuario?.email === 'string' && usuario.email.trim()
+        ? usuario.email.trim().toLowerCase()
+        : typeof emailFormulario === 'string'
+          ? emailFormulario.trim().toLowerCase()
+          : '';
+
+    savePendingEmailVerification({
+      email: emailReal,
+      maskedEmail: response.emailVerification?.email ?? emailReal,
+      expiresInMinutes: response.emailVerification?.expiresInMinutes ?? null,
+    });
   }
 
   private getHorarioPayloadDesdeRegistro(
