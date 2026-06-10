@@ -11,9 +11,11 @@ import {
   signal
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../servicios/authService/auth.service';
+import { savePendingEmailVerification } from '../../../servicios/authService/email-verification.storage';
 import { getUserErrorMessage, isAppErrorModel } from '../../../core/errors/error-parser';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
 
@@ -301,6 +303,12 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
       },
       error: (error: unknown) => {
         this.loginSubmitting.set(false);
+
+        if (this.esEmailNoVerificado(error)) {
+          this.redirigirAVerificacion(error as HttpErrorResponse);
+          return;
+        }
+
         this.loginError.set(this.obtenerMensajeError(error));
       }
     });
@@ -339,6 +347,30 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   private persistirSesion(): void {
     localStorage.setItem('accesoPermitido', 'true');
     localStorage.removeItem('guestMode');
+  }
+
+  private esEmailNoVerificado(error: unknown): boolean {
+    if (!(error instanceof HttpErrorResponse)) {
+      return false;
+    }
+    const body = error.error as Record<string, unknown> | null;
+    return error.status === 403 && body?.['code'] === 'EMAIL_NOT_VERIFIED';
+  }
+
+  private redirigirAVerificacion(error: HttpErrorResponse): void {
+    const body = error.error as Record<string, unknown> | null;
+    const email =
+      typeof body?.['email'] === 'string'
+        ? body['email']
+        : this.loginForm.controls.email.value.trim().toLowerCase();
+
+    savePendingEmailVerification({
+      email,
+      maskedEmail: email,
+      expiresInMinutes: null,
+    });
+
+    void this.router.navigate(['/confirmar-email']);
   }
 
   private obtenerMensajeError(error: unknown): string {
