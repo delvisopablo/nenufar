@@ -684,7 +684,7 @@ export class PerfilNegocioComponent implements OnInit {
   }
 
   irAEditarNegocio(): void {
-    void this.router.navigate(['/mi-negocio/Nenúditar']);
+    void this.router.navigate(['/mi-negocio/Nenuditar']);
   }
 
   irADashboardNegocio(): void {
@@ -707,8 +707,14 @@ export class PerfilNegocioComponent implements OnInit {
 
   private abrirModalInicialDesdeRuta(): void {
     const modal = this.route.snapshot.queryParamMap.get('modal');
-    if (modal === 'reservas') {
-      this.modalActiva.set('reservas');
+
+    if (
+      modal === 'horario' ||
+      modal === 'reservas' ||
+      modal === 'promociones' ||
+      modal === 'catalogo'
+    ) {
+      this.modalActiva.set(modal);
     }
   }
 

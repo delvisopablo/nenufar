@@ -1,8 +1,28 @@
-<div class="dashboard-shell">
-  <header class="dashboard-header">
-    <div class="dashboard-identity">
+<section class="dashboard-page">
+  <header class="hero">
+    <div class="hero-texto">
+      <span class="kicker">Dashboard de negocio</span>
+      <h1>{{ negocio()?.nombre || 'Tu negocio' }}</h1>
+      <p class="hero-lead">
+        Un resumen vivo de reservas, horario, promociones, pedidos y reseñas para gestionar tu espacio Nenúfar.
+      </p>
+
+      <div class="business-meta">
+        <span>{{ getBusinessCategory() }}</span>
+        <span
+          class="status-chip"
+          [class.status-chip--ready]="estadoGeneral().tone === 'ready'"
+          [class.status-chip--warning]="estadoGeneral().tone === 'warning'"
+          [class.status-chip--paused]="estadoGeneral().tone === 'paused'"
+        >
+          {{ estadoGeneral().label }}
+        </span>
+      </div>
+    </div>
+
+    <div class="hero-card">
       <img
-        class="dashboard-identity__media"
+        class="business-avatar"
         [src]="getBusinessImage()"
         [srcset]="getBusinessImageSrcset()"
         sizes="68px"
@@ -12,56 +32,84 @@
         loading="eager"
         decoding="async"
       >
-
       <div>
-        <p class="dashboard-kicker">Perfil de negocio</p>
-        <h1>Dashboard</h1>
-        @if (negocio()) {
-          <p class="dashboard-identity__copy">
-            {{ negocio()?.nombre }} · {{ getBusinessCategory() }}
-          </p>
-        }
+        <p class="hero-card__label">Acceso rápido</p>
+        <a class="primary-btn" [routerLink]="['/mi-negocio/Nenuditar']">Nenúditar</a>
       </div>
-    </div>
-
-    <div class="dashboard-actions">
-      <a class="ghost-btn" [routerLink]="['/mi-negocio']">Volver al perfil</a>
-      <a class="primary-btn" [routerLink]="['/mi-negocio']" [queryParams]="{ modal: 'reservas' }">Ver reservas</a>
     </div>
   </header>
 
   @if (error()) {
-    <section class="feedback-card feedback-card--error">
+    <section class="alerta-error" role="alert">
       <strong>No disponible</strong>
       <span>{{ error() }}</span>
       <button type="button" class="ghost-btn" (click)="cargarDashboard()">Reintentar</button>
     </section>
   } @else if (cargando()) {
-    <section class="feedback-card">
-      <strong>Cargando dashboard</strong>
-      <span>Estamos preparando el resumen del negocio.</span>
+    <section class="estado-carga">
+      <div class="spinner"></div>
+      <p>Preparando el dashboard del negocio...</p>
     </section>
   } @else {
-    <section class="stats-grid">
+    <section class="bloque actions-block">
+      <div class="bloque-cabecera">
+        <h2>Acciones rápidas</h2>
+        <span class="bloque-subtitulo">{{ estadoGeneral().detail }}</span>
+      </div>
+
+      <div class="quick-actions">
+        <a class="quick-action quick-action--primary" [routerLink]="['/mi-negocio/Nenuditar']">
+          <strong>Editar negocio</strong>
+          <span>Información, imagen y datos públicos</span>
+        </a>
+        <a class="quick-action" [routerLink]="['/mi-negocio']" [queryParams]="{ modal: 'horario' }">
+          <strong>Configurar horario</strong>
+          <span>Días abiertos e intervalos</span>
+        </a>
+        <a class="quick-action" [routerLink]="['/mi-negocio']" [queryParams]="{ modal: 'catalogo' }">
+          <strong>Catálogo</strong>
+          <span>Productos y servicios</span>
+        </a>
+        <a class="quick-action" [routerLink]="['/mi-negocio']" [queryParams]="{ modal: 'promociones' }">
+          <strong>Promociones</strong>
+          <span>Ofertas activas y borradores</span>
+        </a>
+        <a class="quick-action" [routerLink]="['/mi-negocio']" [queryParams]="{ modal: 'reservas' }">
+          <strong>Agenda</strong>
+          <span>Gestionar reservas</span>
+        </a>
+        <a class="quick-action" [routerLink]="getPublicProfileRoute()">
+          <strong>Ver perfil público</strong>
+          <span>Vista de clientes</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="stats-grid" aria-label="Resumen del negocio">
       @for (item of resumenEstado(); track item.label) {
-        <article class="stat-card" [class]="'tone-' + item.tone">
-          <span class="stat-label">{{ item.label }}</span>
-          <strong class="stat-value">{{ item.value }}</strong>
+        <article
+          class="stat-card"
+          [class.stat-card--green]="item.tone === 'green'"
+          [class.stat-card--gold]="item.tone === 'gold'"
+          [class.stat-card--blue]="item.tone === 'blue'"
+          [class.stat-card--orange]="item.tone === 'orange'"
+          [class.stat-card--soft]="item.tone === 'soft'"
+        >
+          <span class="stat-etiqueta">{{ item.label }}</span>
+          <strong class="stat-valor">{{ item.value }}</strong>
         </article>
       }
     </section>
 
-    <section class="dashboard-grid">
-      <article class="panel-card">
-        <div class="panel-head">
-          <div>
-            <p class="panel-kicker">Actividad reciente</p>
-            <h2>Reservas de los últimos 7 días</h2>
-          </div>
+    <section class="dashboard-grid dashboard-grid--wide">
+      <article class="bloque">
+        <div class="bloque-cabecera">
+          <h2>Actividad reciente</h2>
+          <span class="bloque-subtitulo">Reservas de los últimos 7 días</span>
         </div>
 
         @if (metricas().length) {
-          <div class="metric-bars">
+          <div class="metric-bars" aria-label="Reservas por día">
             @for (item of metricas(); track item.label) {
               <div class="metric-col">
                 <div class="metric-bar-wrap">
@@ -76,83 +124,231 @@
             }
           </div>
         } @else {
-          <p class="empty-state">Todavía no hay suficiente actividad para mostrar la gráfica.</p>
+          <div class="empty-state">
+            <strong>Aún no hay actividad suficiente</strong>
+            <span>Las reservas recientes aparecerán aquí cuando haya movimiento.</span>
+          </div>
         }
       </article>
 
-      <article class="panel-card">
-        <div class="panel-head">
-          <div>
-            <p class="panel-kicker">Estado del negocio</p>
-            <h2>Acceso a reservas</h2>
-          </div>
+      <article class="bloque">
+        <div class="bloque-cabecera">
+          <h2>Horario</h2>
+          <span class="status-chip" [class.status-chip--ready]="horarioConfigurado()" [class.status-chip--warning]="!horarioConfigurado()">
+            {{ horarioConfigurado() ? 'Configurado' : 'Pendiente' }}
+          </span>
         </div>
 
         <div class="status-list">
           <div class="status-row">
-            <span>Reservas activadas</span>
-            <strong [class.ok]="resumen()?.aceptaReservas" [class.warn]="!resumen()?.aceptaReservas">
-              {{ resumen()?.aceptaReservas ? 'Sí' : 'No' }}
-            </strong>
-          </div>
-          <div class="status-row">
-            <span>Horario configurado</span>
-            <strong [class.ok]="resumen()?.tieneHorario" [class.warn]="!resumen()?.tieneHorario">
-              {{ resumen()?.tieneHorario ? 'Sí' : 'No' }}
-            </strong>
+            <span>Días abiertos</span>
+            <strong>{{ diasAbiertos().length ? diasAbiertos().join(', ') : 'Sin definir' }}</strong>
           </div>
           <div class="status-row">
             <span>Intervalo de reserva</span>
-            <strong [class.ok]="negocio()?.intervaloReserva" [class.warn]="!negocio()?.intervaloReserva">
-              {{ negocio()?.intervaloReserva ? negocio()?.intervaloReserva + ' min' : 'Sin definir' }}
-            </strong>
+            <strong>{{ negocio()?.intervaloReserva ? negocio()?.intervaloReserva + ' min' : 'Sin definir' }}</strong>
+          </div>
+          <div class="status-row">
+            <span>Reservas online</span>
+            <strong>{{ reservasActivas() ? 'Activadas' : 'Desactivadas' }}</strong>
           </div>
         </div>
 
-        @if (!resumen()?.tieneHorario) {
-          <p class="inline-warning">
-            Configura primero tu horario para gestionar reservas con normalidad.
-          </p>
-        } @else if (horarioResumen().length) {
-          <div class="dashboard-horario-list">
+        @if (horarioResumen().length) {
+          <div class="horario-list">
             @for (linea of horarioResumen(); track linea) {
-              <p class="dashboard-horario-line">{{ linea }}</p>
+              <p>{{ linea }}</p>
             }
+          </div>
+        } @else {
+          <div class="empty-state empty-state--dashed">
+            <strong>Configura tu horario para empezar a recibir reservas</strong>
+            <a class="inline-link" [routerLink]="['/mi-negocio']" [queryParams]="{ modal: 'horario' }">Abrir horario</a>
           </div>
         }
       </article>
     </section>
 
-    <article class="panel-card">
-      <div class="panel-head">
-        <div>
-          <p class="panel-kicker">Próximas reservas</p>
-          <h2>Agenda del negocio</h2>
+    <section class="dashboard-grid">
+      <article class="bloque">
+        <div class="bloque-cabecera">
+          <h2>Horarios disponibles</h2>
+          <span class="bloque-subtitulo">Próximas franjas</span>
         </div>
-      </div>
 
-      @if (proximasReservas().length) {
-        <div class="booking-list">
-          @for (reserva of proximasReservas(); track reserva.id) {
-            <div class="booking-item">
-              <div class="booking-avatar">
-                {{ reserva.usuario.nombre.charAt(0).toUpperCase() }}
+        @if (!horarioConfigurado()) {
+          <div class="empty-state empty-state--dashed">
+            <strong>Configura tu horario para empezar a recibir reservas</strong>
+            <span>Cuando el horario esté activo, se mostrarán aquí las franjas libres.</span>
+          </div>
+        } @else if (!reservasActivas()) {
+          <div class="empty-state">
+            <strong>Reservas desactivadas</strong>
+            <span>Activa las reservas online para publicar disponibilidad.</span>
+          </div>
+        } @else if (proximasFranjas().length) {
+          <div class="slot-grid">
+            @for (slot of proximasFranjas(); track slot.key) {
+              <div class="slot-pill">
+                <span>{{ slot.dateLabel }}</span>
+                <strong>{{ slot.timeLabel }}</strong>
               </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <strong>No hay franjas disponibles</strong>
+            <span>Revisa el horario o la ocupación de los próximos días.</span>
+          </div>
+        }
+      </article>
 
-              <div class="booking-copy">
-                <strong>{{ reserva.usuario.nombre }}</strong>
-                <span>{{ formatFecha(reserva.fecha) }} · {{ reserva.numPersonas }} personas</span>
+      <article class="bloque">
+        <div class="bloque-cabecera">
+          <h2>Agenda</h2>
+          <span class="badge-count">{{ proximasReservas().length }}</span>
+        </div>
+
+        @if (!reservasActivas()) {
+          <div class="empty-state">
+            <strong>Reservas desactivadas</strong>
+            <span>La agenda queda en pausa hasta que actives las reservas del negocio.</span>
+          </div>
+        } @else if (proximasReservas().length) {
+          <div class="booking-list">
+            @for (reserva of proximasReservas(); track reserva.id) {
+              <div class="booking-item">
+                <div class="booking-avatar">
+                  {{ reserva.usuario.nombre.charAt(0).toUpperCase() }}
+                </div>
+
+                <div class="booking-copy">
+                  <strong>{{ reserva.usuario.nombre }}</strong>
+                  <span>{{ formatFecha(reserva.fecha) }} · {{ reserva.numPersonas }} personas</span>
+                </div>
+
+                <span class="booking-status" [class]="'booking-status status-' + reserva.estado.toLowerCase()">
+                  {{ estadoLabel(reserva.estado) }}
+                </span>
               </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <strong>No hay reservas próximas</strong>
+            <span>Las próximas reservas del negocio aparecerán aquí.</span>
+          </div>
+        }
+      </article>
+    </section>
 
-              <span class="booking-status" [class]="'status-' + reserva.estado.toLowerCase()">
-                {{ estadoLabel(reserva.estado) }}
-              </span>
-            </div>
+    <section class="dashboard-grid dashboard-grid--three">
+      <article class="bloque">
+        <div class="bloque-cabecera">
+          <h2>Pedidos</h2>
+          @if (pedidosDisponibles()) {
+            <span class="badge-count">{{ pedidosRecientes().length }}</span>
           }
         </div>
-      } @else {
-        <p class="empty-state">No hay reservas próximas para este negocio.</p>
-      }
-    </article>
+
+        @if (!pedidosDisponibles()) {
+          <div class="empty-state empty-state--dashed">
+            <strong>Pedidos: próximamente</strong>
+            <span>El panel quedará activo cuando el endpoint de pedidos esté disponible para este negocio.</span>
+          </div>
+        } @else if (pedidosRecientes().length) {
+          <div class="compact-list">
+            @for (pedido of pedidosRecientes(); track pedido.id) {
+              <div class="compact-item">
+                <div>
+                  <strong>Pedido #{{ pedido.id }}</strong>
+                  <span>{{ getPedidoMeta(pedido) }} · {{ formatPedidoFecha(pedido) }}</span>
+                </div>
+                <div class="compact-item__side">
+                  <strong>{{ formatPedidoTotal(pedido) }}</strong>
+                  <span>{{ getPedidoEstadoLabel(pedido.estado) }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <strong>Sin pedidos recientes</strong>
+            <span>Los pedidos nuevos o pendientes aparecerán en este bloque.</span>
+          </div>
+        }
+      </article>
+
+      <article class="bloque">
+        <div class="bloque-cabecera">
+          <h2>Promociones</h2>
+          @if (promocionesDisponibles()) {
+            <span class="badge-count">{{ promocionesActivas().length }}</span>
+          }
+        </div>
+
+        @if (!promocionesDisponibles()) {
+          <div class="empty-state">
+            <strong>Promociones no disponibles</strong>
+            <span>No se pudieron consultar las promociones ahora mismo.</span>
+          </div>
+        } @else if (promocionesActivas().length) {
+          <div class="compact-list">
+            @for (promocion of promocionesActivas(); track promocion.id) {
+              <div class="compact-item">
+                <div>
+                  <strong>{{ promocion.titulo }}</strong>
+                  <span>{{ getPromocionDescuento(promocion) }} · hasta {{ formatPromocionCaducidad(promocion) }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state empty-state--dashed">
+            <strong>No hay promociones activas</strong>
+            <a class="inline-link" [routerLink]="['/mi-negocio']" [queryParams]="{ modal: 'promociones' }">Crear promoción</a>
+          </div>
+        }
+      </article>
+
+      <article class="bloque">
+        <div class="bloque-cabecera">
+          <h2>Reseñas</h2>
+          @if (resenasDisponibles()) {
+            <span class="badge-count">{{ resumen()?.totalResenas || resenas().length }}</span>
+          }
+        </div>
+
+        <div class="review-summary">
+          <strong>{{ resumen()?.puntuacionMedia ? resumen()?.puntuacionMedia?.toFixed(1) : 'Sin nota' }}</strong>
+          <span>valoración media</span>
+        </div>
+
+        @if (!resenasDisponibles()) {
+          <div class="empty-state">
+            <strong>Reseñas no disponibles</strong>
+            <span>No se pudieron consultar las últimas reseñas ahora mismo.</span>
+          </div>
+        } @else if (resenasRecientes().length) {
+          <div class="review-list">
+            @for (review of resenasRecientes(); track review.id) {
+              <div class="review-item">
+                <div class="review-avatar">{{ getReviewInitial(review) }}</div>
+                <div>
+                  <strong>{{ review.autor }}</strong>
+                  <span>{{ getStars(review.puntuacion) }} · {{ formatReviewDate(review) }}</span>
+                  <p>{{ review.contenido }}</p>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <strong>Todavía no hay reseñas</strong>
+            <span>Cuando lleguen reseñas, verás aquí las más recientes.</span>
+          </div>
+        }
+      </article>
+    </section>
   }
-</div>
+</section>
