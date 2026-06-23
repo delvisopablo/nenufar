@@ -38,6 +38,11 @@ import {
 } from '../../servicios/estanqueFeed/estanque-feed.service';
 import { HomeHeaderService } from '../../servicios/homeHeaderServicio/home-header.service';
 import {
+  FiltroCategoria,
+  FiltroSubcategoria,
+  FiltrosEstanqueService,
+} from '../../servicios/filtrosEstanqueServicio/filtros-estanque.service';
+import {
   NegocioService,
   resolveNegocioRouteCommands,
 } from '../../servicios/negocioService/negocio.service';
@@ -249,6 +254,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly authService = inject(AuthService);
   private readonly homeHeaderService = inject(HomeHeaderService);
+  private readonly filtrosEstanqueService = inject(FiltrosEstanqueService);
   private readonly negocioService = inject(NegocioService);
   private readonly negocioSearchService = inject(NegocioSearchService);
   private readonly promocionService = inject(PromocionService);
@@ -268,6 +274,16 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly promoLilies = signal<LilyView[]>([]);
   readonly reviewLilies = signal<LilyView[]>([]);
   readonly negociosDestacados = signal<NegocioLite[]>([]);
+  /** null = sin filtro activo (se usa negociosDestacados); array = resultado filtrado por categoria/subcategoria */
+  private readonly negociosFiltrados = signal<NegocioLite[] | null>(null);
+  readonly filtroEstanqueCargando = signal(false);
+  readonly hayFiltroEstanqueActivo = computed(() => this.filtrosEstanqueService.hayFiltroActivo());
+  readonly mostrarEstanqueVacio = computed(
+    () =>
+      this.hayFiltroEstanqueActivo() &&
+      !this.filtroEstanqueCargando() &&
+      (this.negociosFiltrados()?.length ?? 0) === 0,
+  );
   readonly reviewButtonSpinning = signal(false);
   readonly usuarioLogueado = signal<AuthUser | null>(null);
   readonly profileLilies = signal<LilyView[]>([]);
@@ -347,6 +363,12 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
       announcedPromotions.forEach((promotion) => this.integrateAnnouncedPromotion(promotion));
       this.estanqueFeed.clearPromotions(announcedPromotions.map((promotion) => promotion.id));
+    }, { allowSignalWrites: true });
+
+    effect(() => {
+      const categoria = this.filtrosEstanqueService.categoria();
+      const subcategoria = this.filtrosEstanqueService.subcategoria();
+      this.aplicarFiltroEstanque(categoria, subcategoria);
     }, { allowSignalWrites: true });
   }
 
@@ -527,6 +549,10 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         }));
       },
     });
+  }
+
+  limpiarFiltroEstanque(): void {
+    this.filtrosEstanqueService.limpiar();
   }
 
   cerrarCrearResena(): void {
@@ -771,6 +797,54 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       title: 'Negocio no disponible',
       message: 'Este negocio no se abrió porque le falta una dirección pública.',
     });
+  }
+
+  /** Pool de negocios que debe usarse para construir los nenufares del estanque. */
+  private negociosParaEstanque(): NegocioLite[] {
+    return this.negociosFiltrados() ?? this.negociosDestacados();
+  }
+
+  private filtroEstanqueActivoAnterior = false;
+
+  private aplicarFiltroEstanque(categoria: FiltroCategoria, subcategoria: FiltroSubcategoria): void {
+    if (!categoria && !subcategoria) {
+      if (!this.filtroEstanqueActivoAnterior) {
+        // Estado inicial sin filtro: todavia no hay nada que resincronizar.
+        return;
+      }
+
+      this.filtroEstanqueActivoAnterior = false;
+      this.negociosFiltrados.set(null);
+      this.filtroEstanqueCargando.set(false);
+      this.resincronizarZonasFiltradas();
+      return;
+    }
+
+    this.filtroEstanqueActivoAnterior = true;
+    this.filtroEstanqueCargando.set(true);
+
+    this.negocioSearchService
+      .search('', {
+        ...(categoria ? { categoriaId: categoria.id } : {}),
+        ...(subcategoria ? { subcategoriaId: subcategoria.id } : {}),
+      })
+      .pipe(catchError(() => of([] as NegocioLite[])))
+      .subscribe((items) => {
+        this.negociosFiltrados.set(items);
+        this.filtroEstanqueCargando.set(false);
+        this.resincronizarZonasFiltradas();
+        this.changeDetector.markForCheck();
+      });
+  }
+
+  /** Vacia y reconstruye las zonas que dependen de negocios (resenas/promos) tras un cambio de filtro. */
+  private resincronizarZonasFiltradas(): void {
+    this.reviewLilies.set([]);
+    this.promoLilies.set([]);
+    this.reconcileZonePopulation('resenas');
+    this.reconcileZonePopulation('promos');
+    this.queueZoneSync();
+    this.changeDetector.markForCheck();
   }
 
   private cargarNegociosDestacados(): void {
@@ -1048,12 +1122,23 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       return this.upsertBusiness(items, mergedBusiness);
     });
 
-    this.forceInsertPriorityItem(
-      'resenas',
-      this.createReviewLily(review, this.isFollowedBusiness(review.business), 'burst'),
-    );
+    if (this.negocioVisibleEnEstanque(business.id)) {
+      this.forceInsertPriorityItem(
+        'resenas',
+        this.createReviewLily(review, this.isFollowedBusiness(review.business), 'burst'),
+      );
+    }
     this.queueZoneSync();
     this.changeDetector.markForCheck();
+  }
+
+  /** Comprueba si un negocio cumple el filtro de categoria/subcategoria activo en el estanque. */
+  private negocioVisibleEnEstanque(negocioId: number): boolean {
+    if (!this.hayFiltroEstanqueActivo()) {
+      return true;
+    }
+
+    return this.negociosParaEstanque().some((item) => item.id === negocioId);
   }
 
   private integrateAnnouncedPromotion(announcement: PondPromotionAnnouncement): void {
@@ -1091,10 +1176,12 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    this.forceInsertPriorityItem(
-      'promos',
-      this.createPromoLily(nextPromo, this.isFollowedPromotion(nextPromo), 'burst'),
-    );
+    if (this.negocioVisibleEnEstanque(nextPromo.negocioId)) {
+      this.forceInsertPriorityItem(
+        'promos',
+        this.createPromoLily(nextPromo, this.isFollowedPromotion(nextPromo), 'burst'),
+      );
+    }
     this.queueZoneSync();
     this.changeDetector.markForCheck();
   }
@@ -1985,7 +2072,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getPriorityBusinessIds(): Set<number> {
     return new Set(
-      this.negociosDestacados()
+      this.negociosParaEstanque()
         .filter((item) => item.isFollowing)
         .map((item) => item.id),
     );
@@ -1995,7 +2082,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     const followedBusinessIds = this.getPriorityBusinessIds();
     const reviewById = new Map<number, PondReviewItem>();
 
-    this.negociosDestacados().forEach((business) => {
+    this.negociosParaEstanque().forEach((business) => {
       (business.latestReviews ?? []).forEach((review) => {
         const reviewId = Number(review.id ?? 0);
         if (!Number.isFinite(reviewId) || reviewId <= 0) {
@@ -2024,7 +2111,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private buildBusinessCandidates(): PondCandidate[] {
     const followedBusinessIds = this.getPriorityBusinessIds();
 
-    return this.negociosDestacados()
+    return this.negociosParaEstanque()
       .filter((business) => Number.isFinite(Number(business.id ?? 0)) && Number(business.id ?? 0) > 0)
       .map((business) => {
         const prioritario = followedBusinessIds.has(business.id);
@@ -2038,8 +2125,14 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private buildPromoCandidates(): PondCandidate[] {
+    const hayFiltro = this.hayFiltroEstanqueActivo();
+    const negociosVisiblesIds = hayFiltro
+      ? new Set(this.negociosParaEstanque().map((business) => business.id))
+      : null;
+
     return this.promociones()
       .filter((promo) => Number.isFinite(Number(promo.id ?? 0)) && Number(promo.id ?? 0) > 0)
+      .filter((promo) => !negociosVisiblesIds || negociosVisiblesIds.has(promo.negocioId))
       .map((promo) => {
         const prioritario = this.isFollowedPromotion(promo);
         return {
@@ -2215,7 +2308,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getPromoBusiness(promo: HomePromo): NegocioVisualData | null {
-    const negocioRelacionado = this.negociosDestacados().find((item) => item.id === promo.negocioId) ?? null;
+    const negocioRelacionado = this.negociosParaEstanque().find((item) => item.id === promo.negocioId) ?? null;
 
     if (!promo.negocio) {
       return negocioRelacionado;

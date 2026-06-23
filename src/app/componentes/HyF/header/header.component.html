@@ -126,44 +126,76 @@
           </div>
         }
 
-        @if (resultadosBusqueda().length) {
+        @if (resultadosUsuarios().length || resultadosBusqueda().length) {
           <div class="search-results" role="list">
-            @for (negocio of resultadosBusqueda(); track negocio.id) {
-              <article class="search-result">
-                <button type="button" class="search-result__main" (click)="seleccionarNegocio(negocio)">
-                  <span class="search-result__media">
-                    <img
-                      [src]="getNenufarNegocio(negocio)"
-                      [srcset]="getNenufarNegocioSrcset(negocio)"
-                      sizes="48px"
-                      [alt]="negocio.nombre"
-                      width="48"
-                      height="48"
-                      loading="lazy"
-                      decoding="async"
-                    >
-                  </span>
-                  <span class="search-result__copy">
-                    <strong>
-                      {{ negocio.nombre }}
-                      @if (negocio.verificado) {
-                        <span class="search-result__verified">✓</span>
+            @if (resultadosUsuarios().length) {
+              <p class="search-results__section-label">Personas</p>
+              @for (usuario of resultadosUsuarios(); track usuario.id) {
+                <article class="search-result search-result--usuario">
+                  <button type="button" class="search-result__main" (click)="irAPerfilUsuario(usuario)">
+                    <span class="search-result__media search-result__media--usuario">
+                      <img
+                        [src]="getUsuarioFoto(usuario)"
+                        [alt]="usuario.nombre"
+                        width="48"
+                        height="48"
+                        loading="lazy"
+                        decoding="async"
+                      >
+                    </span>
+                    <span class="search-result__copy">
+                      <strong>{{ usuario.nombre }}</strong>
+                      <span>&#64;{{ usuario.nickname }}</span>
+                      @if (usuario.biografia) {
+                        <span class="search-result__reviews">{{ usuario.biografia }}</span>
                       }
-                    </strong>
-                    <span>{{ getSearchMeta(negocio) }}</span>
-                    <span class="search-result__reviews">{{ getReviewSummary(negocio) }}</span>
-                  </span>
-                </button>
+                    </span>
+                  </button>
+                </article>
+              }
+            }
 
-                <button
-                  type="button"
-                  class="follow-chip"
-                  [class.follow-chip--active]="negocio.isFollowing"
-                  (click)="toggleSeguir($event, negocio)"
-                >
-                  {{ negocio.isFollowing ? 'Siguiendo' : 'Seguir' }}
-                </button>
-              </article>
+            @if (resultadosBusqueda().length) {
+              @if (resultadosUsuarios().length) {
+                <p class="search-results__section-label">Negocios</p>
+              }
+              @for (negocio of resultadosBusqueda(); track negocio.id) {
+                <article class="search-result">
+                  <button type="button" class="search-result__main" (click)="seleccionarNegocio(negocio)">
+                    <span class="search-result__media">
+                      <img
+                        [src]="getNenufarNegocio(negocio)"
+                        [srcset]="getNenufarNegocioSrcset(negocio)"
+                        sizes="48px"
+                        [alt]="negocio.nombre"
+                        width="48"
+                        height="48"
+                        loading="lazy"
+                        decoding="async"
+                      >
+                    </span>
+                    <span class="search-result__copy">
+                      <strong>
+                        {{ negocio.nombre }}
+                        @if (negocio.verificado) {
+                          <span class="search-result__verified">✓</span>
+                        }
+                      </strong>
+                      <span>{{ getSearchMeta(negocio) }}</span>
+                      <span class="search-result__reviews">{{ getReviewSummary(negocio) }}</span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="follow-chip"
+                    [class.follow-chip--active]="negocio.isFollowing"
+                    (click)="toggleSeguir($event, negocio)"
+                  >
+                    {{ negocio.isFollowing ? 'Siguiendo' : 'Seguir' }}
+                  </button>
+                </article>
+              }
             }
           </div>
         } @else if (busquedaEstado() === 'loading') {

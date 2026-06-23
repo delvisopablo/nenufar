@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, catchError } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, catchError, of } from 'rxjs';
 import { ApiListResponse, buildApiUrl, extractItems } from '../../config/api.config';
 import { map } from 'rxjs/operators';
 import {
@@ -92,6 +92,16 @@ export interface SeguidorEntry {
   [key: string]: unknown;
 }
 
+export interface UsuarioBusquedaResultado {
+  id: number;
+  nombre: string;
+  nickname: string;
+  foto?: string | null;
+  fotoPerfil?: string | null;
+  biografia?: string | null;
+  [key: string]: unknown;
+}
+
 export interface CreateUsuarioPayload {
   nombre: string;
   nickname: string;
@@ -108,6 +118,30 @@ export interface CreateUsuarioPayload {
 })
 export class UsuarioServiceService {
   constructor(private readonly http: HttpClient) {}
+
+  /**
+   * TODO(backend): no existe endpoint publico de busqueda de usuarios.
+   * Falta GET /usuarios/buscar?q=<texto> que devuelva solo campos publicos
+   * (id, nombre, nickname, foto/fotoPerfil, biografia si es publica), sin
+   * email, password, tokens ni datos de verificacion. Hasta que exista,
+   * esta llamada se resuelve a [] via catchError para no romper el buscador.
+   */
+  buscar(query: string): Observable<UsuarioBusquedaResultado[]> {
+    const normalized = query.trim();
+    if (!normalized) {
+      return of([]);
+    }
+
+    return this.http
+      .get<UsuarioBusquedaResultado[] | ApiListResponse<UsuarioBusquedaResultado>>(
+        buildApiUrl('/usuarios/buscar'),
+        { params: new HttpParams().set('q', normalized) },
+      )
+      .pipe(
+        map((response) => extractItems(response)),
+        catchError(() => of([] as UsuarioBusquedaResultado[])),
+      );
+  }
 
   getByNickname(nickname: string): Observable<PerfilUsuarioResponse> {
     // TODO(backend): consolidar este lookup publico en GET /usuarios/nickname/:nickname.

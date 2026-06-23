@@ -90,6 +90,39 @@
   z-index: 1;
 }
 
+.pond-empty-state {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  justify-content: center;
+  align-content: center;
+  gap: 0.85rem;
+  text-align: center;
+  padding: 2rem;
+  pointer-events: none;
+}
+
+.pond-empty-state p {
+  margin: 0;
+  font-size: 1.05rem;
+  color: rgba(247, 255, 249, 0.92);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.pond-empty-state__clear {
+  pointer-events: auto;
+  justify-self: center;
+  border: 1px solid rgba(255, 245, 214, 0.35);
+  border-radius: 999px;
+  padding: 0.55rem 1.4rem;
+  background: rgba(9, 25, 18, 0.72);
+  color: #f7fff9;
+  font-size: 0.92rem;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
 .lily-layer--promos {
   z-index: 2;
 }

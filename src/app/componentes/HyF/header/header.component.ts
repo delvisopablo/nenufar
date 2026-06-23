@@ -8,6 +8,7 @@ import {
   debounceTime,
   distinctUntilChanged,
   firstValueFrom,
+  forkJoin,
   map,
   of,
   startWith,
@@ -39,6 +40,11 @@ import {
   CategoriaServiceService,
   Subcategoria,
 } from '../../../servicios/categoriaServicio/categoriaService.service';
+import { FiltrosEstanqueService } from '../../../servicios/filtrosEstanqueServicio/filtros-estanque.service';
+import {
+  UsuarioBusquedaResultado,
+  UsuarioServiceService,
+} from '../../../servicios/usuarioServicio/usuarioService.service';
 
 type SearchStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 
@@ -55,12 +61,16 @@ export class HeaderComponent implements OnDestroy {
   private readonly negocioSearchService = inject(NegocioSearchService);
   private readonly negocioService = inject(NegocioService);
   private readonly categoriaService = inject(CategoriaServiceService);
+  private readonly usuarioService = inject(UsuarioServiceService);
+  private readonly filtrosEstanqueService = inject(FiltrosEstanqueService);
 
   readonly logoSrc = 'assets/imagenes/logo_nenufar_small.png';
   readonly flowerSrc = 'assets/imagenes/flor_logo.png';
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly busquedaEstado = signal<SearchStatus>('idle');
   readonly resultadosBusqueda = signal<NegocioLite[]>([]);
+  readonly resultadosUsuarios = signal<UsuarioBusquedaResultado[]>([]);
+  readonly defaultUsuarioFoto = 'assets/imagenes/rana1_profile_foto.png';
   readonly currentQuery = signal('');
   readonly categorias = signal<Categoria[]>([]);
   readonly subcategorias = signal<Subcategoria[]>([]);
@@ -125,14 +135,16 @@ export class HeaderComponent implements OnDestroy {
 
           if (!normalized && !this.hayFiltrosActivos()) {
             this.resultadosBusqueda.set([]);
+            this.resultadosUsuarios.set([]);
           }
         }),
         debounceTime(250),
         distinctUntilChanged(),
         switchMap((value) => this.searchWithState(value))
       )
-      .subscribe(({ normalized, results, status }) => {
+      .subscribe(({ normalized, results, usuarios, status }) => {
         this.resultadosBusqueda.set(results);
+        this.resultadosUsuarios.set(usuarios);
 
         if (!normalized && !this.hayFiltrosActivos()) {
           this.busquedaEstado.set('idle');
@@ -299,6 +311,10 @@ export class HeaderComponent implements OnDestroy {
     this.subcategoriaSeleccionadaId.set(null);
     this.subcategorias.set([]);
     this.navigationError.set('');
+    this.filtrosEstanqueService.setCategoria(
+      categoria ? { id: categoria.id, nombre: categoria.nombre } : null,
+    );
+    this.filtrosEstanqueService.setSubcategoria(null);
 
     if (categoria) {
       this.cargarSubcategorias(categoria.id);
@@ -312,6 +328,9 @@ export class HeaderComponent implements OnDestroy {
   seleccionarSubcategoria(subcategoria: Subcategoria | null): void {
     this.subcategoriaSeleccionadaId.set(subcategoria?.id ?? null);
     this.navigationError.set('');
+    this.filtrosEstanqueService.setSubcategoria(
+      subcategoria ? { id: subcategoria.id, nombre: subcategoria.nombre } : null,
+    );
     // Lanza búsqueda inmediatamente al cambiar subcategoría.
     // cerrarPanel=false para que el usuario vea el panel y pueda limpiar filtros.
     void this.ejecutarBusquedaActual(false);
@@ -322,7 +341,17 @@ export class HeaderComponent implements OnDestroy {
     this.subcategoriaSeleccionadaId.set(null);
     this.subcategorias.set([]);
     this.filtrosAbiertos.set(false);
+    this.filtrosEstanqueService.limpiar();
     void this.ejecutarBusquedaActual();
+  }
+
+  irAPerfilUsuario(usuario: UsuarioBusquedaResultado): void {
+    this.resetearBusqueda(false);
+    void this.router.navigate(['/usuario', usuario.id]);
+  }
+
+  getUsuarioFoto(usuario: UsuarioBusquedaResultado): string {
+    return usuario.fotoPerfil?.trim() || usuario.foto?.trim() || this.defaultUsuarioFoto;
   }
 
   irALogin(): void {
@@ -358,20 +387,31 @@ export class HeaderComponent implements OnDestroy {
       return of({
         normalized,
         results: [] as NegocioLite[],
+        usuarios: [] as UsuarioBusquedaResultado[],
         status: 'idle' as SearchStatus
       });
     }
 
-    return this.negocioSearchService.search(normalized, filters).pipe(
-      map((results) => ({
+    const negocios$ = this.negocioSearchService.search(normalized, filters).pipe(
+      catchError(() => of([] as NegocioLite[])),
+    );
+    // El buscador de usuarios no depende de categoria/subcategoria de negocio.
+    const usuarios$ = normalized.length >= 2
+      ? this.usuarioService.buscar(normalized).pipe(catchError(() => of([] as UsuarioBusquedaResultado[])))
+      : of([] as UsuarioBusquedaResultado[]);
+
+    return forkJoin([negocios$, usuarios$]).pipe(
+      map(([results, usuarios]) => ({
         normalized,
         results,
-        status: results.length ? ('ready' as SearchStatus) : ('empty' as SearchStatus)
+        usuarios,
+        status: (results.length || usuarios.length) ? ('ready' as SearchStatus) : ('empty' as SearchStatus)
       })),
       catchError(() =>
         of({
           normalized,
           results: [] as NegocioLite[],
+          usuarios: [] as UsuarioBusquedaResultado[],
           status: 'error' as SearchStatus
         })
       )
@@ -386,6 +426,7 @@ export class HeaderComponent implements OnDestroy {
 
     this.navigationError.set('');
     this.resultadosBusqueda.set([]);
+    this.resultadosUsuarios.set([]);
     this.busquedaEstado.set('idle');
     this.filtrosAbiertos.set(false);
   }
@@ -422,6 +463,7 @@ export class HeaderComponent implements OnDestroy {
 
     if (!normalized && !this.hayFiltrosActivos()) {
       this.resultadosBusqueda.set([]);
+      this.resultadosUsuarios.set([]);
       this.busquedaEstado.set('idle');
       return;
     }
@@ -429,16 +471,18 @@ export class HeaderComponent implements OnDestroy {
     this.busquedaEstado.set('loading');
 
     try {
-      const results = await firstValueFrom(
-        this.negocioSearchService.search(normalized, this.getFiltrosBusqueda()),
+      const { results, usuarios, status } = await firstValueFrom(
+        this.searchWithState(this.searchControl.value),
       );
       this.resultadosBusqueda.set(results);
-      this.busquedaEstado.set(results.length ? 'ready' : 'empty');
+      this.resultadosUsuarios.set(usuarios);
+      this.busquedaEstado.set(status);
       if (cerrarPanel) {
         this.filtrosAbiertos.set(false);
       }
     } catch {
       this.resultadosBusqueda.set([]);
+      this.resultadosUsuarios.set([]);
       this.busquedaEstado.set('error');
     }
   }

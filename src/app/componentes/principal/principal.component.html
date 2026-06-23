@@ -74,6 +74,15 @@
         </button>
       }
     </div>
+
+    @if (mostrarEstanqueVacio()) {
+      <div class="pond-empty-state">
+        <p>No hay nenúfares para este filtro.</p>
+        <button type="button" class="pond-empty-state__clear" (click)="limpiarFiltroEstanque()">
+          Limpiar filtros
+        </button>
+      </div>
+    }
   </div>
 
   <button
