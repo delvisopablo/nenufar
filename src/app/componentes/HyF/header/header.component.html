@@ -23,7 +23,7 @@
 
   <div class="header-actions">
     <div class="topbar-actions">
-      <button type="button" class="top-action top-action--info" (click)="abrirNenunInfo()">Nenuninfo</button>
+      <button type="button" class="top-action top-action--info" (click)="abrirNenunInfo()">Información</button>
       @if (mostrarAccesoAdmin()) {
         <button type="button" class="top-action top-action--admin" (click)="irAAdmin()">
           Admin
@@ -49,7 +49,7 @@
               type="search"
               name="headerBusinessSearch"
               [formControl]="searchControl"
-              placeholder="Buscar por nombre, nickname, categoria o ciudad"
+              placeholder="Buscar negocios, personas, nickname, categoría o ciudad"
               autocomplete="off"
             >
           </label>
@@ -123,6 +123,12 @@
                 Quitar filtros
               </button>
             }
+
+            @if (mostrarResumenFiltro()) {
+              <p class="filter-results-line" role="status" aria-live="polite">
+                {{ resumenResultadoFiltro() }}
+              </p>
+            }
           </div>
         }
 
@@ -145,7 +151,7 @@
                     </span>
                     <span class="search-result__copy">
                       <strong>{{ usuario.nombre }}</strong>
-                      <span>&#64;{{ usuario.nickname }}</span>
+                      <span>{{ getUsuarioMeta(usuario) }}</span>
                       @if (usuario.biografia) {
                         <span class="search-result__reviews">{{ usuario.biografia }}</span>
                       }
@@ -199,7 +205,7 @@
             }
           </div>
         } @else if (busquedaEstado() === 'loading') {
-          <div class="search-empty">Buscando negocios...</div>
+          <div class="search-empty">Buscando resultados...</div>
         } @else if (sinResultadosBusqueda()) {
           <div class="search-empty">La búsqueda no encontró resultados con esos filtros.</div>
         } @else if (errorBusqueda()) {

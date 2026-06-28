@@ -13,8 +13,8 @@
 
     <div class="hero-stats">
       <div class="stat petalos-stat">
-        <img src="assets/imagenes/nenufar_small.png" alt="pétalo" class="stat-icon" />
-        <span class="stat-valor">{{ saldoPetalos() }}</span>
+        <img src="assets/imagenes/petalos-flor-5.png" alt="Pétalos" class="stat-icon" />
+        <span class="stat-valor">{{ saldoPetalos() ?? '—' }}</span>
         <span class="stat-etiqueta">pétalos</span>
       </div>
       <div class="stat-divider"></div>
@@ -54,8 +54,8 @@
           @for (ml of logrosRecientes(); track ml.id) {
             <div class="reciente-item">
               <img
-                src="assets/nenufares_colores/nenufar_var{{ (ml.id % 17) + 1 }}.png"
-                alt="nenúfar"
+                [src]="getLogroIcon(ml)"
+                alt="Logro"
                 class="reciente-nenufar"
               />
               <span class="reciente-titulo">{{ ml.logro.titulo }}</span>
@@ -101,14 +101,14 @@
                       (keydown.enter)="abrirDetalleNivel(esc, n)"
                     >
                       <div class="nivel-medalla">
-                        @if (n.desbloqueado) {
-                          <img
-                            src="assets/nenufares_colores/nenufar_var{{ (n.id % 17) + 1 }}.png"
-                            alt="logro"
-                            class="nenufar-img"
-                          />
-                        } @else {
-                          <span class="nivel-lock" aria-label="Bloqueado">
+                        <img
+                          [src]="getNivelIcon(n, esc.niveles)"
+                          alt="Logro"
+                          class="nenufar-img"
+                          [class.nenufar-img--locked]="!n.desbloqueado"
+                        />
+                        @if (!n.desbloqueado) {
+                          <span class="nivel-lock" aria-label="Bloqueado" title="Bloqueado">
                             <svg class="lock-svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                               <path d="M13 6h-1V5A4 4 0 0 0 4 5v1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1zm-5 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm2-6H6V5a2 2 0 0 1 4 0v1z"/>
                             </svg>
@@ -213,9 +213,9 @@
 
       <div class="petalos-contenido">
         <div class="petalos-saldo-panel">
-          <img src="assets/imagenes/nenufar_small.png" alt="pétalo" class="petalos-logo" />
+          <img src="assets/imagenes/petalos-flor-5.png" alt="Pétalos" class="petalos-logo" />
           <div>
-            <p class="petalos-saldo-num">{{ saldoPetalos() }}</p>
+            <p class="petalos-saldo-num">{{ saldoPetalos() ?? '—' }}</p>
             <p class="petalos-saldo-label">pétalos actuales</p>
           </div>
         </div>
@@ -252,7 +252,7 @@
 
       <div class="modal-estado" [class.desbloqueado]="detalleAbierto()!.desbloqueado">
         @if (detalleAbierto()!.desbloqueado) {
-          <img src="assets/imagenes/nenufar_small.png" alt="desbloqueado" class="modal-nenufar" />
+          <img [src]="getIconoNormal()" alt="desbloqueado" class="modal-nenufar" />
           <span class="modal-estado-texto desbloqueado">Desbloqueado</span>
         } @else {
           <span class="modal-lock">

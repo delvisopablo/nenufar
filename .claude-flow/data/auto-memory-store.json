@@ -1,0 +1,28 @@
+[
+  {
+    "id": "task-nenufar-logros-visual-functional-update",
+    "key": "nenufar-logros-visual-functional-update",
+    "content": "Task completed: Actualizar sistema de logros del frontend de Nenúfar: saldo de pétalos, iconos por nivel, insignias destacadas, selección de hasta 3, logros de negocio y ajustes visuales de perfil. (agent: coder)",
+    "namespace": "tasks",
+    "type": "task-outcome",
+    "metadata": {
+      "agent": "coder",
+      "success": true,
+      "quality": 0.92
+    },
+    "createdAt": 1782494721145
+  },
+  {
+    "id": "task-nenufar-frontend-auto-close-modals",
+    "key": "nenufar-frontend-auto-close-modals",
+    "content": "Task completed: Angular frontend: auto-close add-to-Nenulista and reservation modals after successful submit; preserve loading/error behavior; build frontend (agent: codex)",
+    "namespace": "tasks",
+    "type": "task-outcome",
+    "metadata": {
+      "agent": "codex",
+      "success": true,
+      "quality": 0.95
+    },
+    "createdAt": 1782583909067
+  }
+]

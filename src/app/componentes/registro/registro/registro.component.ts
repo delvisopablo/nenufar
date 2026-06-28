@@ -22,7 +22,12 @@ import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthResponse, AuthService } from '../../../servicios/authService/auth.service';
 import { savePendingEmailVerification } from '../../../servicios/authService/email-verification.storage';
-import { getUserErrorMessage } from '../../../core/errors/error-parser';
+import {
+  clearFormApiErrors,
+  getFieldError,
+  mapApiError,
+  setFormErrors,
+} from '../../../core/errors/form-error.utils';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
 
 type PondSource = {
@@ -254,7 +259,7 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
       nombre: ['', [Validators.required, Validators.minLength(2)]],
       nickname: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
+      password: ['', [Validators.required, Validators.minLength(8)]],
       confirmarContrasena: ['', [Validators.required]],
       biografia: ['', [Validators.maxLength(220)]],
     },
@@ -293,6 +298,7 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.errorMensaje.set('');
+    clearFormApiErrors(this.registroForm);
 
     if (this.registroForm.invalid) {
       this.registroForm.markAllAsTouched();
@@ -337,13 +343,7 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.registrando.set(false);
-
-          if (error instanceof HttpErrorResponse && error.status === 409) {
-            this.errorMensaje.set('Ese email o nombre de usuario ya está registrado.');
-            return;
-          }
-
-          this.errorMensaje.set(this.extraerMensajeError(error));
+          this.aplicarErroresRegistro(error);
         }
       });
   }
@@ -368,28 +368,11 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
       return '';
     }
 
-    if (control.hasError('required')) {
-      return 'Este campo es obligatorio.';
-    }
-
-    if (control.hasError('email')) {
-      return 'Escribe un correo válido.';
-    }
-
-    if (control.hasError('minlength')) {
-      const requiredLength = control.getError('minlength')?.requiredLength ?? 0;
-      return `Necesitas al menos ${requiredLength} caracteres.`;
-    }
-
-    if (control.hasError('maxlength')) {
-      return 'Intenta resumirlo un poco más.';
-    }
-
     if (nombreCampo === 'confirmarContrasena' && this.registroForm.hasError('passwordMismatch')) {
       return 'Las contraseñas no coinciden.';
     }
 
-    return 'Revisa este campo.';
+    return getFieldError(control);
   }
 
   private passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -403,10 +386,14 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
     return password === confirmacion ? null : { passwordMismatch: true };
   }
 
-  private extraerMensajeError(error: unknown): string {
-    return getUserErrorMessage(
-      error,
-      'La cuenta no se creó. Revisa los datos del registro.'
+  private aplicarErroresRegistro(error: unknown): void {
+    const apiError = mapApiError(error, 'La cuenta no se creó. Revisa los datos del registro.');
+    setFormErrors(this.registroForm, apiError.fieldErrors);
+    this.errorMensaje.set(
+      apiError.message ||
+        (Object.keys(apiError.fieldErrors).length
+          ? ''
+          : 'La cuenta no se creó. Revisa los datos del registro.'),
     );
   }
 

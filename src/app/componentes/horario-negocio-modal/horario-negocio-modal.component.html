@@ -92,6 +92,10 @@
               <input type="time" formControlName="cierre" [disabled]="!diasFormArray.at(dayIndex).get('activa')?.value">
             </label>
           </div>
+
+          @if (dayErrors()[dayIndex]) {
+            <small class="field-error">{{ dayErrors()[dayIndex] }}</small>
+          }
         </div>
       }
     </div>

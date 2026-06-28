@@ -214,7 +214,6 @@
   border-top: 1px solid rgba(247, 255, 249, 0.1);
 }
 
-.review-comments__head,
 .review-comment__head,
 .review-business {
   display: flex;
@@ -223,9 +222,33 @@
   gap: 0.65rem;
 }
 
-.review-comments__head span {
+.review-comments__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.review-comments__toggle span {
   color: #d1ffec;
   font-weight: 900;
+}
+
+.review-comments__arrow {
+  display: inline-block;
+  transition: transform 160ms ease;
+  font-weight: 900;
+}
+
+.review-comments__arrow--open {
+  transform: rotate(90deg);
 }
 
 .review-comments__list {

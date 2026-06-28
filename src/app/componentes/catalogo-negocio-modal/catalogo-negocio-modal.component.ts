@@ -1,19 +1,31 @@
 import {
   Component,
+  ElementRef,
   Input,
   OnChanges,
+  OnDestroy,
+  Output,
   SimpleChanges,
+  ViewChild,
   computed,
+  EventEmitter,
   inject,
   signal,
 } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { catchError, finalize, of } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
+import {
+  clearFormApiErrors,
+  getFieldError,
+  mapApiError,
+  setFormErrors,
+} from '../../core/errors/form-error.utils';
 import { AuthService } from '../../servicios/authService/auth.service';
 import {
-  ListaCompraService,
   AddListaCompraItemPayload,
+  Lista,
+  ListaCompraService,
 } from '../../servicios/listaCompraServicio/lista-compra.service';
 import { PondBusinessSnapshot } from '../../servicios/estanqueFeed/estanque-feed.service';
 import {
@@ -33,6 +45,8 @@ import {
 
 type CatalogoFormControlName = 'nombre' | 'descripcion' | 'precio' | 'codigoSKU' | 'foto';
 
+const FOTO_TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp'];
+
 @Component({
   selector: 'app-catalogo-negocio-modal',
   standalone: true,
@@ -40,11 +54,14 @@ type CatalogoFormControlName = 'nombre' | 'descripcion' | 'precio' | 'codigoSKU'
   templateUrl: './catalogo-negocio-modal.component.html',
   styleUrl: './catalogo-negocio-modal.component.css',
 })
-export class CatalogoNegocioModalComponent implements OnChanges {
+export class CatalogoNegocioModalComponent implements OnChanges, OnDestroy {
   @Input() negocioId!: number;
   @Input() negocio: PondBusinessSnapshot | null = null;
   @Input() puedeGestionar = false;
   @Input() mostrarSugerencias = false;
+  @Output() productoGuardado = new EventEmitter<Producto>();
+
+  @ViewChild('fotoArchivoInput') fotoArchivoInput?: ElementRef<HTMLInputElement>;
 
   private readonly fb = inject(FormBuilder);
   private readonly productoService = inject(ProductoServiceService);
@@ -67,11 +84,22 @@ export class CatalogoNegocioModalComponent implements OnChanges {
   readonly exitoMensaje = signal('');
   readonly editorAbierto = signal(false);
   readonly productoEditandoId = signal<number | null>(null);
+  readonly fotoPreviewUrl = signal<string | null>(null);
+  readonly fotoArchivoError = signal('');
+
+  readonly misListas = signal<Lista[]>([]);
+  readonly listaSeleccionadaId = signal<number | null>(null);
+  readonly crearListaDetalleAbierta = signal(false);
+  readonly guardandoListaDetalle = signal(false);
+  readonly nuevaListaDetalleNombre = signal('');
   readonly productosOrdenados = computed(() =>
     [...this.productos()].sort((left, right) =>
       left.nombre.localeCompare(right.nombre, 'es', { sensitivity: 'base' }),
     ),
   );
+
+  private fotoObjectUrl: string | null = null;
+  private detalleCierreTimeout: ReturnType<typeof setTimeout> | null = null;
 
   readonly form = this.fb.group({
     nombre: ['', [Validators.required, Validators.maxLength(191)]],
@@ -105,6 +133,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
     this.productoEditandoId.set(null);
     this.errorMensaje.set('');
     this.exitoMensaje.set('');
+    this.limpiarFotoArchivo();
     this.form.reset({
       nombre: '',
       descripcion: '',
@@ -112,6 +141,36 @@ export class CatalogoNegocioModalComponent implements OnChanges {
       codigoSKU: '',
       foto: '',
     });
+  }
+
+  onFotoArchivoSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+
+    if (!file) {
+      return;
+    }
+
+    if (!FOTO_TIPOS_PERMITIDOS.includes(file.type)) {
+      this.fotoArchivoError.set('Solo se aceptan imágenes JPG, PNG o WEBP.');
+      input.value = '';
+      return;
+    }
+
+    this.fotoArchivoError.set('');
+    this.revokeFotoObjectUrl();
+    this.fotoObjectUrl = URL.createObjectURL(file);
+    this.fotoPreviewUrl.set(this.fotoObjectUrl);
+  }
+
+  limpiarFotoArchivo(): void {
+    this.revokeFotoObjectUrl();
+    this.fotoPreviewUrl.set(null);
+    this.fotoArchivoError.set('');
+
+    if (this.fotoArchivoInput) {
+      this.fotoArchivoInput.nativeElement.value = '';
+    }
   }
 
   editarProducto(producto: Producto): void {
@@ -123,6 +182,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
     this.productoEditandoId.set(producto.id);
     this.errorMensaje.set('');
     this.exitoMensaje.set('');
+    this.limpiarFotoArchivo();
     this.form.reset({
       nombre: producto.nombre,
       descripcion: String(producto.descripcion ?? ''),
@@ -135,6 +195,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
   cancelarEdicion(): void {
     this.editorAbierto.set(false);
     this.productoEditandoId.set(null);
+    this.limpiarFotoArchivo();
     this.form.reset({
       nombre: '',
       descripcion: '',
@@ -145,20 +206,98 @@ export class CatalogoNegocioModalComponent implements OnChanges {
     this.errorMensaje.set('');
   }
 
+  ngOnDestroy(): void {
+    this.limpiarDetalleCierreTimeout();
+    this.revokeFotoObjectUrl();
+  }
+
+  private revokeFotoObjectUrl(): void {
+    if (this.fotoObjectUrl) {
+      URL.revokeObjectURL(this.fotoObjectUrl);
+      this.fotoObjectUrl = null;
+    }
+  }
+
   abrirDetalleProducto(producto: Producto): void {
     if (!producto?.id) {
       return;
     }
 
+    this.limpiarDetalleCierreTimeout();
     this.productoDetalle.set(producto);
     this.cantidadDetalle.set(1);
+    this.listaPendiente.set(false);
     this.errorMensaje.set('');
     this.exitoMensaje.set('');
+    this.crearListaDetalleAbierta.set(false);
+    this.nuevaListaDetalleNombre.set('');
+    this.cargarMisListas();
+  }
+
+  private cargarMisListas(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.misListas.set([]);
+      this.listaSeleccionadaId.set(null);
+      return;
+    }
+
+    this.listaCompraService.getMisListas().subscribe({
+      next: (listas) => {
+        this.misListas.set(listas);
+        const porDefecto = listas.find((lista) => lista.tipo === 'COMPRA') ?? listas[0] ?? null;
+        this.listaSeleccionadaId.set(porDefecto?.id ?? null);
+      },
+      error: () => this.misListas.set([]),
+    });
+  }
+
+  seleccionarListaDetalle(value: string): void {
+    this.listaSeleccionadaId.set(value ? Number(value) : null);
+  }
+
+  abrirCrearListaDetalle(): void {
+    this.crearListaDetalleAbierta.set(true);
+    this.nuevaListaDetalleNombre.set('');
+  }
+
+  actualizarNuevaListaDetalleNombre(value: string): void {
+    this.nuevaListaDetalleNombre.set(value);
+  }
+
+  crearListaDesdeDetalle(): void {
+    const nombre = this.nuevaListaDetalleNombre().trim();
+    if (!nombre || this.guardandoListaDetalle()) {
+      if (!nombre) {
+        this.errorMensaje.set('El nombre de la lista es obligatorio.');
+      }
+      return;
+    }
+
+    this.guardandoListaDetalle.set(true);
+    this.errorMensaje.set('');
+
+    this.listaCompraService
+      .crearLista({ nombre })
+      .pipe(finalize(() => this.guardandoListaDetalle.set(false)))
+      .subscribe({
+        next: (lista) => {
+          this.misListas.update((items) => [...items, { ...lista, itemsCount: 0 }]);
+          this.listaSeleccionadaId.set(lista.id);
+          this.crearListaDetalleAbierta.set(false);
+        },
+        error: (error: unknown) => {
+          this.errorMensaje.set(getUserErrorMessage(error, 'La lista no se creó.'));
+        },
+      });
   }
 
   cerrarDetalleProducto(): void {
+    this.limpiarDetalleCierreTimeout();
     this.productoDetalle.set(null);
     this.cantidadDetalle.set(1);
+    this.listaPendiente.set(false);
+    this.errorMensaje.set('');
+    this.exitoMensaje.set('');
   }
 
   manejarTeclaProducto(event: KeyboardEvent, producto: Producto): void {
@@ -238,14 +377,21 @@ export class CatalogoNegocioModalComponent implements OnChanges {
   anadirDetalleALista(): void {
     const producto = this.productoDetalle();
     const productoId = Number(producto?.id ?? 0);
+    const listaId = this.listaSeleccionadaId();
+    const listaElegida = this.misListas().find((lista) => lista.id === listaId) ?? null;
 
     if (!producto || !Number.isFinite(productoId) || productoId <= 0) {
       return;
     }
 
     if (!this.authService.isAuthenticated()) {
-      this.errorMensaje.set('Necesitas iniciar sesión para añadir productos a tu lista.');
+      this.errorMensaje.set('Necesitas iniciar sesión para añadir productos a una lista.');
       this.exitoMensaje.set('');
+      return;
+    }
+
+    if (!listaId) {
+      this.errorMensaje.set('Elige o crea primero una lista para guardar este producto.');
       return;
     }
 
@@ -254,30 +400,61 @@ export class CatalogoNegocioModalComponent implements OnChanges {
     }
 
     const cantidad = this.normalizarCantidad(this.cantidadDetalle());
-    const negocioId = Number(producto.negocioId ?? this.negocioId);
-    const payload: AddListaCompraItemPayload = {
-      productoId,
-      cantidad,
-      ...(Number.isFinite(negocioId) && negocioId > 0 ? { negocioId } : {}),
-    };
-
+    const payload: AddListaCompraItemPayload = { productoId, cantidad };
+    const nombreLista = listaElegida?.nombre ?? 'la lista';
     this.listaPendiente.set(true);
     this.errorMensaje.set('');
     this.exitoMensaje.set('');
 
-    this.listaCompraService
-      .addItem(payload)
-      .pipe(finalize(() => this.listaPendiente.set(false)))
-      .subscribe({
-        next: () => {
-          this.exitoMensaje.set('Producto añadido a tu lista');
-        },
-        error: (error: unknown) => {
-          this.errorMensaje.set(
-            getUserErrorMessage(error, 'El producto no se añadió a tu lista.'),
-          );
-        },
-      });
+    const continuarConDuplicado = (yaExiste: boolean) => {
+      if (yaExiste) {
+        this.errorMensaje.set(`Este producto ya está en "${nombreLista}".`);
+        this.listaPendiente.set(false);
+        return;
+      }
+
+      this.listaCompraService
+        .addProductoALista(listaId, payload)
+        .subscribe({
+          next: () => {
+            this.exitoMensaje.set(`Producto añadido a ${nombreLista}.`);
+            this.misListas.update((items) =>
+              items.map((item) =>
+                item.id === listaId ? { ...item, itemsCount: (item.itemsCount ?? 0) + 1 } : item,
+              ),
+            );
+            this.programarCierreDetalleProducto();
+          },
+          error: (error: unknown) => {
+            this.errorMensaje.set(
+              getUserErrorMessage(error, 'El producto no se añadió a la lista.'),
+            );
+            this.listaPendiente.set(false);
+          },
+        });
+    };
+
+    this.listaCompraService.getListaPorId(listaId).subscribe({
+      next: (lista) => {
+        continuarConDuplicado((lista.items ?? []).some((item) => Number(item.productoId ?? 0) === productoId));
+      },
+      error: () => continuarConDuplicado(false),
+    });
+  }
+
+  private programarCierreDetalleProducto(): void {
+    this.limpiarDetalleCierreTimeout();
+    this.detalleCierreTimeout = setTimeout(() => {
+      this.detalleCierreTimeout = null;
+      this.cerrarDetalleProducto();
+    }, 800);
+  }
+
+  private limpiarDetalleCierreTimeout(): void {
+    if (this.detalleCierreTimeout) {
+      clearTimeout(this.detalleCierreTimeout);
+      this.detalleCierreTimeout = null;
+    }
   }
 
   guardarProducto(): void {
@@ -288,6 +465,8 @@ export class CatalogoNegocioModalComponent implements OnChanges {
     if (this.guardando()) {
       return;
     }
+
+    clearFormApiErrors(this.form);
 
     if (this.form.invalid || this.negocioId <= 0) {
       this.form.markAllAsTouched();
@@ -316,6 +495,7 @@ export class CatalogoNegocioModalComponent implements OnChanges {
           );
           this.editorAbierto.set(false);
           this.productoEditandoId.set(null);
+          this.limpiarFotoArchivo();
           this.form.reset({
             nombre: '',
             descripcion: '',
@@ -328,10 +508,16 @@ export class CatalogoNegocioModalComponent implements OnChanges {
               ? 'Producto actualizado correctamente.'
               : 'Producto añadido al catálogo.',
           );
+          this.productoGuardado.emit(productoNormalizado);
         },
         error: (error: unknown) => {
+          const apiError = mapApiError(error, 'El producto del catálogo no se guardó.');
+          setFormErrors(this.form, apiError.fieldErrors);
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'El producto del catálogo no se guardó.'),
+            apiError.message ||
+              (Object.keys(apiError.fieldErrors).length
+                ? ''
+                : 'El producto del catálogo no se guardó.'),
           );
         },
       });
@@ -383,6 +569,14 @@ export class CatalogoNegocioModalComponent implements OnChanges {
 
   marcarProductoControlTocado(control: CatalogoFormControlName): void {
     this.form.controls[control].markAsTouched();
+  }
+
+  getProductoFieldError(control: CatalogoFormControlName): string {
+    if (control === 'precio' && this.form.controls.precio.invalid) {
+      return 'El precio no puede ser negativo.';
+    }
+
+    return getFieldError(this.form.controls[control]);
   }
 
   aprobarSolicitud(solicitud: PendingProductSuggestionRequest): void {

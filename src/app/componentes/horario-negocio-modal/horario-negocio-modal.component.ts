@@ -72,6 +72,7 @@ export class HorarioNegocioModalComponent implements OnChanges {
   readonly guardando = signal(false);
   readonly errorMensaje = signal('');
   readonly exitoMensaje = signal('');
+  readonly dayErrors = signal<Record<number, string>>({});
 
   readonly form = this.fb.group({
     reservasActivas: this.fb.nonNullable.control(true),
@@ -139,6 +140,12 @@ export class HorarioNegocioModalComponent implements OnChanges {
 
     this.errorMensaje.set('');
     this.exitoMensaje.set('');
+    const validationError = this.validarHorario();
+    if (validationError) {
+      this.errorMensaje.set('Revisa el horario antes de guardar.');
+      return;
+    }
+
     this.guardando.set(true);
 
     const reservasActivas = Boolean(this.form.controls.reservasActivas.value);
@@ -200,6 +207,7 @@ export class HorarioNegocioModalComponent implements OnChanges {
   private patchFromContext(): void {
     this.patchFromBusiness(this.negocio ?? null);
     this.errorMensaje.set('');
+    this.dayErrors.set({});
   }
 
   private patchFromBusiness(source: HorarioNegocioContexto | null): void {
@@ -315,5 +323,60 @@ export class HorarioNegocioModalComponent implements OnChanges {
         weekly,
       },
     };
+  }
+
+  private validarHorario(): boolean {
+    const errors: Record<number, string> = {};
+
+    this.dayOrder.forEach((_dayKey, index) => {
+      const group = this.diasFormArray.at(index);
+      const value = (group?.getRawValue?.() ?? {}) as DayFormValue;
+      if (!value.activa) {
+        return;
+      }
+
+      const apertura = this.horaAMinutos(value.apertura);
+      const cierre = this.horaAMinutos(value.cierre);
+
+      if (apertura === null || cierre === null) {
+        errors[index] = 'El horario introducido no es válido.';
+        return;
+      }
+
+      if (cierre <= apertura) {
+        errors[index] = 'La hora de cierre debe ser posterior a la de apertura.';
+      }
+    });
+
+    const intervalo = Number(this.form.controls.intervaloReserva.value ?? 0);
+    if (!Number.isFinite(intervalo) || intervalo <= 0) {
+      this.form.controls.intervaloReserva.setErrors({
+        ...(this.form.controls.intervaloReserva.errors ?? {}),
+        api: 'El intervalo de reserva introducido no es válido.',
+      });
+    }
+
+    this.dayErrors.set(errors);
+    return Object.keys(errors).length > 0 || this.form.controls.intervaloReserva.invalid;
+  }
+
+  private horaAMinutos(value: string): number | null {
+    if (!/^\d{2}:\d{2}$/.test(value)) {
+      return null;
+    }
+
+    const [hour, minute] = value.split(':').map(Number);
+    if (
+      !Number.isInteger(hour) ||
+      !Number.isInteger(minute) ||
+      hour < 0 ||
+      hour > 23 ||
+      minute < 0 ||
+      minute > 59
+    ) {
+      return null;
+    }
+
+    return hour * 60 + minute;
   }
 }

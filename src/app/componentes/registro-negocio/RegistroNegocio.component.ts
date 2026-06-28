@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import {
   Component,
   DestroyRef,
@@ -19,6 +19,12 @@ import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
+import {
+  clearFormApiErrors,
+  getFieldError,
+  mapApiError,
+  setFormErrors,
+} from '../../core/errors/form-error.utils';
 import { buildApiUrl } from '../../config/api.config';
 import { hasHorarioConfigurado } from '../../core/negocio/negocio-horario';
 import {
@@ -106,7 +112,7 @@ export class RegistroNegocioComponent implements OnInit {
       nombreDueno: ['', [Validators.required, Validators.minLength(2)]],
       nickname: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
+      password: ['', [Validators.required, Validators.minLength(8)]],
       confirmarContrasena: ['', [Validators.required]],
       nombreNegocio: ['', [Validators.required, Validators.minLength(2)]],
       categoriaId: [null as number | null, [Validators.required]],
@@ -130,6 +136,7 @@ export class RegistroNegocioComponent implements OnInit {
 
   registrar(): void {
     this.errorMensaje.set('');
+    clearFormApiErrors(this.negocioForm);
 
     if (this.negocioForm.invalid) {
       this.negocioForm.markAllAsTouched();
@@ -146,6 +153,12 @@ export class RegistroNegocioComponent implements OnInit {
     const nenufarActivo = this.normalizarTextoOpcional(datos.nenufarActivo);
     const descripcionCorta = this.normalizarTextoOpcional(datos['descripcionCorta'] as string | null);
     const horario = this.buildHorarioJson();
+    const horarioError = this.validarHorarioRegistro();
+
+    if (horarioError) {
+      this.errorMensaje.set(horarioError);
+      return;
+    }
 
     if (!categoriaId) {
       this.negocioForm.get('categoriaId')?.markAsTouched();
@@ -205,7 +218,7 @@ export class RegistroNegocioComponent implements OnInit {
       },
       error: (error: unknown) => {
         this.registrando.set(false);
-        this.errorMensaje.set(this.extraerMensajeError(error));
+        this.aplicarErroresRegistro(error);
       }
     });
   }
@@ -292,28 +305,11 @@ export class RegistroNegocioComponent implements OnInit {
       return '';
     }
 
-    if (control.hasError('required')) {
-      return 'Este campo es obligatorio.';
-    }
-
-    if (control.hasError('email')) {
-      return 'Escribe un correo válido.';
-    }
-
-    if (control.hasError('minlength')) {
-      const requiredLength = control.getError('minlength')?.requiredLength ?? 0;
-      return `Necesitas al menos ${requiredLength} caracteres.`;
-    }
-
-    if (control.hasError('maxlength')) {
-      return 'Intenta resumirlo un poco más.';
-    }
-
     if (nombreCampo === 'confirmarContrasena' && this.negocioForm.hasError('passwordMismatch')) {
       return 'Las contraseñas no coinciden.';
     }
 
-    return 'Revisa este campo.';
+    return getFieldError(control);
   }
 
   get nenufarSeleccionadoLabel(): string {
@@ -426,25 +422,14 @@ export class RegistroNegocioComponent implements OnInit {
     });
   }
 
-  private extraerMensajeError(error: unknown): string {
-    if (error instanceof HttpErrorResponse) {
-      if (error.status === 409) {
-        return 'Ese email o nickname ya pertenece a otra cuenta de negocio.';
-      }
-      if (error.status === 400) {
-        return 'El alta del negocio tiene datos pendientes o inválidos.';
-      }
-      if (error.status === 401) {
-        return 'La sesión del nuevo negocio no se inició. Vuelve a entrar con esa cuenta.';
-      }
-      if (error.status >= 500) {
-        return 'El servidor no completó el alta del negocio. Repite el registro en unos minutos.';
-      }
-    }
-
-    return getUserErrorMessage(
-      error,
-      'El negocio no se registró. Revisa los datos del alta.'
+  private aplicarErroresRegistro(error: unknown): void {
+    const apiError = mapApiError(error, 'El negocio no se registró. Revisa los datos del alta.');
+    setFormErrors(this.negocioForm, apiError.fieldErrors);
+    this.errorMensaje.set(
+      apiError.message ||
+        (Object.keys(apiError.fieldErrors).length
+          ? ''
+          : 'El negocio no se registró. Revisa los datos del alta.'),
     );
   }
 
@@ -503,6 +488,62 @@ export class RegistroNegocioComponent implements OnInit {
       },
       exceptions: {}
     };
+  }
+
+  private validarHorarioRegistro(): string {
+    if (!this.tieneHorario()) {
+      return '';
+    }
+
+    const horarios = [
+      { activo: true, ...this.horarioLV() },
+      this.horarioSabado(),
+      this.horarioDomingo(),
+    ];
+    const intervalo = Number(this.intervaloReservaValue());
+
+    if (!Number.isFinite(intervalo) || intervalo <= 0) {
+      return 'El intervalo de reserva introducido no es válido.';
+    }
+
+    for (const horario of horarios) {
+      const activo = 'activo' in horario ? horario.activo : horario.abierto;
+      if (!activo) {
+        continue;
+      }
+
+      const apertura = this.horaAMinutos(horario.apertura);
+      const cierre = this.horaAMinutos(horario.cierre);
+      if (apertura === null || cierre === null) {
+        return 'El horario introducido no es válido.';
+      }
+
+      if (cierre <= apertura) {
+        return 'La hora de cierre debe ser posterior a la de apertura.';
+      }
+    }
+
+    return '';
+  }
+
+  private horaAMinutos(value: string): number | null {
+    if (!/^\d{2}:\d{2}$/.test(value)) {
+      return null;
+    }
+
+    const [hour, minute] = value.split(':').map(Number);
+    if (
+      !Number.isInteger(hour) ||
+      !Number.isInteger(minute) ||
+      hour < 0 ||
+      hour > 23 ||
+      minute < 0 ||
+      minute > 59
+    ) {
+      return null;
+    }
+
+    return hour * 60 + minute;
   }
 
   private sincronizarSesionTrasRegistro(

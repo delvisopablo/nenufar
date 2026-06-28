@@ -47,7 +47,7 @@
             (blur)="marcarProductoControlTocado('nombre')"
           />
           @if (form.controls.nombre.invalid && (form.controls.nombre.dirty || form.controls.nombre.touched)) {
-            <small class="field-error">El nombre es obligatorio.</small>
+            <small class="field-error">{{ getProductoFieldError('nombre') }}</small>
           }
         </label>
 
@@ -62,7 +62,7 @@
             (blur)="marcarProductoControlTocado('precio')"
           />
           @if (form.controls.precio.invalid && (form.controls.precio.dirty || form.controls.precio.touched)) {
-            <small class="field-error">Indica un precio válido.</small>
+            <small class="field-error">{{ getProductoFieldError('precio') }}</small>
           }
         </label>
 
@@ -88,7 +88,7 @@
           />
         </label>
 
-        <label class="field">
+        <label class="field field--full">
           <span>Foto opcional</span>
           <input
             type="url"
@@ -97,12 +97,42 @@
             (input)="actualizarCampoTextoProducto('foto', $any($event.target).value)"
             (blur)="marcarProductoControlTocado('foto')"
           />
-          <small class="field-hint">Por ahora usamos URL pública para la imagen.</small>
+
+          <div class="catalog-photo-picker">
+            <input
+              #fotoArchivoInput
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              (change)="onFotoArchivoSeleccionado($event)"
+            />
+
+            @if (fotoPreviewUrl(); as preview) {
+              <div class="catalog-photo-preview">
+                <img [src]="preview" alt="Vista previa de la foto seleccionada" />
+                <button type="button" class="catalog-secondary-btn" (click)="limpiarFotoArchivo()">
+                  Quitar foto seleccionada
+                </button>
+              </div>
+            } @else if (form.controls.foto.value) {
+              <div class="catalog-photo-preview">
+                <img [src]="form.controls.foto.value" alt="Vista previa de la foto actual" />
+              </div>
+            }
+          </div>
+
+          @if (fotoArchivoError()) {
+            <small class="field-error">{{ fotoArchivoError() }}</small>
+          }
+
+          <small class="field-hint">
+            Puedes seleccionar una imagen (JPG, PNG o WEBP) para previsualizarla, o pegar directamente
+            una URL pública. Por ahora, para que la foto quede guardada en el producto necesitamos la URL.
+          </small>
         </label>
       </div>
 
       <div class="catalog-form__actions">
-        <button type="submit" class="catalog-primary-btn" [disabled]="guardando()">
+        <button type="submit" class="catalog-primary-btn" [disabled]="guardando() || form.invalid">
           {{ guardando() ? 'Guardando...' : (productoEditandoId() ? 'Guardar cambios' : 'Guardar producto') }}
         </button>
         <button type="button" class="catalog-secondary-btn" (click)="cancelarEdicion()">
@@ -332,13 +362,52 @@
               {{ esFavorito(detalle) ? 'Guardado en favoritos' : 'Guardar como favorito' }}
             </button>
 
+          </div>
+
+          @if (misListas().length) {
+            <label class="field">
+              <span>Añadir a la lista</span>
+              <select (change)="seleccionarListaDetalle($any($event.target).value)">
+                @for (lista of misListas(); track lista.id) {
+                  <option [value]="lista.id" [selected]="listaSeleccionadaId() === lista.id">
+                    {{ lista.nombre }}
+                  </option>
+                }
+              </select>
+            </label>
+          }
+
+          @if (!crearListaDetalleAbierta()) {
+            <button type="button" class="catalog-secondary-btn" (click)="abrirCrearListaDetalle()">
+              + Crear nueva lista
+            </button>
+          } @else {
+            <div class="field">
+              <input
+                type="text"
+                placeholder="Nombre de la lista"
+                [value]="nuevaListaDetalleNombre()"
+                (input)="actualizarNuevaListaDetalleNombre($any($event.target).value)"
+              />
+              <button
+                type="button"
+                class="catalog-primary-btn"
+                [disabled]="guardandoListaDetalle()"
+                (click)="crearListaDesdeDetalle()"
+              >
+                {{ guardandoListaDetalle() ? 'Creando...' : 'Crear lista' }}
+              </button>
+            </div>
+          }
+
+          <div class="product-detail__actions">
             <button
               type="button"
               class="catalog-primary-btn"
-              [disabled]="listaPendiente()"
+              [disabled]="listaPendiente() || !listaSeleccionadaId()"
               (click)="anadirDetalleALista()"
             >
-              {{ listaPendiente() ? 'Añadiendo...' : 'Añadir a Mi Nenulista' }}
+              {{ listaPendiente() ? 'Añadiendo...' : 'Añadir a la lista' }}
             </button>
           </div>
 

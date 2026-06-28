@@ -164,7 +164,6 @@
 .nenufar-tooltip {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 0.7rem);
   min-width: 9.25rem;
   max-width: 13rem;
   padding: 0.72rem 0.8rem;
@@ -177,7 +176,16 @@
   display: grid;
   gap: 0.2rem;
   pointer-events: none;
-  z-index: 4;
+  z-index: 20;
+  overflow-wrap: break-word;
+}
+
+.nenufar-tooltip.tooltip-above {
+  bottom: calc(100% + 0.7rem);
+}
+
+.nenufar-tooltip.tooltip-below {
+  top: calc(100% + 0.7rem);
 }
 
 .nenufar-tooltip strong {

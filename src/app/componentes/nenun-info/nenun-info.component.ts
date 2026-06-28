@@ -123,6 +123,7 @@ export class NenunInfoComponent implements OnDestroy {
 
   onDetailContextMenu(event: MouseEvent): void {
     event.preventDefault();
+    event.stopPropagation();
     this.detailPopupVisible.set(true);
   }
 

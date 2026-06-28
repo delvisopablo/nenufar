@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -98,6 +98,31 @@ export class HeaderComponent implements OnDestroy {
       (normalizeSearchText(this.currentQuery()).length >= 2 || this.hayFiltrosActivos()) &&
       this.busquedaEstado() === 'error',
   );
+  readonly mostrarResumenFiltro = computed(
+    () =>
+      this.filtrosAbiertos() &&
+      (
+        this.hayFiltrosActivos() ||
+        normalizeSearchText(this.currentQuery()).length >= 2 ||
+        this.busquedaEstado() === 'loading'
+      ),
+  );
+  readonly resumenResultadoFiltro = computed(() => {
+    if (this.busquedaEstado() === 'loading') {
+      return 'Buscando nenúfares...';
+    }
+
+    const total = this.resultadosBusqueda().length;
+    if (total === 0) {
+      return 'No hay nenúfares para estos filtros';
+    }
+
+    if (total === 1) {
+      return '1 nenúfar encontrado';
+    }
+
+    return `${total} nenúfares encontrados`;
+  });
   readonly hayFiltrosActivos = computed(
     () => Boolean(this.categoriaSeleccionadaId() || this.subcategoriaSeleccionadaId()),
   );
@@ -166,6 +191,20 @@ export class HeaderComponent implements OnDestroy {
     this.searchSubscription.unsubscribe();
   }
 
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.filtrosAbiertos()) {
+      return;
+    }
+
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('.filter-panel, .filter-btn')) {
+      return;
+    }
+
+    this.filtrosAbiertos.set(false);
+  }
+
   async buscarPrimerNegocio(): Promise<void> {
     // Siempre ejecuta la búsqueda filtrada al pulsar "Buscar" o Enter.
     // Así el usuario ve los resultados actualizados con el texto + filtros activos
@@ -230,6 +269,10 @@ export class HeaderComponent implements OnDestroy {
     ].filter(Boolean);
 
     return parts.join(' · ');
+  }
+
+  getUsuarioMeta(usuario: UsuarioBusquedaResultado): string {
+    return `Usuario · @${usuario.nickname}`;
   }
 
   private getNegocioRoute(negocio: NegocioLite): (string | number)[] | null {

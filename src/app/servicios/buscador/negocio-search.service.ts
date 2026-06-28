@@ -125,10 +125,60 @@ export class NegocioSearchService {
   }
 
   showcase(limit = this.showcaseLimit): Observable<NegocioLite[]> {
-    return this.catalogo$.pipe(
-      map((items) => items.slice(0, limit)),
+    return this.negocioService.listInicio({ limit }).pipe(
+      catchError(() => this.buildPrioritizedShowcaseFallback(limit)),
+      switchMap((items) => items.length ? of(items) : this.buildPrioritizedShowcaseFallback(limit)),
+      map((items) => this.dedupeSummaries(items).slice(0, limit)),
       switchMap((items) => this.enrichSummaries(items)),
     );
+  }
+
+  private buildPrioritizedShowcaseFallback(limit: number): Observable<NegocioSummary[]> {
+    return forkJoin({
+      catalog: this.catalogo$,
+      followed: this.negocioService.listSeguidos().pipe(
+        catchError(() => of([] as NegocioSummary[])),
+      ),
+    }).pipe(
+      map(({ catalog, followed }) => {
+        const followedMarked = followed.map((item) => ({
+          ...item,
+          isFollowing: true,
+          isFollowedByMe: true,
+        }));
+        const followedIds = new Set(followedMarked.map((item) => Number(item.id)));
+        const discoveryReserve = followedMarked.length
+          ? Math.min(3, Math.max(1, limit - 1))
+          : 0;
+        const followedLimit = followedMarked.length
+          ? Math.max(0, limit - discoveryReserve)
+          : 0;
+        const discovery = catalog
+          .filter((item) => !followedIds.has(Number(item.id)))
+          .slice(0, followedMarked.length ? discoveryReserve : limit);
+
+        return [
+          ...followedMarked.slice(0, followedLimit),
+          ...discovery,
+          ...followedMarked.slice(followedLimit),
+          ...catalog,
+        ];
+      }),
+    );
+  }
+
+  private dedupeSummaries(items: NegocioSummary[]): NegocioSummary[] {
+    const seen = new Set<number>();
+
+    return items.filter((item) => {
+      const id = Number(item.id ?? 0);
+      if (!Number.isFinite(id) || id <= 0 || seen.has(id)) {
+        return false;
+      }
+
+      seen.add(id);
+      return true;
+    });
   }
 
   private enrichSummaries(items: NegocioSummary[]): Observable<NegocioLite[]> {

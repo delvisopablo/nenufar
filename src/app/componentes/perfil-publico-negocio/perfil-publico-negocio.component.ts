@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
+import { ComentarioResena, ResenaService } from '../../servicios/reviewServicio/resena.service';
 import { CrearResenaModalComponent } from '../crear-resena/crear-resena-modal/crear-resena-modal.component';
 import {
   ResenaLikeCambiadoEvent,
@@ -28,10 +29,17 @@ import {
   resolveNenufarAsset,
   resolveNenufarKey,
 } from '../../core/negocio/negocio-visuals';
+import {
+  extractBusinessLogros,
+  getBusinessLogroText,
+  LogroVisualData,
+  resolveLogroIconAsset,
+} from '../../core/logros/logro-visuals';
 import { buildHorarioSummaryLines, hasHorarioConfigurado } from '../../core/negocio/negocio-horario';
 import {
   AuthService,
   resolveOwnedBusinessId,
+  resolvePrivateProfileRoute,
 } from '../../servicios/authService/auth.service';
 import {
   EstanqueFeedService,
@@ -77,6 +85,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly estanqueFeed = inject(EstanqueFeedService);
   private readonly reviewProductMeta = inject(ReviewProductMetaService);
+  private readonly resenaService = inject(ResenaService);
 
   @ViewChild(NenufarSelectorComponent)
   private readonly nenufarSelector?: NenufarSelectorComponent;
@@ -88,6 +97,10 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   mediaPuntuacion = 0;
   resenas: any[] = [];
   resenaDetalleAbierta: any | null = null;
+  private readonly comentariosAbiertosIds = new Set<number>();
+  private readonly comentariosPorResena = new Map<number, ComentarioResena[]>();
+  private readonly cargandoComentariosIds = new Set<number>();
+  private readonly comentariosErrorPorResena = new Map<number, string>();
   negocioId = 0;
   errorMensaje = '';
   reservaError = '';
@@ -449,6 +462,22 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     return hasHorarioConfigurado(this.negocio?.horario ?? null);
   }
 
+  tieneResumenDerecho(): boolean {
+    return this.tieneHorarioConfigurado() || this.getLogrosNegocio().length > 0;
+  }
+
+  getLogrosNegocio(): LogroVisualData[] {
+    return extractBusinessLogros(this.negocio).slice(0, 6);
+  }
+
+  getLogroNegocioIcon(logro: LogroVisualData): string {
+    return resolveLogroIconAsset(logro, this.getLogrosNegocio());
+  }
+
+  getLogroNegocioText(logro: LogroVisualData): string {
+    return getBusinessLogroText(logro);
+  }
+
   abrirModalResena(): void { this.modalAbierto = true; }
 
   abrirDetalleResena(resena: any): void {
@@ -459,6 +488,98 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     this.resenaDetalleAbierta = null;
   }
 
+  esResenaPropia(resena: { usuario?: { id?: number | null } | null } | null | undefined): boolean {
+    const autorId = Number(resena?.usuario?.id);
+    const actualId = Number(this.usuarioActual?.id);
+    return (
+      Number.isFinite(autorId) &&
+      autorId > 0 &&
+      Number.isFinite(actualId) &&
+      actualId > 0 &&
+      autorId === actualId
+    );
+  }
+
+  onResenaCardClick(resena: any): void {
+    if (this.esResenaPropia(resena)) {
+      void this.router.navigate(resolvePrivateProfileRoute(this.usuarioActual));
+      return;
+    }
+
+    this.abrirDetalleResena(resena);
+  }
+
+  getComentariosCountResena(resena: any): number {
+    const id = Number(resena?.id ?? 0);
+    const cargados = this.comentariosPorResena.get(id);
+    if (cargados) {
+      return cargados.length;
+    }
+    return Number(resena?.comentariosCount ?? 0);
+  }
+
+  haySabidoComentarios(resena: any): boolean {
+    return this.comentariosPorResena.has(Number(resena?.id ?? 0));
+  }
+
+  comentariosResenaAbiertos(resena: any): boolean {
+    return this.comentariosAbiertosIds.has(Number(resena?.id ?? 0));
+  }
+
+  cargandoComentariosResena(resena: any): boolean {
+    return this.cargandoComentariosIds.has(Number(resena?.id ?? 0));
+  }
+
+  getComentariosDeResena(resena: any): ComentarioResena[] {
+    return this.comentariosPorResena.get(Number(resena?.id ?? 0)) ?? [];
+  }
+
+  getComentariosErrorDeResena(resena: any): string {
+    return this.comentariosErrorPorResena.get(Number(resena?.id ?? 0)) ?? '';
+  }
+
+  toggleComentariosResena(resena: any, event: Event): void {
+    event.stopPropagation();
+    const id = Number(resena?.id ?? 0);
+    if (!id) {
+      return;
+    }
+
+    if (this.comentariosAbiertosIds.has(id)) {
+      this.comentariosAbiertosIds.delete(id);
+      return;
+    }
+
+    this.comentariosAbiertosIds.add(id);
+
+    if (this.comentariosPorResena.has(id)) {
+      return;
+    }
+
+    this.cargandoComentariosIds.add(id);
+    this.comentariosErrorPorResena.delete(id);
+
+    this.resenaService
+      .listComentarios(id)
+      .pipe(
+        catchError(() => {
+          this.comentariosErrorPorResena.set(id, 'Los comentarios no se cargaron.');
+          return of([] as ComentarioResena[]);
+        }),
+      )
+      .subscribe((comentarios) => {
+        this.comentariosPorResena.set(id, comentarios);
+        this.cargandoComentariosIds.delete(id);
+      });
+  }
+
+  getComentarioFecha(comentario: ComentarioResena): string {
+    const fecha = comentario.creadoEn ? new Date(comentario.creadoEn) : null;
+    return fecha && !Number.isNaN(fecha.getTime())
+      ? fecha.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })
+      : '';
+  }
+
   onFloatingReviewClick(): void {
     this.reviewFlowerSpinning.set(true);
     this.abrirModalResena();
@@ -466,6 +587,16 @@ export class PerfilPublicoNegocioComponent implements OnInit {
   }
 
   manejarResenaCreada(resena: unknown): void {
+    const normalizada = this.reviewProductMeta.mergeReview(
+      resena && typeof resena === 'object' ? resena as Record<string, unknown> : {},
+    );
+    const resenaId = Number((normalizada as { id?: unknown }).id ?? 0);
+    if (resenaId > 0 && !this.resenas.some((item) => Number(item?.id ?? 0) === resenaId)) {
+      this.resenas = [normalizada, ...this.resenas];
+      this.recalcularMediaResenas();
+    }
+
+    this.modalAbierto = false;
     this.refrescarResenas();
     this.estanqueFeed.announceReview(this.buildReviewAnnouncement(resena));
   }
@@ -496,11 +627,27 @@ export class PerfilPublicoNegocioComponent implements OnInit {
 
   manejarPromocionGuardada(promocion: unknown): void {
     this.estanqueFeed.announcePromotion(this.buildPromotionAnnouncement(promocion));
+    this.cerrarModalConRetraso();
+    this.cargarNegocioPorId(this.negocioId);
+  }
+
+  manejarProductoCatalogoGuardado(): void {
+    this.cerrarModalConRetraso();
+    this.cargarNegocioPorId(this.negocioId);
   }
 
   getUsuarioRoute(usuario: { id?: number | null } | null | undefined): (string | number)[] | null {
     const usuarioId = Number(usuario?.id);
-    return Number.isFinite(usuarioId) && usuarioId > 0 ? ['/usuario', usuarioId] : null;
+    if (!Number.isFinite(usuarioId) || usuarioId <= 0) {
+      return null;
+    }
+
+    const actualId = Number(this.usuarioActual?.id);
+    if (Number.isFinite(actualId) && actualId > 0 && actualId === usuarioId) {
+      return resolvePrivateProfileRoute(this.usuarioActual);
+    }
+
+    return ['/usuario', usuarioId];
   }
 
   private cargarNegocioPorSlug(slug: string): void {
@@ -528,6 +675,29 @@ export class PerfilPublicoNegocioComponent implements OnInit {
       },
       error: (error: unknown) => {
         this.errorMensaje = getUserErrorMessage(error, 'El negocio no se cargó.');
+      },
+    });
+  }
+
+  private cargarNegocioPorId(negocioId: number): void {
+    if (!negocioId) {
+      return;
+    }
+
+    this.negocioService.getNegocioById(negocioId).subscribe({
+      next: (data: any) => {
+        this.negocio = data;
+        this.negocioId = data.id ?? negocioId;
+        this.errorMensaje = '';
+        this.actualizarRelacionConNegocio();
+        this.refrescarResenas();
+        this.cargarSeguimiento();
+        this.generarHorasDisponibles();
+        this.recargarReservas();
+        this.cargarHorarioSiNecesario();
+      },
+      error: (error: unknown) => {
+        this.errorMensaje = getUserErrorMessage(error, 'El negocio no se actualizó.');
       },
     });
   }
@@ -574,12 +744,7 @@ export class PerfilPublicoNegocioComponent implements OnInit {
           ? this.reviewProductMeta.mergeReviews(res as Array<{ puntuacion?: number }>)
           : [];
         this.resenas = reviews;
-        if (reviews.length > 0) {
-          const suma = reviews.reduce((acc, review) => acc + (review.puntuacion || 0), 0);
-          this.mediaPuntuacion = Math.round((suma / reviews.length) * 10) / 10;
-        } else {
-          this.mediaPuntuacion = 0;
-        }
+        this.recalcularMediaResenas();
       },
       error: (error: unknown) => {
         this.errorMensaje = getUserErrorMessage(error, 'Las reseñas del negocio no se actualizaron.');
@@ -697,6 +862,12 @@ export class PerfilPublicoNegocioComponent implements OnInit {
     };
     this.generarHorasDisponibles();
     this.recargarReservas();
+    this.cerrarModalConRetraso();
+  }
+
+  manejarReservaCreada(): void {
+    this.recargarReservas();
+    this.cerrarModalConRetraso();
   }
 
   private actualizarRelacionConNegocio(): void {
@@ -718,6 +889,20 @@ export class PerfilPublicoNegocioComponent implements OnInit {
       behavior: 'smooth',
       block: 'start',
     });
+  }
+
+  private cerrarModalConRetraso(): void {
+    window.setTimeout(() => this.cerrarModal(), 800);
+  }
+
+  private recalcularMediaResenas(): void {
+    if (!this.resenas.length) {
+      this.mediaPuntuacion = 0;
+      return;
+    }
+
+    const suma = this.resenas.reduce((acc, review) => acc + (Number(review?.puntuacion ?? 0) || 0), 0);
+    this.mediaPuntuacion = Math.round((suma / this.resenas.length) * 10) / 10;
   }
 
   private prettifyNenufarLabel(label: string): string {

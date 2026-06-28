@@ -21,6 +21,7 @@
           [attr.data-lily-id]="item.id"
           [attr.aria-label]="item.label"
           (pointerdown)="onLilyPointerDown($event, item)"
+          (dblclick)="onLilyDoubleClick($event, item)"
           (contextmenu)="onLilyContextMenu($event, item)"
           (mouseenter)="onLilyHoverStart($event, item)"
           (mousemove)="onLilyHoverMove($event, item)"
@@ -53,6 +54,7 @@
           [attr.data-lily-id]="item.id"
           [attr.aria-label]="item.label"
           (pointerdown)="onLilyPointerDown($event, item)"
+          (dblclick)="onLilyDoubleClick($event, item)"
           (contextmenu)="onLilyContextMenu($event, item)"
           (mouseenter)="onLilyHoverStart($event, item)"
           (mousemove)="onLilyHoverMove($event, item)"
@@ -143,8 +145,8 @@
             constante para que el inicio siempre se sienta vivo.
           </p>
           <p>
-            Pulsa un nenúfar para empujarlo. Usa click derecho para abrir su ficha completa y
-            recorrer el estanque sin salir de la escena.
+            Pulsa un nenúfar para empujarlo. Pasa el cursor por encima para ver una vista rápida.
+            Haz doble clic o usa clic derecho para abrir su ficha completa sin salir de la escena.
           </p>
 
           <div class="popup-actions">
@@ -156,12 +158,12 @@
           <p class="popup-kicker">Gestos</p>
           <h2>Interacciones del estanque</h2>
           <p>
-            Click izquierdo sobre un nenúfar: impulso orgánico con dirección y fuerza según el
+            Clic izquierdo sobre un nenúfar: impulso orgánico con dirección y fuerza según el
             punto de impacto.
           </p>
           <p>
-            Click derecho: ficha del negocio o de la promoción. Click sobre el agua: una onda
-            general para mover el estanque.
+            Doble clic o clic derecho: ficha del negocio o de la promoción. Clic sobre el agua:
+            una onda general para mover el estanque.
           </p>
 
           <div class="popup-actions">

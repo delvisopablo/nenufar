@@ -1,0 +1,24 @@
+{
+  "swarms": {
+    "swarm-1782451949709-np8vdn": {
+      "swarmId": "swarm-1782451949709-np8vdn",
+      "topology": "hierarchical",
+      "maxAgents": 3,
+      "status": "running",
+      "agents": [],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical",
+        "maxAgents": 3,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-06-26T05:32:29.709Z",
+      "updatedAt": "2026-06-26T05:32:29.709Z",
+      "pid": 83274
+    }
+  },
+  "version": "3.0.0"
+}

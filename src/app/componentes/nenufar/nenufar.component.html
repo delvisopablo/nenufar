@@ -23,7 +23,7 @@
       [attr.tabindex]="isInteractive ? 0 : null"
       (click)="onLeftClick($event)"
       (contextmenu)="onRightClick($event)"
-      (mouseenter)="onHoverStart()"
+      (mouseenter)="onHoverStart($event)"
       (mouseleave)="onHoverEnd()"
     >
       <div class="nenufar-sprite">
@@ -49,7 +49,12 @@
       }
 
       @if (shouldShowTooltip) {
-        <div class="nenufar-tooltip" role="tooltip">
+        <div
+          class="nenufar-tooltip"
+          [class.tooltip-above]="tooltipPlacement === 'above'"
+          [class.tooltip-below]="tooltipPlacement === 'below'"
+          role="tooltip"
+        >
           @if (label) {
             <strong>{{ label }}</strong>
           }

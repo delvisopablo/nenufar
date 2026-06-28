@@ -324,10 +324,13 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private firstPondPaintLogged = false;
   private readonly tooltipSyncCadenceMs = 84;
   private readonly tooltipViewportPadding = 12;
+  private readonly lilyDoubleClickWindowMs = 320;
   private readonly zoneRuntimes = new Map<ZoneKey, ZoneRuntime>();
   private readonly cooldownUntilByKey = new Map<string, number>();
   private readonly lastShownAtByKey = new Map<string, number>();
   private readonly highlightTimerByKey = new Map<string, number>();
+  private lastLilyPrimaryPointer: { id: string; at: number } | null = null;
+  private lastLilyDoubleClickAt = 0;
 
   constructor() {
     effect(() => {
@@ -1671,6 +1674,27 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    const now = performance.now();
+    const isMouseDoubleClick =
+      event.pointerType === 'mouse' &&
+      (
+        event.detail > 1 ||
+        (
+          this.lastLilyPrimaryPointer?.id === item.id &&
+          now - this.lastLilyPrimaryPointer.at <= this.lilyDoubleClickWindowMs
+        )
+      );
+
+    if (isMouseDoubleClick) {
+      this.lastLilyDoubleClickAt = now;
+      this.openLilyDetailFromGesture(event, item);
+      return;
+    }
+
+    this.lastLilyPrimaryPointer = event.pointerType === 'mouse'
+      ? { id: item.id, at: now }
+      : null;
+
     event.preventDefault();
     event.stopPropagation();
     this.ocultarTooltip();
@@ -1696,11 +1720,19 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onLilyContextMenu(event: MouseEvent, item: LilyView): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.ocultarTooltip();
-    this.emitRipple(event.clientX, event.clientY, 0.92);
-    this.abrirPopupDesdeNenufar(item);
+    this.openLilyDetailFromGesture(event, item);
+  }
+
+  onLilyDoubleClick(event: MouseEvent, item: LilyView): void {
+    const now = performance.now();
+    if (now - this.lastLilyDoubleClickAt < 240) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    this.lastLilyDoubleClickAt = now;
+    this.openLilyDetailFromGesture(event, item);
   }
 
   onScenePointerDown(event: PointerEvent): void {
@@ -1724,6 +1756,15 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   verPromo(promo: HomePromo): void {
     this.goToNegocio(this.getPromoBusiness(promo));
+  }
+
+  private openLilyDetailFromGesture(event: MouseEvent, item: LilyView): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.lastLilyPrimaryPointer = null;
+    this.ocultarTooltip();
+    this.emitRipple(event.clientX, event.clientY, 0.92);
+    this.abrirPopupDesdeNenufar(item);
   }
 
   private abrirPopupDesdeNenufar(item: LilyView): void {
@@ -1938,7 +1979,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         tone: 'profile',
         title: this.usuarioLogueado()?.id ? 'Abrir perfil' : 'Perfil invitado',
         text: this.usuarioLogueado()?.id
-          ? 'Click derecho para abrir tu perfil.'
+          ? 'Doble clic o clic derecho para abrir tu perfil.'
           : 'Inicia sesion para entrar en tu perfil.'
       };
     }
@@ -1948,7 +1989,7 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         tone: 'create',
         title: 'Nueva resena',
         text: this.usuarioLogueado()?.id
-          ? 'Click derecho para ver la ficha y crear una resena.'
+          ? 'Doble clic o clic derecho para ver la ficha y crear una resena.'
           : 'Inicia sesion para publicar una resena.'
       };
     }
@@ -1975,7 +2016,9 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       estimatedWidth / 2 + this.tooltipViewportPadding,
       window.innerWidth - estimatedWidth / 2 - this.tooltipViewportPadding
     );
-    const showBelow = rect.top < 124;
+    // Cambiamos a "below" en cuanto el nenúfar pasa la mitad superior del viewport
+    // (no esperamos a que esté pegado al header) para que el tooltip nunca se corte.
+    const showBelow = rect.top < window.innerHeight * 0.55;
 
     return {
       ...base,

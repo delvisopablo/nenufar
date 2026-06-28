@@ -120,11 +120,9 @@ export class UsuarioServiceService {
   constructor(private readonly http: HttpClient) {}
 
   /**
-   * TODO(backend): no existe endpoint publico de busqueda de usuarios.
-   * Falta GET /usuarios/buscar?q=<texto> que devuelva solo campos publicos
-   * (id, nombre, nickname, foto/fotoPerfil, biografia si es publica), sin
-   * email, password, tokens ni datos de verificacion. Hasta que exista,
-   * esta llamada se resuelve a [] via catchError para no romper el buscador.
+   * Busca perfiles públicos por nombre o nickname. Intenta primero
+   * GET /usuarios/buscar?q=<texto> y cae a GET /buscar?q=<texto> si el backend
+   * expone un buscador global; siempre normaliza a campos públicos.
    */
   buscar(query: string): Observable<UsuarioBusquedaResultado[]> {
     const normalized = query.trim();
@@ -133,14 +131,131 @@ export class UsuarioServiceService {
     }
 
     return this.http
-      .get<UsuarioBusquedaResultado[] | ApiListResponse<UsuarioBusquedaResultado>>(
+      .get<unknown>(
         buildApiUrl('/usuarios/buscar'),
         { params: new HttpParams().set('q', normalized) },
       )
       .pipe(
-        map((response) => extractItems(response)),
+        map((response) => this.extraerUsuariosBusqueda(response, true)),
+        catchError(() => this.buscarEnEndpointGlobal(normalized)),
+      );
+  }
+
+  private buscarEnEndpointGlobal(query: string): Observable<UsuarioBusquedaResultado[]> {
+    return this.http
+      .get<unknown>(
+        buildApiUrl('/buscar'),
+        { params: new HttpParams().set('q', query) },
+      )
+      .pipe(
+        map((response) => this.extraerUsuariosBusqueda(response, false)),
         catchError(() => of([] as UsuarioBusquedaResultado[])),
       );
+  }
+
+  private extraerUsuariosBusqueda(
+    response: unknown,
+    asumirUsuarios: boolean,
+  ): UsuarioBusquedaResultado[] {
+    const nestedResults = this.readObject(response, ['resultados', 'results', 'data']);
+    const explicitUsers = [
+      ...this.readArray(response, ['usuarios', 'users', 'personas']),
+      ...this.readArray(nestedResults, ['usuarios', 'users', 'personas']),
+    ];
+    const genericItems = this.readArray(response, ['items', 'results', 'resultados', 'data']);
+    const source = explicitUsers.length
+      ? explicitUsers
+      : genericItems.length
+        ? genericItems
+        : extractItems(response as UsuarioBusquedaResultado[] | ApiListResponse<UsuarioBusquedaResultado>);
+
+    return source
+      .map((item) => this.resolveUsuarioBusquedaItem(item, asumirUsuarios || explicitUsers.length > 0))
+      .filter((item): item is UsuarioBusquedaResultado => item !== null);
+  }
+
+  private resolveUsuarioBusquedaItem(
+    item: unknown,
+    asumirUsuario: boolean,
+  ): UsuarioBusquedaResultado | null {
+    if (!item || typeof item !== 'object') {
+      return null;
+    }
+
+    const record = item as Record<string, unknown>;
+    const tipo = String(record['tipo'] ?? record['type'] ?? record['kind'] ?? '').trim().toLowerCase();
+    const rawUsuario = record['usuario'] ?? record['user'] ?? record['persona'];
+    const candidate = rawUsuario && typeof rawUsuario === 'object'
+      ? rawUsuario
+      : asumirUsuario || ['usuario', 'user', 'persona', 'person'].includes(tipo)
+        ? item
+        : null;
+
+    if (!candidate || typeof candidate !== 'object') {
+      return null;
+    }
+
+    return this.normalizarUsuarioBusqueda(candidate as Record<string, unknown>);
+  }
+
+  private normalizarUsuarioBusqueda(record: Record<string, unknown>): UsuarioBusquedaResultado | null {
+    const id = Number(record['id'] ?? record['usuarioId'] ?? record['userId']);
+    const nombre = String(record['nombre'] ?? record['name'] ?? '').trim();
+    const nickname = String(record['nickname'] ?? record['username'] ?? '').trim();
+
+    if (!Number.isFinite(id) || id <= 0 || !nombre || !nickname) {
+      return null;
+    }
+
+    const fotoPerfil = this.cleanOptionalString(record['fotoPerfil'] ?? record['foto_perfil'] ?? record['avatar']);
+    const foto = this.cleanOptionalString(record['foto'] ?? record['image']);
+    const biografia = this.cleanOptionalString(record['biografia'] ?? record['bio']);
+
+    return {
+      id,
+      nombre,
+      nickname,
+      ...(fotoPerfil ? { fotoPerfil } : {}),
+      ...(foto ? { foto } : {}),
+      ...(biografia ? { biografia } : {}),
+    };
+  }
+
+  private readArray(response: unknown, keys: string[]): unknown[] {
+    if (!response || typeof response !== 'object' || Array.isArray(response)) {
+      return [];
+    }
+
+    const record = response as Record<string, unknown>;
+    for (const key of keys) {
+      const value = record[key];
+      if (Array.isArray(value)) {
+        return value;
+      }
+    }
+
+    return [];
+  }
+
+  private readObject(response: unknown, keys: string[]): Record<string, unknown> | null {
+    if (!response || typeof response !== 'object' || Array.isArray(response)) {
+      return null;
+    }
+
+    const record = response as Record<string, unknown>;
+    for (const key of keys) {
+      const value = record[key];
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+      }
+    }
+
+    return null;
+  }
+
+  private cleanOptionalString(value: unknown): string | null {
+    const text = String(value ?? '').trim();
+    return text || null;
   }
 
   getByNickname(nickname: string): Observable<PerfilUsuarioResponse> {
@@ -203,6 +318,7 @@ export class UsuarioServiceService {
     return this.http
       .get<SeguidorEntry[] | ApiListResponse<SeguidorEntry>>(
         buildApiUrl(`/usuario/${id}/seguidores`),
+        { withCredentials: true },
       )
       .pipe(map((response) => extractItems(response)));
   }
@@ -212,6 +328,7 @@ export class UsuarioServiceService {
     return this.http
       .get<SeguidorEntry[] | ApiListResponse<SeguidorEntry>>(
         buildApiUrl(`/usuario/${id}/siguiendo`),
+        { withCredentials: true },
       )
       .pipe(map((response) => extractItems(response)));
   }

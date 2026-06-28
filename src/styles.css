@@ -13,6 +13,11 @@
   --nenufar-pink-600: #db4d88;
   --nenufar-pink-700: #c43d76;
 
+  /* Alias semántico: rosa Nenúfar/chicle para botones principales en toda la app */
+  --nenufar-pink: var(--nenufar-pink-500);
+  --nenufar-pink-hover: var(--nenufar-pink-600);
+  --nenufar-pink-active: var(--nenufar-pink-700);
+
   --font-sans: 'Nunito Sans', 'DM Sans', 'Segoe UI', sans-serif;
   --font-display: 'Nunito Sans', 'DM Sans', 'Segoe UI', sans-serif;
 

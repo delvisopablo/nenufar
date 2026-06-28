@@ -8,6 +8,12 @@ import { Router } from '@angular/router';
 import { map } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import {
+  clearFormApiErrors,
+  getFieldError,
+  mapApiError,
+  setFormErrors,
+} from '../../core/errors/form-error.utils';
+import {
   resolveNenufarAsset,
   resolveNenufarKey,
 } from '../../core/negocio/negocio-visuals';
@@ -97,10 +103,10 @@ export class EditarNegocioComponent implements OnInit, OnDestroy {
       ciudad: [''],
       provincia: [''],
       codigoPostal: [''],
-      telefono: [''],
+      telefono: ['', Validators.pattern(/^[+()\d\s.-]{6,25}$/)],
       emailContacto: ['', Validators.email],
-      web: [''],
-      instagram: [''],
+      web: ['', Validators.pattern(/^https?:\/\/.+\..+/i)],
+      instagram: ['', Validators.pattern(/^https?:\/\/.+|^@?[a-zA-Z0-9._]{2,30}$/)],
       fotoPerfil: [''],
       fotoPortada: [''],
       nenufarAsset: [null as string | null],
@@ -195,6 +201,7 @@ export class EditarNegocioComponent implements OnInit, OnDestroy {
     this.errorMensaje = '';
     this.exitoMensaje = '';
     this.avisoMensaje = '';
+    clearFormApiErrors(this.negocioForm);
 
     if (this.negocioForm.invalid) {
       this.negocioForm.markAllAsTouched();
@@ -245,9 +252,36 @@ export class EditarNegocioComponent implements OnInit, OnDestroy {
         },
         error: (error: unknown) => {
           this.guardando = false;
-          this.errorMensaje = getUserErrorMessage(error, 'Los cambios del negocio no se guardaron.');
+          const apiError = mapApiError(error, 'Los cambios del negocio no se guardaron.');
+          setFormErrors(this.negocioForm, apiError.fieldErrors);
+          this.errorMensaje =
+            apiError.message ||
+            (Object.keys(apiError.fieldErrors).length ? '' : 'Los cambios del negocio no se guardaron.');
         },
       });
+  }
+
+  campoInvalido(nombreCampo: string): boolean {
+    const control = this.negocioForm.get(nombreCampo);
+    return Boolean(control?.invalid && (control.touched || control.dirty));
+  }
+
+  getErrorCampo(nombreCampo: string): string {
+    const control = this.negocioForm.get(nombreCampo);
+
+    if (nombreCampo === 'telefono' && control?.hasError('pattern')) {
+      return 'El teléfono introducido no tiene un formato válido.';
+    }
+
+    if (nombreCampo === 'web' && control?.hasError('pattern')) {
+      return 'La web debe empezar por http:// o https://.';
+    }
+
+    if (nombreCampo === 'instagram' && control?.hasError('pattern')) {
+      return 'Introduce una URL de Instagram válida o un usuario de Instagram.';
+    }
+
+    return getFieldError(control);
   }
 
   iniciarBorrado(): void {

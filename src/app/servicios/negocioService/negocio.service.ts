@@ -408,6 +408,37 @@ export class NegocioService {
     return request$;
   }
 
+  /** GET /api/negocios/inicio — listado priorizado para el estanque de inicio. */
+  listInicio(options: QueryNegociosOptions = {}): Observable<NegocioSummary[]> {
+    let params = new HttpParams();
+    if (options.q) {
+      params = params.set('q', options.q);
+      params = params.set('search', options.q);
+    }
+    if (options.categoriaId) params = params.set('categoriaId', String(options.categoriaId));
+    if (options.subcategoriaId) params = params.set('subcategoriaId', String(options.subcategoriaId));
+    if (options.page) params = params.set('page', String(options.page));
+    if (options.limit) params = params.set('limit', String(options.limit));
+
+    return this.http
+      .get<NegocioSummary[] | ApiListResponse<unknown>>(
+        buildApiUrl('/negocios/inicio'),
+        {
+          params,
+          context: this.silentLookupContext,
+          withCredentials: true,
+        },
+      )
+      .pipe(
+        map((response) => extractItems(response)),
+        map((items) =>
+          items
+            .map((item) => this.normalizarNegocioResumen(item))
+            .filter((item): item is NegocioSummary => item !== null),
+        ),
+      );
+  }
+
   searchNegocios(query: string): Observable<NegocioSummary[]> {
     const normalized = normalizeSearchText(query);
     if (!normalized) {
@@ -657,6 +688,10 @@ export class NegocioService {
     return this.http
       .get<NegocioSummary[] | ApiListResponse<unknown>>(
         buildApiUrl('/negocios/me/siguiendo/negocios'),
+        {
+          context: this.silentLookupContext,
+          withCredentials: true,
+        },
       )
       .pipe(
         map((response) => extractItems(response)),

@@ -1,5 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, OnInit, SimpleChanges, inject } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  OnInit,
+  Output,
+  SimpleChanges,
+  inject,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, of } from 'rxjs';
@@ -69,6 +78,7 @@ export class ReservasComponent implements OnInit, OnChanges {
   @Input() negocio: NegocioReservasContexto | null = null;
   @Input() embebido = false;
   @Input() permitirMisReservas = true;
+  @Output() reservaCreada = new EventEmitter<ReservaRecord>();
 
   private readonly authService = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
@@ -388,8 +398,18 @@ export class ReservasComponent implements OnInit, OnChanges {
   }
 
   crearReserva(): void {
+    if (this.accionEnCurso) {
+      return;
+    }
+
     if (!this.negocioActual?.id) {
       this.error = 'Falta el negocio para crear la reserva. Recarga la página y vuelve a intentarlo.';
+      return;
+    }
+
+    const validationError = this.validarReservaCliente();
+    if (validationError) {
+      this.error = validationError;
       return;
     }
 
@@ -418,13 +438,14 @@ export class ReservasComponent implements OnInit, OnChanges {
         numPersonas: this.numPersonas,
       })
       .subscribe({
-        next: () => {
+        next: (reserva) => {
           this.accionEnCurso = false;
-          this.exito = 'Reserva confirmada correctamente.';
+          this.exito = 'Reserva realizada correctamente.';
           this.nota = '';
           this.slotSeleccionadoIso = null;
           this.loadAvailability(this.negocioActual?.id ?? null);
           this.loadMyReservations();
+          this.reservaCreada.emit(reserva);
           if (this.mostrarTabMis) {
             this.pestanaCliente = 'mis';
           }
@@ -775,6 +796,35 @@ export class ReservasComponent implements OnInit, OnChanges {
           this.error = getUserErrorMessage(error, 'El estado de la reserva no se actualizó.');
         },
       });
+  }
+
+  private validarReservaCliente(): string {
+    if (!this.fechaSeleccionada || Number.isNaN(this.parseDate(`${this.fechaSeleccionada}T12:00:00`).getTime())) {
+      return 'La fecha seleccionada no es válida.';
+    }
+
+    if (!this.slotSeleccionadoIso) {
+      return 'Selecciona una hora para continuar.';
+    }
+
+    const slot = this.parseDate(this.slotSeleccionadoIso);
+    if (Number.isNaN(slot.getTime())) {
+      return 'La hora seleccionada no es válida.';
+    }
+
+    if (slot.getTime() < Date.now()) {
+      return 'La reserva debe ser para una fecha futura.';
+    }
+
+    if (!Number.isFinite(Number(this.numPersonas)) || Number(this.numPersonas) <= 0) {
+      return 'El número de personas debe ser válido.';
+    }
+
+    if (!Number.isFinite(Number(this.duracionMinutos)) || Number(this.duracionMinutos) <= 0) {
+      return 'La duración seleccionada no es válida.';
+    }
+
+    return '';
   }
 
   private patchReserva(actualizada: ReservaRecord): void {

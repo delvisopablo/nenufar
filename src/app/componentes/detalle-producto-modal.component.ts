@@ -1,4 +1,12 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  OnChanges,
+  OnDestroy,
+  SimpleChanges,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -329,7 +337,7 @@ export interface ProductoDetalle {
     }
   `],
 })
-export class DetalleProductoModalComponent implements OnChanges {
+export class DetalleProductoModalComponent implements OnChanges, OnDestroy {
   @Input() visible = false;
   @Input() producto: ProductoDetalle | null = null;
   @Output() close = new EventEmitter<void>();
@@ -340,19 +348,28 @@ export class DetalleProductoModalComponent implements OnChanges {
   agregandoNenulista = false;
   mensajeExito: string | null = null;
   mensajeError: string | null = null;
+  private cerrarTrasExitoTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private listaCompraService: ListaCompraService) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible']?.currentValue === true) {
+      this.limpiarCierreTrasExito();
       this.cantidad = 1;
       this.nota = '';
+      this.agregandoNenulista = false;
       this.mensajeExito = null;
       this.mensajeError = null;
     }
   }
 
+  ngOnDestroy(): void {
+    this.limpiarCierreTrasExito();
+  }
+
   cerrar(): void {
+    this.limpiarCierreTrasExito();
+    this.agregandoNenulista = false;
     this.close.emit();
   }
 
@@ -373,30 +390,46 @@ export class DetalleProductoModalComponent implements OnChanges {
   }
 
   addToNenulista(): void {
-    if (!this.producto) return;
+    if (!this.producto || this.agregandoNenulista) return;
 
     this.agregandoNenulista = true;
     this.mensajeError = null;
+    this.mensajeExito = null;
 
     const payload: AddListaCompraItemPayload = {
       productoId: this.producto.id,
-      cantidad: this.cantidad,
+      cantidad: Math.max(1, Number(this.cantidad) || 1),
       ...(this.nota ? { nota: this.nota } : {}),
     };
 
     this.listaCompraService.addItem(payload).subscribe({
       next: () => {
-        this.mensajeExito = `${this.producto?.nombre} añadido a Mi Nenulista`;
+        this.mensajeExito = 'Producto añadido a la lista';
         this.cantidad = 1;
         this.nota = '';
-        this.agregandoNenulista = false;
         this.productAdded.emit();
-        setTimeout(() => { this.mensajeExito = null; }, 2000);
+        this.programarCierreTrasExito();
       },
       error: () => {
         this.mensajeError = 'El producto no se añadió a tu lista. Vuelve a intentarlo.';
         this.agregandoNenulista = false;
       },
     });
+  }
+
+  private programarCierreTrasExito(): void {
+    this.limpiarCierreTrasExito();
+    this.cerrarTrasExitoTimeout = setTimeout(() => {
+      this.cerrarTrasExitoTimeout = null;
+      this.mensajeExito = null;
+      this.cerrar();
+    }, 800);
+  }
+
+  private limpiarCierreTrasExito(): void {
+    if (this.cerrarTrasExitoTimeout) {
+      clearTimeout(this.cerrarTrasExitoTimeout);
+      this.cerrarTrasExitoTimeout = null;
+    }
   }
 }

@@ -220,7 +220,7 @@
 
 .primary-btn {
   border: 0;
-  background: linear-gradient(135deg, #f45c9c, #db4d88);
+  background: linear-gradient(135deg, var(--nenufar-pink), var(--nenufar-pink-hover));
   color: #fff8fc;
   box-shadow: 0 18px 28px rgba(244, 92, 156, 0.22);
   width: min(100%, 320px);

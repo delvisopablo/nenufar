@@ -214,7 +214,7 @@
   padding: 0.9rem 1rem;
   border: 0;
   border-radius: 18px;
-  background: linear-gradient(135deg, #f45c9c, #db4d88);
+  background: linear-gradient(135deg, var(--nenufar-pink), var(--nenufar-pink-hover));
   color: #fff8fc;
   font-weight: 800;
   cursor: pointer;

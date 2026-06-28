@@ -1,13 +1,17 @@
 import {
   Component,
+  ElementRef,
+  HostListener,
   Input,
   Output,
   EventEmitter,
+  ViewChild,
   computed,
   inject,
   signal,
   OnInit,
   OnChanges,
+  OnDestroy,
   SimpleChanges,
 } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -20,6 +24,12 @@ import {
   extractItems,
 } from '../../../config/api.config';
 import { getUserErrorMessage } from '../../../core/errors/error-parser';
+import {
+  clearFormApiErrors,
+  getFieldError,
+  mapApiError,
+  setFormErrors,
+} from '../../../core/errors/form-error.utils';
 import { SKIP_HTTP_ERROR_HANDLING } from '../../../core/errors/http-error.interceptor';
 import { resolveBusinessImage, resolveNenufarAsset, NENUFAR_OPTIONS } from '../../../core/negocio/negocio-visuals';
 import { NenufarBurstComponent } from '../../shared/nenufar-burst/nenufar-burst.component';
@@ -77,13 +87,15 @@ interface CrearResenaPayload {
   templateUrl: './crear-resena-modal.component.html',
   styleUrl: './crear-resena-modal.component.css'
 })
-export class CrearResenaModalComponent implements OnInit, OnChanges {
+export class CrearResenaModalComponent implements OnInit, OnChanges, OnDestroy {
   private readonly silentRequestContext = new HttpContext().set(
     SKIP_HTTP_ERROR_HANDLING,
     true,
   );
   private readonly productoService = inject(ProductoServiceService);
   private readonly reviewProductMeta = inject(ReviewProductMetaService);
+
+  @ViewChild('selloWrap') selloWrapRef?: ElementRef<HTMLElement>;
 
   // @Output() cerrarModal = new EventEmitter<void>();
   @Output() resenaCreada = new EventEmitter<unknown>();
@@ -108,6 +120,11 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
   burstActivo = signal(false);
   burstNenufarSrc = signal('assets/imagenes/nenufar.png');
   mostrarTooltipSello = signal(false);
+  selloBurstActivo = signal(false);
+  readonly selloInfoTexto = 'El Sello Nenúfar cuesta 5 pétalos y sirve para dar más credibilidad y valor a tu reseña.';
+  readonly petaloSoloSrc = 'assets/imagenes/petalo-solo.png';
+  readonly petalosFlorSrc = 'assets/imagenes/petalos-flor-5.png';
+  readonly selloPetalos = [0, 1, 2, 3, 4];
   selectorProductosAbierto = signal(false);
   sugerirProductoAbierto = signal(false);
   productoBusqueda = signal('');
@@ -149,6 +166,8 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
   sugerenciaForm: FormGroup;
   private ultimoNegocioProductosCargado: number | null = null;
   private readonly productosCache = new Map<number, Producto[]>();
+  private selloBurstStartTimer: ReturnType<typeof setTimeout> | null = null;
+  private selloBurstTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -162,7 +181,7 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
     });
     this.sugerenciaForm = this.fb.group({
       nombre: ['', [Validators.required, Validators.maxLength(191)]],
-      precioSugerido: [''],
+      precioSugerido: ['', [Validators.min(0)]],
       descripcion: [''],
     });
   }
@@ -201,6 +220,10 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
     }
   }
 
+  ngOnDestroy(): void {
+    this.limpiarTimerSello();
+  }
+
   getNegocioImage(negocio: NegocioOption): string {
     return resolveBusinessImage(negocio);
   }
@@ -217,6 +240,9 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
 
   cerrar(): void {
     this.visible = false;
+    this.limpiarTimerSello();
+    this.selloBurstActivo.set(false);
+    this.mostrarTooltipSello.set(false);
     this.resetProductComposer();
     this.cerrarModal.emit();
   }
@@ -227,7 +253,12 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
 
   toggleSello(): void {
     const actual = this.form.controls['selloNenufar'].value;
-    this.form.controls['selloNenufar'].setValue(!actual);
+    const siguiente = !actual;
+    this.form.controls['selloNenufar'].setValue(siguiente);
+
+    if (siguiente) {
+      this.lanzarPetalosSello();
+    }
   }
 
   mostrarInfoSello(): void {
@@ -238,8 +269,51 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
     this.mostrarTooltipSello.set(false);
   }
 
+  alternarInfoSello(event: Event): void {
+    event.stopPropagation();
+    this.mostrarTooltipSello.update((valor) => !valor);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClickCerrarSello(event: MouseEvent): void {
+    if (!this.mostrarTooltipSello()) {
+      return;
+    }
+
+    const wrap = this.selloWrapRef?.nativeElement;
+    if (wrap && !wrap.contains(event.target as Node)) {
+      this.ocultarInfoSello();
+    }
+  }
+
+  private lanzarPetalosSello(): void {
+    this.limpiarTimerSello();
+    this.selloBurstActivo.set(false);
+    this.selloBurstStartTimer = setTimeout(() => {
+      this.selloBurstActivo.set(true);
+      this.selloBurstStartTimer = null;
+    }, 0);
+    this.selloBurstTimer = setTimeout(() => {
+      this.selloBurstActivo.set(false);
+      this.selloBurstTimer = null;
+    }, 900);
+  }
+
+  private limpiarTimerSello(): void {
+    if (this.selloBurstStartTimer) {
+      clearTimeout(this.selloBurstStartTimer);
+      this.selloBurstStartTimer = null;
+    }
+
+    if (this.selloBurstTimer) {
+      clearTimeout(this.selloBurstTimer);
+      this.selloBurstTimer = null;
+    }
+  }
+
   enviar(): void {
     this.errorMensaje.set('');
+    clearFormApiErrors(this.form);
 
     if (this.enviando()) {
       return;
@@ -335,12 +409,30 @@ export class CrearResenaModalComponent implements OnInit, OnChanges {
             return;
           }
 
+          const apiError = mapApiError(error, 'La reseña no se guardó.');
+          setFormErrors(this.form, apiError.fieldErrors);
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'La reseña no se guardó.')
+            apiError.message ||
+              (Object.keys(apiError.fieldErrors).length ? '' : 'La reseña no se guardó.'),
           );
         }
       });
     }
+  }
+
+  campoInvalido(nombreCampo: string): boolean {
+    const control = this.form.get(nombreCampo);
+    return Boolean(control?.invalid && (control.touched || control.dirty));
+  }
+
+  getErrorCampo(nombreCampo: string): string {
+    const control = this.form.get(nombreCampo);
+
+    if (nombreCampo === 'valoracion' && control?.hasError('min')) {
+      return 'Selecciona una valoración del 1 al 5.';
+    }
+
+    return getFieldError(control);
   }
 
   private sincronizarNegocioInicial(): void {

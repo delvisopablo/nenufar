@@ -11,9 +11,14 @@ import {
   LogroUsuario,
   LogroServiceService,
   MiLogro,
+  MisLogrosResumen,
   NivelProgreso,
   ProgresoEscalera,
 } from '../../servicios/logroServicio/logroService.service';
+import {
+  LOGRO_ICON_ASSETS,
+  resolveLogroIconAsset,
+} from '../../core/logros/logro-visuals';
 import { PetalosService } from '../../servicios/petalosServicio/petalos.service';
 
 export interface CategoriaLogros {
@@ -167,7 +172,7 @@ export class MisLogrosComponent implements OnInit {
   readonly errorMensaje = signal('');
   readonly escaleras = signal<ProgresoEscalera[]>([]);
   readonly misLogros = signal<MiLogro[]>([]);
-  readonly saldoPetalos = signal(0);
+  readonly saldoPetalos = signal<number | null>(null);
   readonly detalleAbierto = signal<DetalleSeleccionado | null>(null);
 
   readonly categorias = CATEGORIAS;
@@ -226,8 +231,9 @@ export class MisLogrosComponent implements OnInit {
           if (!Number.isFinite(usuarioId) || usuarioId <= 0) {
             return of({
               escaleras: [] as ProgresoEscalera[],
-              logros: [] as MiLogro[],
-              balance: { saldo: 0 },
+              logros: { logros: [] as MiLogro[] } satisfies MisLogrosResumen,
+              balance: null,
+              usuarioPetalosSaldo: null,
             });
           }
 
@@ -242,25 +248,33 @@ export class MisLogrosComponent implements OnInit {
             balance: this.petalosSvc.balance().pipe(
               catchError((error: unknown) => {
                 this.logDevSecondary('balance de pétalos', error);
-                return of({ saldo: 0 });
+                return of(null);
               }),
             ),
-          });
+          }).pipe(
+            map((result) => ({
+              ...result,
+              usuarioPetalosSaldo: this.resolvePetalosSaldo(usuario ?? this.authService.obtenerUsuario()),
+            })),
+          );
         }),
         catchError((error: unknown) => {
           this.logDevSecondary('sesión de logros', error);
           return of({
             escaleras: [] as ProgresoEscalera[],
-            logros: [] as MiLogro[],
-            balance: { saldo: 0 },
+            logros: { logros: [] as MiLogro[] } satisfies MisLogrosResumen,
+            balance: null,
+            usuarioPetalosSaldo: null,
           });
         }),
       )
       .subscribe({
-        next: ({ escaleras, logros, balance }) => {
+        next: ({ escaleras, logros, balance, usuarioPetalosSaldo }) => {
           this.escaleras.set(escaleras);
-          this.misLogros.set(logros);
-          this.saldoPetalos.set(balance.saldo ?? 0);
+          this.misLogros.set(logros.logros);
+          this.saldoPetalos.set(
+            this.resolvePetalosSaldo(logros, balance, usuarioPetalosSaldo),
+          );
           this.cargando.set(false);
         },
         error: (error: unknown) => {
@@ -273,7 +287,7 @@ export class MisLogrosComponent implements OnInit {
   }
 
   private cargarMisLogros(usuarioId: number) {
-    return this.logroSvc.misLogros().pipe(
+    return this.logroSvc.misLogrosResumen().pipe(
       catchError((error: unknown) => {
         this.logDevSecondary('mis logros', error);
         return forkJoin({
@@ -290,10 +304,43 @@ export class MisLogrosComponent implements OnInit {
             }),
           ),
         }).pipe(
-          map(({ asignados, catalogo }) => this.mapLogrosFallback(asignados, catalogo)),
+          map(({ asignados, catalogo }) => ({
+            logros: this.mapLogrosFallback(asignados, catalogo),
+          } satisfies MisLogrosResumen)),
         );
       }),
     );
+  }
+
+  private resolvePetalosSaldo(...sources: unknown[]): number | null {
+    for (const source of sources) {
+      if (source == null) {
+        continue;
+      }
+
+      if (typeof source === 'number') {
+        return Number.isFinite(source) ? Math.max(0, Math.floor(source)) : null;
+      }
+
+      if (typeof source !== 'object') {
+        continue;
+      }
+
+      const record = source as Record<string, unknown>;
+      const value =
+        record['petalosSaldo'] ??
+        record['saldoPetalos'] ??
+        record['saldo'] ??
+        record['balancePetalos'] ??
+        record['petalosBalance'];
+      const parsed = Number(value);
+
+      if (Number.isFinite(parsed)) {
+        return Math.max(0, Math.floor(parsed));
+      }
+    }
+
+    return null;
   }
 
   private mapLogrosFallback(asignados: LogroUsuario[], catalogo: Logro[]): MiLogro[] {
@@ -356,6 +403,18 @@ export class MisLogrosComponent implements OnInit {
       NEGOCIO_SEGUIDO: 'Negocios seguidos',
     };
     return map[accion] ?? accion;
+  }
+
+  getLogroIcon(logro: unknown, collection: readonly unknown[] = this.misLogros()): string {
+    return resolveLogroIconAsset(logro, collection);
+  }
+
+  getNivelIcon(nivel: NivelProgreso, niveles: readonly NivelProgreso[]): string {
+    return resolveLogroIconAsset(nivel, niveles);
+  }
+
+  getIconoNormal(): string {
+    return LOGRO_ICON_ASSETS.normal;
   }
 
   esNivelActual(escalera: ProgresoEscalera, nivel: NivelProgreso): boolean {

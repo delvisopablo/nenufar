@@ -52,6 +52,12 @@ export interface MiLogro {
   id: number;
   conseguidoEn: string;
   logro: LogroBasico;
+  [key: string]: unknown;
+}
+
+export interface MisLogrosResumen {
+  logros: MiLogro[];
+  petalosSaldo?: number;
 }
 
 export interface NivelProgreso {
@@ -89,6 +95,10 @@ export interface LogroUsuario {
   logroId: number;
   usuarioId: number;
   [key: string]: unknown;
+}
+
+export interface UpdateLogrosDestacadosPayload {
+  logroIds: number[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -138,12 +148,51 @@ export class LogroServiceService {
   }
 
   misLogros(): Observable<MiLogro[]> {
+    return this.misLogrosResumen().pipe(map((response) => response.logros));
+  }
+
+  misLogrosResumen(): Observable<MisLogrosResumen> {
     return this.http
-      .get<MiLogro[] | ApiListResponse<MiLogro>>(
+      .get<unknown>(
         buildApiUrl('/me/logros'),
         { withCredentials: true },
       )
-      .pipe(map((response) => extractItems(response)));
+      .pipe(
+        map((response) => ({
+          logros: this.extractLogrosResponse(response),
+          ...(this.extractPetalosSaldo(response) != null
+            ? { petalosSaldo: this.extractPetalosSaldo(response) }
+            : {}),
+        })),
+      );
+  }
+
+  misLogrosDestacados(): Observable<MiLogro[]> {
+    return this.http
+      .get<unknown>(
+        buildApiUrl('/me/logros/destacados'),
+        { withCredentials: true },
+      )
+      .pipe(map((response) => this.extractLogrosResponse(response)));
+  }
+
+  actualizarMisLogrosDestacados(logroIds: number[]): Observable<MiLogro[]> {
+    return this.http
+      .put<unknown>(
+        buildApiUrl('/me/logros/destacados'),
+        { logroIds } satisfies UpdateLogrosDestacadosPayload,
+        { withCredentials: true },
+      )
+      .pipe(map((response) => this.extractLogrosResponse(response)));
+  }
+
+  logrosDestacadosUsuario(usuarioId: number): Observable<MiLogro[]> {
+    return this.http
+      .get<unknown>(
+        buildApiUrl(`/usuarios/${usuarioId}/logros/destacados`),
+        { withCredentials: true },
+      )
+      .pipe(map((response) => this.extractLogrosResponse(response)));
   }
 
   miProgreso(): Observable<ProgresoEscalera[]> {
@@ -162,5 +211,54 @@ export class LogroServiceService {
       buildApiUrl(`/logros/${id}`),
       { withCredentials: true },
     );
+  }
+
+  private extractLogrosResponse(response: unknown): MiLogro[] {
+    if (Array.isArray(response)) {
+      return response as MiLogro[];
+    }
+
+    const record = response && typeof response === 'object'
+      ? response as Record<string, unknown>
+      : null;
+
+    if (!record) {
+      return [];
+    }
+
+    const items =
+      record['items'] ??
+      record['logros'] ??
+      record['destacados'] ??
+      record['logrosDestacados'] ??
+      record['data'];
+
+    return Array.isArray(items) ? items as MiLogro[] : [];
+  }
+
+  private extractPetalosSaldo(response: unknown): number | undefined {
+    const record = response && typeof response === 'object'
+      ? response as Record<string, unknown>
+      : null;
+
+    if (!record) {
+      return undefined;
+    }
+
+    const balance = record['balance'] && typeof record['balance'] === 'object'
+      ? record['balance'] as Record<string, unknown>
+      : null;
+    const petalos = record['petalos'] && typeof record['petalos'] === 'object'
+      ? record['petalos'] as Record<string, unknown>
+      : null;
+    const parsed = Number(
+      record['petalosSaldo'] ??
+      record['saldoPetalos'] ??
+      record['saldo'] ??
+      balance?.['saldo'] ??
+      petalos?.['saldo'],
+    );
+
+    return Number.isFinite(parsed) ? parsed : undefined;
   }
 }

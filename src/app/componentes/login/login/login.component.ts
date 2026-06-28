@@ -17,6 +17,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../servicios/authService/auth.service';
 import { savePendingEmailVerification } from '../../../servicios/authService/email-verification.storage';
 import { getUserErrorMessage, isAppErrorModel } from '../../../core/errors/error-parser';
+import {
+  clearFormApiErrors,
+  getFieldError,
+  mapApiError,
+  setFormErrors,
+} from '../../../core/errors/form-error.utils';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
 
 type PondSource = {
@@ -278,6 +284,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
 
   iniciarSesion(): void {
     this.loginError.set('');
+    clearFormApiErrors(this.loginForm);
 
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
@@ -305,11 +312,16 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
         this.loginSubmitting.set(false);
 
         if (this.esEmailNoVerificado(error)) {
-          this.redirigirAVerificacion(error as HttpErrorResponse);
+          this.redirigirAVerificacion(error);
           return;
         }
 
-        this.loginError.set(this.obtenerMensajeError(error));
+        const apiError = mapApiError(
+          error,
+          'El inicio de sesión no se completó. Revisa correo y contraseña.',
+        );
+        setFormErrors(this.loginForm, apiError.fieldErrors);
+        this.loginError.set(apiError.message || this.obtenerMensajeError(error));
       }
     });
   }
@@ -333,6 +345,10 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     return control.invalid && (control.touched || control.dirty);
   }
 
+  getErrorCampo(nombreCampo: 'email' | 'password'): string {
+    return getFieldError(this.loginForm.controls[nombreCampo]);
+  }
+
   private async redirigirTrasLogin(): Promise<void> {
     const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
 
@@ -350,15 +366,30 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private esEmailNoVerificado(error: unknown): boolean {
-    if (!(error instanceof HttpErrorResponse)) {
-      return false;
+    if (error instanceof HttpErrorResponse) {
+      const body = error.error as Record<string, unknown> | null;
+      return error.status === 403 && body?.['code'] === 'EMAIL_NOT_VERIFIED';
     }
-    const body = error.error as Record<string, unknown> | null;
-    return error.status === 403 && body?.['code'] === 'EMAIL_NOT_VERIFIED';
+
+    if (isAppErrorModel(error)) {
+      const original = error.originalError;
+      const originalBody = original instanceof HttpErrorResponse
+        ? original.error as Record<string, unknown> | null
+        : null;
+      return (
+        error.status === 403 &&
+        (error.code === 'EMAIL_NOT_VERIFIED' || originalBody?.['code'] === 'EMAIL_NOT_VERIFIED')
+      );
+    }
+
+    return false;
   }
 
-  private redirigirAVerificacion(error: HttpErrorResponse): void {
-    const body = error.error as Record<string, unknown> | null;
+  private redirigirAVerificacion(error: unknown): void {
+    const original = isAppErrorModel(error) ? error.originalError : error;
+    const body = original instanceof HttpErrorResponse
+      ? original.error as Record<string, unknown> | null
+      : null;
     const email =
       typeof body?.['email'] === 'string'
         ? body['email']

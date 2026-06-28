@@ -13,14 +13,25 @@ import {
   resolveOwnedBusinessId,
   resolvePrivateProfileRoute,
 } from '../../../servicios/authService/auth.service';
-import { Logro, LogroServiceService } from '../../../servicios/logroServicio/logroService.service';
-import { resolveNegocioRouteCommands } from '../../../servicios/negocioService/negocio.service';
+import { Logro, LogroServiceService, MiLogro } from '../../../servicios/logroServicio/logroService.service';
+import {
+  extractEmbeddedLogrosDestacados,
+  LogroVisualData,
+  normalizeLogroVisual,
+  resolveLogroIconAsset,
+} from '../../../core/logros/logro-visuals';
+import {
+  NegocioService,
+  NegocioSummary,
+  resolveNegocioRouteCommands,
+} from '../../../servicios/negocioService/negocio.service';
 import { ReservaService } from '../../../servicios/reservaService/reserva.service';
 import { ReviewProductMetaService } from '../../../servicios/reviewProductMeta/review-product-meta.service';
 import { ResenaService } from '../../../servicios/reviewServicio/resena.service';
 import { NenufarizarService } from '../../../services/nenufarizar.service';
 import {
   PerfilUsuarioResponse,
+  SeguidorEntry,
   UpdatePerfilPayload,
   UsuarioServiceService,
 } from '../../../servicios/usuarioServicio/usuarioService.service';
@@ -83,6 +94,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
   private readonly reservaService = inject(ReservaService);
   private readonly logroService = inject(LogroServiceService);
   private readonly reviewProductMeta = inject(ReviewProductMetaService);
+  private readonly negocioService = inject(NegocioService);
   readonly nenufarizar = inject(NenufarizarService);
 
   readonly cargando = signal(true);
@@ -93,9 +105,19 @@ export class PerfilComponent implements OnInit, OnDestroy {
   readonly resenas = signal<UserReview[]>([]);
   readonly reservas = signal<any[]>([]);
   readonly logros = signal<Logro[]>([]);
+  readonly logrosDestacados = signal<LogroVisualData[]>([]);
+  readonly logrosDestacadosSeleccionados = signal<number[]>([]);
+  readonly logrosDestacadosError = signal('');
+  readonly logroTooltipActivo = signal<number | null>(null);
   readonly seguidoresTotal = signal(0);
   readonly siguiendoTotal = signal(0);
   readonly siguiendoUsuario = signal(false);
+
+  readonly panelSeguimientoTipo = signal<'seguidores' | 'siguiendo' | null>(null);
+  readonly seguidoresLista = signal<SeguidorEntry[]>([]);
+  readonly siguiendoUsuariosLista = signal<SeguidorEntry[]>([]);
+  readonly siguiendoNegociosLista = signal<NegocioSummary[]>([]);
+  readonly cargandoSeguimientoLista = signal(false);
   readonly accessModalAbierto = signal(false);
   readonly accessModalMensaje = signal('Necesitas iniciar sesion para continuar.');
   readonly regenerandoCodigo = signal(false);
@@ -118,7 +140,9 @@ export class PerfilComponent implements OnInit, OnDestroy {
 
   nuevaBio = '';
   private copyFeedbackTimerId: number | null = null;
+  private perfilEditSuccessTimerId: number | null = null;
   private fotoPerfilObjectUrl: string | null = null;
+  private logrosDestacadosIniciales: number[] = [];
 
   readonly esPerfilPropio = computed(() => {
     const actual = this.usuarioActual();
@@ -164,6 +188,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
               return forkJoin({
                 resenas: resenas$,
                 logros: this.cargarLogros(perfil.id),
+                destacados: this.cargarLogrosDestacados(perfil),
                 reservas: this.reservaService.reservasPorUsuario(perfil.id).pipe(
                   catchError((error: unknown) => {
                     this.logDevSecondary('reservas', error);
@@ -187,6 +212,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
                   of({
                     resenas: [],
                     logros: [],
+                    destacados: [],
                     reservas: [],
                     codigoReferido: '',
                     referidos: [],
@@ -209,6 +235,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
         if (result) {
           this.resenas.set(this.reviewProductMeta.mergeReviews(result.resenas));
           this.logros.set(result.logros);
+          this.aplicarLogrosDestacados(result.destacados);
           this.reservas.set(result.reservas);
         }
 
@@ -221,6 +248,10 @@ export class PerfilComponent implements OnInit, OnDestroy {
 
     if (this.copyFeedbackTimerId) {
       window.clearTimeout(this.copyFeedbackTimerId);
+    }
+
+    if (this.perfilEditSuccessTimerId) {
+      window.clearTimeout(this.perfilEditSuccessTimerId);
     }
   }
 
@@ -258,6 +289,13 @@ export class PerfilComponent implements OnInit, OnDestroy {
     this.perfilEditError.set('');
     this.perfilEditExito.set('');
     this.fotoPerfilError.set('');
+    this.logrosDestacadosError.set('');
+
+    if (this.nuevaBio.length > 220) {
+      this.perfilEditError.set('La biografía debe tener 220 caracteres como máximo.');
+      return;
+    }
+
     const payload: UpdatePerfilPayload = {
       biografia: this.nuevaBio,
     };
@@ -277,9 +315,18 @@ export class PerfilComponent implements OnInit, OnDestroy {
           })),
         );
       }),
+      switchMap((response) => {
+        if (!this.logrosDestacadosHanCambiado()) {
+          return of({ perfil: response, destacados: null as MiLogro[] | null });
+        }
+
+        return this.logroService
+          .actualizarMisLogrosDestacados(this.logrosDestacadosSeleccionados())
+          .pipe(map((destacados) => ({ perfil: response, destacados })));
+      }),
       finalize(() => this.guardandoPerfil.set(false)),
     ).subscribe({
-      next: (response) => {
+      next: ({ perfil: response, destacados }) => {
         const actual = this.usuarioActual();
         const fotoPerfil = resolveProfilePhoto(response) ?? resolveProfilePhoto(perfil);
         const usuarioActualizado = {
@@ -295,7 +342,12 @@ export class PerfilComponent implements OnInit, OnDestroy {
         this.nuevaBio = usuarioActualizado.biografia || '';
         this.modoEdicion.set(false);
         this.perfilEditExito.set('Perfil actualizado correctamente.');
+        this.programarLimpiezaExitoPerfil();
         this.clearFotoPerfilSelection();
+        if (destacados) {
+          const normalizados = this.normalizarDestacadosGuardados(destacados);
+          this.aplicarLogrosDestacados(normalizados.length ? normalizados : this.logrosDesdeSeleccionActual());
+        }
 
         if (actual) {
           this.authService.guardarUsuario({
@@ -311,7 +363,9 @@ export class PerfilComponent implements OnInit, OnDestroy {
       },
       error: (error: unknown) => {
         this.logDevError(error);
-        this.perfilEditError.set(getUserErrorMessage(error, 'Los cambios del perfil no se guardaron.'));
+        const mensaje = getUserErrorMessage(error, 'Los cambios del perfil no se guardaron.');
+        this.perfilEditError.set(mensaje);
+        this.logrosDestacadosError.set(mensaje);
       },
     });
   }
@@ -329,6 +383,73 @@ export class PerfilComponent implements OnInit, OnDestroy {
     }
 
     return resolveNegocioRouteCommands(negocio);
+  }
+
+  bioInvalida(): boolean {
+    return this.nuevaBio.length > 220;
+  }
+
+  getLogroIcon(logro: unknown, collection: readonly unknown[] = this.logros()): string {
+    return resolveLogroIconAsset(logro, collection);
+  }
+
+  mostrarLogroTooltip(logroId: number): void {
+    this.logroTooltipActivo.set(logroId);
+  }
+
+  ocultarLogroTooltip(): void {
+    this.logroTooltipActivo.set(null);
+  }
+
+  alternarLogroTooltip(logroId: number, event: Event): void {
+    event.stopPropagation();
+    this.logroTooltipActivo.update((actual) => actual === logroId ? null : logroId);
+  }
+
+  toggleLogroDestacado(logro: Logro): void {
+    const normalizado = normalizeLogroVisual(logro);
+    if (!normalizado || this.guardandoPerfil()) {
+      return;
+    }
+
+    this.logrosDestacadosError.set('');
+    const actuales = this.logrosDestacadosSeleccionados();
+    if (actuales.includes(normalizado.id)) {
+      this.logrosDestacadosSeleccionados.set(actuales.filter((id) => id !== normalizado.id));
+      return;
+    }
+
+    if (actuales.length >= 3) {
+      this.logrosDestacadosError.set('Puedes elegir como máximo 3 insignias.');
+      return;
+    }
+
+    this.logrosDestacadosSeleccionados.set([...actuales, normalizado.id]);
+  }
+
+  logroDestacadoSeleccionado(logro: Logro): boolean {
+    const normalizado = normalizeLogroVisual(logro);
+    return Boolean(normalizado && this.logrosDestacadosSeleccionados().includes(normalizado.id));
+  }
+
+  getLogroDestacadoTooltip(logro: LogroVisualData): string {
+    return [
+      logro.descripcion,
+      logro.conseguidoEn ? `Conseguido el ${this.formatFecha(logro.conseguidoEn)}` : '',
+      logro.motivo || logro.progreso,
+    ].filter(Boolean).join(' · ');
+  }
+
+  formatFecha(fecha?: string): string {
+    if (!fecha) {
+      return '';
+    }
+
+    return new Date(fecha).toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   }
 
   getReferidoInitial(nickname: string | null | undefined): string {
@@ -397,11 +518,63 @@ export class PerfilComponent implements OnInit, OnDestroy {
     );
   }
 
+  private cargarLogrosDestacados(perfil: PerfilUsuarioResponse) {
+    const embebidos = extractEmbeddedLogrosDestacados(perfil);
+    if (embebidos.length) {
+      return of(embebidos);
+    }
+
+    return this.logroService.misLogrosDestacados().pipe(
+      map((items) => this.normalizarDestacadosGuardados(items)),
+      catchError((error: unknown) => {
+        this.logDevSecondary('logros destacados', error);
+        return of([] as LogroVisualData[]);
+      }),
+    );
+  }
+
+  private normalizarDestacadosGuardados(items: readonly unknown[]): LogroVisualData[] {
+    return items
+      .map((item) => normalizeLogroVisual(item))
+      .filter((item): item is LogroVisualData => Boolean(item))
+      .slice(0, 3);
+  }
+
+  private aplicarLogrosDestacados(logros: readonly LogroVisualData[]): void {
+    const destacados = logros.slice(0, 3);
+    this.logrosDestacados.set(destacados);
+    this.logrosDestacadosIniciales = destacados.map((logro) => logro.id);
+    this.logrosDestacadosSeleccionados.set(this.logrosDestacadosIniciales);
+  }
+
+  private logrosDestacadosHanCambiado(): boolean {
+    return this.serializeIds(this.logrosDestacadosSeleccionados()) !==
+      this.serializeIds(this.logrosDestacadosIniciales);
+  }
+
+  private serializeIds(ids: readonly number[]): string {
+    return ids.slice().sort((a, b) => a - b).join(',');
+  }
+
+  private logrosDesdeSeleccionActual(): LogroVisualData[] {
+    const seleccionados = new Set(this.logrosDestacadosSeleccionados());
+    return this.logros()
+      .filter((logro) => {
+        const normalizado = normalizeLogroVisual(logro);
+        return Boolean(normalizado && seleccionados.has(normalizado.id));
+      })
+      .map((logro) => normalizeLogroVisual(logro))
+      .filter((logro): logro is LogroVisualData => Boolean(logro))
+      .slice(0, 3);
+  }
+
   private cargarSeguimiento(perfil: PerfilUsuarioResponse): void {
     forkJoin({
       seguidores: this.usuarioService.getSeguidores(perfil.id).pipe(catchError(() => of([]))),
       siguiendo: this.usuarioService.getSiguiendo(perfil.id).pipe(catchError(() => of([]))),
     }).subscribe(({ seguidores, siguiendo }) => {
+      this.seguidoresLista.set(seguidores);
+      this.siguiendoUsuariosLista.set(siguiendo);
       this.seguidoresTotal.set(
         seguidores.length ||
         Number(perfil._count?.seguidores ?? 0) ||
@@ -413,6 +586,42 @@ export class PerfilComponent implements OnInit, OnDestroy {
         0,
       );
     });
+
+    // Los negocios seguidos solo se pueden consultar para el usuario autenticado
+    // (el endpoint no acepta un id arbitrario), así que solo aplica en mi propio perfil.
+    if (this.esPerfilPropio()) {
+      this.negocioService.listSeguidos().pipe(catchError(() => of([]))).subscribe((negocios) => {
+        this.siguiendoNegociosLista.set(negocios);
+        this.siguiendoTotal.update((total) => total + negocios.length);
+      });
+    }
+  }
+
+  abrirPanelSeguidores(): void {
+    this.panelSeguimientoTipo.set('seguidores');
+  }
+
+  abrirPanelSiguiendo(): void {
+    this.panelSeguimientoTipo.set('siguiendo');
+  }
+
+  cerrarPanelSeguimiento(): void {
+    this.panelSeguimientoTipo.set(null);
+  }
+
+  getSeguidorRoute(entry: SeguidorEntry): (string | number)[] {
+    const usuario = entry.usuario;
+    const actual = this.usuarioActual();
+
+    if (actual?.id != null && usuario?.id === actual.id) {
+      return resolvePrivateProfileRoute(actual);
+    }
+
+    return ['/usuario', usuario.id];
+  }
+
+  getNegocioSeguidoRoute(negocio: NegocioSummary): (string | number)[] | null {
+    return resolveNegocioRouteCommands(negocio);
   }
 
   irALogin(): void {
@@ -434,6 +643,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
 
     if (nextValue) {
       this.perfilEditExito.set('');
+      this.clearPerfilEditSuccessTimer();
     }
 
     if (!nextValue) {
@@ -520,6 +730,23 @@ export class PerfilComponent implements OnInit, OnDestroy {
       this.accionCopiada.set('');
       this.copyFeedbackTimerId = null;
     }, 2000);
+  }
+
+  private programarLimpiezaExitoPerfil(): void {
+    this.clearPerfilEditSuccessTimer();
+    this.perfilEditSuccessTimerId = window.setTimeout(() => {
+      this.perfilEditExito.set('');
+      this.perfilEditSuccessTimerId = null;
+    }, 1800);
+  }
+
+  private clearPerfilEditSuccessTimer(): void {
+    if (!this.perfilEditSuccessTimerId) {
+      return;
+    }
+
+    window.clearTimeout(this.perfilEditSuccessTimerId);
+    this.perfilEditSuccessTimerId = null;
   }
 
   private registrarErrorNenufarizar(error: unknown): void {

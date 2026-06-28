@@ -271,6 +271,12 @@
   color: #d1ffec;
 }
 
+.field-error {
+  color: #ffcadf;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
 .save-btn {
   padding: 0.82rem 1.2rem;
   border-radius: 999px;

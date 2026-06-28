@@ -54,7 +54,10 @@
 
           <div class="hero-meta">
             @if (usuario()?.petalosSaldo != null) {
-              <span class="meta-chip meta-chip--gold">🌸 {{ usuario()?.petalosSaldo }} pétalos</span>
+              <span class="meta-chip meta-chip--gold petalos-counter-chip">
+                <img class="petalos-counter-chip__icon" src="assets/imagenes/petalos-flor-5.png" alt="Pétalos">
+                <span>{{ usuario()?.petalosSaldo }} pétalos</span>
+              </span>
             }
             @if (usuario()?.creadoEn) {
               <span class="meta-chip">Miembro desde {{ usuario()?.creadoEn | date:'yyyy' }}</span>
@@ -65,19 +68,54 @@
           </div>
 
           <div class="stats-row">
-            <div class="stat-pill">
+            <button type="button" class="stat-pill stat-pill--clickable" (click)="abrirPanelSeguidores()">
               <strong>{{ seguidoresTotal() }}</strong>
               <span>Seguidores</span>
-            </div>
-            <div class="stat-pill">
+            </button>
+            <button type="button" class="stat-pill stat-pill--clickable" (click)="abrirPanelSiguiendo()">
               <strong>{{ siguiendoTotal() }}</strong>
               <span>Seguidos</span>
-            </div>
+            </button>
             <div class="stat-pill">
               <strong>{{ resenas().length }}</strong>
               <span>Reseñas</span>
             </div>
           </div>
+
+          @if (logrosDestacados().length) {
+            <section class="profile-badges-panel" aria-label="Logros destacados">
+              <div class="profile-badges-panel__head">
+                <span>Logros destacados</span>
+              </div>
+
+              <div class="profile-badges">
+                @for (logro of logrosDestacados(); track logro.id) {
+                  <button
+                    type="button"
+                    class="profile-badge"
+                    (mouseenter)="mostrarLogroTooltip(logro.id)"
+                    (mouseleave)="ocultarLogroTooltip()"
+                    (focus)="mostrarLogroTooltip(logro.id)"
+                    (blur)="ocultarLogroTooltip()"
+                    (click)="alternarLogroTooltip(logro.id, $event)"
+                    [attr.aria-label]="logro.titulo"
+                  >
+                    <img [src]="getLogroIcon(logro, logros())" alt="">
+                    <span>{{ logro.titulo }}</span>
+
+                    @if (logroTooltipActivo() === logro.id) {
+                      <span class="profile-badge__tooltip" role="tooltip">
+                        <strong>{{ logro.titulo }}</strong>
+                        @if (getLogroDestacadoTooltip(logro)) {
+                          <small>{{ getLogroDestacadoTooltip(logro) }}</small>
+                        }
+                      </span>
+                    }
+                  </button>
+                }
+              </div>
+            </section>
+          }
         </div>
       </section>
 
@@ -170,3 +208,63 @@
   (closed)="accessModalAbierto.set(false)"
   (loginRequested)="irALogin()"
 />
+
+@if (panelSeguimientoTipo(); as tipo) {
+  <div class="seguimiento-backdrop" (click)="cerrarPanelSeguimiento()">
+    <section class="seguimiento-panel" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <button type="button" class="seguimiento-panel__close" aria-label="Cerrar" (click)="cerrarPanelSeguimiento()">×</button>
+      <h3>{{ tipo === 'seguidores' ? 'Seguidores' : 'Seguidos' }}</h3>
+
+      @if (tipo === 'seguidores') {
+        @if (!seguidoresLista().length) {
+          <p class="seguimiento-panel__empty">Todavía no tiene seguidores.</p>
+        } @else {
+          <ul class="seguimiento-panel__list">
+            @for (entry of seguidoresLista(); track entry.usuario.id) {
+              <li>
+                <a [routerLink]="getSeguidorRoute(entry)" (click)="cerrarPanelSeguimiento()">
+                  <img [src]="entry.usuario.foto || 'assets/imagenes/rana1_profile_foto.png'" alt="" />
+                  <span>
+                    <strong>{{ entry.usuario.nombre }}</strong>
+                    <small>&#64;{{ entry.usuario.nickname }}</small>
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      } @else {
+        @if (!siguiendoUsuariosLista().length && !siguiendoNegociosLista().length) {
+          <p class="seguimiento-panel__empty">Todavía no sigue a nadie.</p>
+        } @else {
+          <ul class="seguimiento-panel__list">
+            @for (entry of siguiendoUsuariosLista(); track entry.usuario.id) {
+              <li>
+                <a [routerLink]="getSeguidorRoute(entry)" (click)="cerrarPanelSeguimiento()">
+                  <img [src]="entry.usuario.foto || 'assets/imagenes/rana1_profile_foto.png'" alt="" />
+                  <span>
+                    <strong>{{ entry.usuario.nombre }}</strong>
+                    <small>&#64;{{ entry.usuario.nickname }}</small>
+                  </span>
+                </a>
+              </li>
+            }
+            @for (negocio of siguiendoNegociosLista(); track negocio.id) {
+              <li>
+                @if (getNegocioSeguidoRoute(negocio); as ruta) {
+                  <a [routerLink]="ruta" (click)="cerrarPanelSeguimiento()">
+                    <img [src]="negocio.fotoPerfil || negocio.foto || 'assets/imagenes/flor_logo.png'" alt="" />
+                    <span>
+                      <strong>{{ negocio.nombre }}</strong>
+                      <small>Negocio</small>
+                    </span>
+                  </a>
+                }
+              </li>
+            }
+          </ul>
+        }
+      }
+    </section>
+  </div>
+}

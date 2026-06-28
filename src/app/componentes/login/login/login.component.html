@@ -20,7 +20,7 @@
             placeholder="nombre@correo.com"
           >
           @if (campoInvalido('email')) {
-            <small class="field-error">Escribe un correo válido.</small>
+            <small class="field-error">{{ getErrorCampo('email') }}</small>
           }
         </label>
 
@@ -34,7 +34,7 @@
             placeholder="Tu contraseña"
           >
           @if (campoInvalido('password')) {
-            <small class="field-error">Escribe tu contraseña.</small>
+            <small class="field-error">{{ getErrorCampo('password') }}</small>
           }
         </label>
 
@@ -52,7 +52,7 @@
           <p class="form-feedback" role="alert">{{ loginError() }}</p>
         }
 
-        <button type="submit" class="primary-btn" [disabled]="loginSubmitting()">
+        <button type="submit" class="primary-btn" [disabled]="loginForm.invalid || loginSubmitting()">
           {{ loginSubmitting() ? 'Iniciando...' : 'Iniciar sesión' }}
         </button>
       </form>

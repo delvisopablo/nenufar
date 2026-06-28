@@ -42,8 +42,8 @@
               <label class="field">
                 <span>Nombre del negocio <em>*</em></span>
                 <input formControlName="nombre" placeholder="Ej. Café Nenúfar" />
-                @if (negocioForm.get('nombre')?.invalid && negocioForm.get('nombre')?.touched) {
-                  <small class="field-error">El nombre es obligatorio.</small>
+                @if (campoInvalido('nombre')) {
+                  <small class="field-error">{{ getErrorCampo('nombre') }}</small>
                 }
               </label>
 
@@ -55,14 +55,20 @@
             </div>
 
             <label class="field">
-              <span>Descripción corta</span>
-              <input formControlName="descripcionCorta" placeholder="Una frase que defina tu negocio" maxlength="160" />
-              <small class="field-hint">Máx. 160 caracteres. Aparece en las búsquedas.</small>
-            </label>
+                <span>Descripción corta</span>
+                <input formControlName="descripcionCorta" placeholder="Una frase que defina tu negocio" maxlength="160" />
+                <small class="field-hint">Máx. 160 caracteres. Aparece en las búsquedas.</small>
+                @if (campoInvalido('descripcionCorta')) {
+                  <small class="field-error">{{ getErrorCampo('descripcionCorta') }}</small>
+                }
+              </label>
 
             <label class="field">
               <span>Historia</span>
               <textarea formControlName="historia" rows="4" placeholder="Cuéntanos la historia de tu negocio, qué lo hace especial…" maxlength="800"></textarea>
+              @if (campoInvalido('historia')) {
+                <small class="field-error">{{ getErrorCampo('historia') }}</small>
+              }
             </label>
 
             <div class="field-row field-row--3">
@@ -117,12 +123,15 @@
               <label class="field">
                 <span>Teléfono</span>
                 <input formControlName="telefono" type="tel" placeholder="+34 600 000 000" />
+                @if (campoInvalido('telefono')) {
+                  <small class="field-error">{{ getErrorCampo('telefono') }}</small>
+                }
               </label>
               <label class="field">
                 <span>Email de contacto</span>
                 <input formControlName="emailContacto" type="email" placeholder="hola@minegocio.com" />
-                @if (negocioForm.get('emailContacto')?.hasError('email') && negocioForm.get('emailContacto')?.touched) {
-                  <small class="field-error">Escribe un email válido.</small>
+                @if (campoInvalido('emailContacto')) {
+                  <small class="field-error">{{ getErrorCampo('emailContacto') }}</small>
                 }
               </label>
             </div>
@@ -130,10 +139,16 @@
               <label class="field">
                 <span>Web</span>
                 <input formControlName="web" type="url" placeholder="https://minegocio.com" />
+                @if (campoInvalido('web')) {
+                  <small class="field-error">{{ getErrorCampo('web') }}</small>
+                }
               </label>
               <label class="field">
                 <span>Instagram</span>
                 <input formControlName="instagram" placeholder="https://instagram.com/minegocio" />
+                @if (campoInvalido('instagram')) {
+                  <small class="field-error">{{ getErrorCampo('instagram') }}</small>
+                }
               </label>
             </div>
           </div>
@@ -229,7 +244,7 @@
       </div>
       <div class="editor-actions">
         <button type="button" class="btn-secondary" (click)="volver()">Cancelar</button>
-        <button type="submit" class="btn-primary" [disabled]="guardando">
+        <button type="submit" class="btn-primary" [disabled]="guardando || negocioForm.invalid">
           {{ guardando ? 'Guardando…' : 'Guardar cambios' }}
         </button>
       </div>

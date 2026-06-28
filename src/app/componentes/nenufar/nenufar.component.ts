@@ -56,6 +56,7 @@ export class NenufarComponent<T = unknown> {
   @Output() rightClick = new EventEmitter<NenufarRightClickEvent<T>>();
 
   tooltipVisible = false;
+  tooltipPlacement: 'above' | 'below' = 'above';
 
   get ariaLabel(): string {
     return this.label || this.subtitle || `Nenufar ${this.id}`;
@@ -129,7 +130,8 @@ export class NenufarComponent<T = unknown> {
     return '';
   }
 
-  onHoverStart(): void {
+  onHoverStart(event: MouseEvent): void {
+    this.tooltipPlacement = this.shouldPlaceTooltipBelow(event.currentTarget) ? 'below' : 'above';
     this.tooltipVisible = true;
     this.hoverStart.emit({ data: this.data, id: this.id });
   }
@@ -179,6 +181,14 @@ export class NenufarComponent<T = unknown> {
       x: event.clientX - rect.left - rect.width / 2,
       y: event.clientY - rect.top - rect.height / 2
     };
+  }
+
+  private shouldPlaceTooltipBelow(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+
+    return target.getBoundingClientRect().top < 140;
   }
 
   private triggerPrimaryAction(event: MouseEvent): void {

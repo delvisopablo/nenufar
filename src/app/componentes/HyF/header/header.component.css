@@ -117,7 +117,8 @@
 }
 
 .top-action--info {
-  background: linear-gradient(135deg, #f3ab4f, #e66f4f);
+  background: linear-gradient(135deg, var(--nenufar-pink), var(--nenufar-pink-hover));
+  box-shadow: 0 14px 24px rgba(244, 92, 156, 0.24);
 }
 
 .top-action--profile {
@@ -298,6 +299,19 @@
   min-height: 2.2rem;
   color: #fff6d6;
   background: rgba(239, 77, 151, 0.18);
+}
+
+.filter-results-line {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.6rem 0.72rem;
+  border-radius: 14px;
+  background: rgba(244, 92, 156, 0.13);
+  color: rgba(255, 248, 252, 0.92);
+  font-size: 0.82rem;
+  font-weight: 820;
+  line-height: 1.35;
+  border: 1px solid rgba(244, 92, 156, 0.2);
 }
 
 .search-results,

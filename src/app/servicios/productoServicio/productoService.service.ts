@@ -25,6 +25,8 @@ export interface Producto {
     nombre?: string | null;
     slug?: string | null;
     nickname?: string | null;
+    categoria?: { id: number; nombre: string } | null;
+    subcategoria?: { id: number; nombre: string } | null;
   } | null;
   favorito?: boolean;
   esFavorito?: boolean;
@@ -41,6 +43,12 @@ export interface ProductoBusqueda extends Producto {
 export interface ResultadoBusqueda {
   items: ProductoBusqueda[];
   total: number;
+}
+
+export interface BuscarProductosFiltros {
+  categoriaId?: number | string;
+  subcategoriaId?: number | string;
+  negocioId?: number | string;
 }
 
 export interface CreateProductoPayload {
@@ -199,10 +207,21 @@ export class ProductoServiceService {
   buscarProductos(
     q: string,
     limit: number = 20,
+    filtros: BuscarProductosFiltros = {},
   ): Observable<ResultadoBusqueda> {
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('q', q)
       .set('limit', String(limit));
+
+    if (filtros.categoriaId) {
+      params = params.set('categoriaId', String(filtros.categoriaId));
+    }
+    if (filtros.subcategoriaId) {
+      params = params.set('subcategoriaId', String(filtros.subcategoriaId));
+    }
+    if (filtros.negocioId) {
+      params = params.set('negocioId', String(filtros.negocioId));
+    }
 
     return this.http.get<ResultadoBusqueda>(
       buildApiUrl('/productos/buscar'),

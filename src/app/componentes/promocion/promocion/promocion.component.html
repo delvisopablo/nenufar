@@ -38,8 +38,8 @@
         <label class="field field--full">
           <span>Título</span>
           <input type="text" formControlName="titulo" placeholder="Desayuno de barrio" />
-          @if (hasControlError('titulo', 'required')) {
-            <small class="field-error">El título es obligatorio.</small>
+          @if (hasControlError('titulo')) {
+            <small class="field-error">{{ getControlError('titulo') }}</small>
           }
         </label>
 
@@ -64,23 +64,26 @@
         <label class="field">
           <span>Descuento</span>
           <input type="number" formControlName="descuento" min="0" step="0.01" />
-          @if (form.hasError('porcentajeFueraDeRango') && (form.dirty || form.touched)) {
-            <small class="field-error">Si es porcentaje, debe estar entre 0 y 100.</small>
-          } @else if (hasControlError('descuento', 'min')) {
-            <small class="field-error">El descuento no puede ser negativo.</small>
+          @if ((form.hasError('porcentajeFueraDeRango') || form.hasError('descuentoInvalido')) && (form.dirty || form.touched)) {
+            <small class="field-error">{{ getControlError('descuento') }}</small>
+          } @else if (hasControlError('descuento')) {
+            <small class="field-error">{{ getControlError('descuento') }}</small>
           }
         </label>
 
         <label class="field">
           <span>Fecha de inicio</span>
           <input type="datetime-local" formControlName="fechaInicio" />
+          @if (hasControlError('fechaInicio')) {
+            <small class="field-error">{{ getControlError('fechaInicio') }}</small>
+          }
         </label>
 
         <label class="field">
           <span>Fecha de caducidad</span>
           <input type="datetime-local" formControlName="fechaCaducidad" />
-          @if (hasControlError('fechaCaducidad', 'required')) {
-            <small class="field-error">La fecha de caducidad es obligatoria.</small>
+          @if (hasControlError('fechaCaducidad')) {
+            <small class="field-error">{{ getControlError('fechaCaducidad') }}</small>
           }
         </label>
 
@@ -101,16 +104,16 @@
         <label class="field">
           <span>Stock máximo</span>
           <input type="number" formControlName="stockMaximo" min="1" step="1" />
-          @if (hasControlError('stockMaximo', 'min')) {
-            <small class="field-error">Si se informa, debe ser mayor que 0.</small>
+          @if (hasControlError('stockMaximo')) {
+            <small class="field-error">{{ getControlError('stockMaximo') }}</small>
           }
         </label>
 
         <label class="field">
           <span>Usos máximos</span>
           <input type="number" formControlName="usosMaximos" min="1" step="1" />
-          @if (hasControlError('usosMaximos', 'min')) {
-            <small class="field-error">Si se informa, debe ser mayor que 0.</small>
+          @if (hasControlError('usosMaximos')) {
+            <small class="field-error">{{ getControlError('usosMaximos') }}</small>
           }
         </label>
 
@@ -191,11 +194,11 @@
       }
 
       <div class="promo-form__actions">
-        <button
-          type="submit"
-          class="promo-primary-btn"
-          [disabled]="guardando()"
-        >
+          <button
+            type="submit"
+            class="promo-primary-btn"
+            [disabled]="guardando() || form.invalid"
+          >
           {{ guardando() ? 'Guardando...' : (promocionEditandoId() ? 'Guardar cambios' : 'Crear promoción') }}
         </button>
         <button type="button" class="promo-secondary-btn" (click)="cancelarEdicion()">

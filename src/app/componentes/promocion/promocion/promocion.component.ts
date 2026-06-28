@@ -19,6 +19,12 @@ import {
   Validators,
 } from '@angular/forms';
 import { catchError, finalize, of } from 'rxjs';
+import {
+  clearFormApiErrors,
+  getFieldError,
+  mapApiError,
+  setFormErrors,
+} from '../../../core/errors/form-error.utils';
 import { getUserErrorMessage } from '../../../core/errors/error-parser';
 import {
   Producto,
@@ -132,8 +138,8 @@ export class PromocionComponent implements OnChanges {
       fechaCaducidad: ['', Validators.required],
       activa: [true],
       estado: ['BORRADOR', Validators.required],
-      stockMaximo: [''],
-      usosMaximos: [''],
+      stockMaximo: ['', [Validators.min(1)]],
+      usosMaximos: ['', [Validators.min(1)]],
       codigo: [''],
       productoId: [''],
     },
@@ -265,8 +271,9 @@ export class PromocionComponent implements OnChanges {
   guardarPromocion(): void {
     this.errorMensaje.set('');
     this.exitoMensaje.set('');
+    clearFormApiErrors(this.form);
 
-    if (this.form.invalid || !this.negocioId) {
+    if (this.form.invalid || !this.negocioId || !this.validarFechasFormulario()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -295,11 +302,11 @@ export class PromocionComponent implements OnChanges {
           this.cargarPromociones();
         },
         error: (error: unknown) => {
+          const apiError = mapApiError(error, 'La promoción no se guardó.');
+          setFormErrors(this.form, apiError.fieldErrors);
           this.errorMensaje.set(
-            getUserErrorMessage(
-              error,
-              'La promoción no se guardó.',
-            ),
+            apiError.message ||
+              (Object.keys(apiError.fieldErrors).length ? '' : 'La promoción no se guardó.'),
           );
         },
       });
@@ -409,6 +416,28 @@ export class PromocionComponent implements OnChanges {
     }
 
     return errorKey ? Boolean(control.hasError(errorKey)) : Boolean(control.invalid);
+  }
+
+  getControlError(controlName: string): string {
+    const control = this.form.get(controlName);
+
+    if (controlName === 'descuento' && this.form.hasError('descuentoInvalido')) {
+      return 'El descuento no puede ser negativo.';
+    }
+
+    if (controlName === 'descuento' && this.form.hasError('porcentajeFueraDeRango')) {
+      return 'Si es porcentaje, debe estar entre 0 y 100.';
+    }
+
+    if (controlName === 'stockMaximo') {
+      return 'El stock debe ser mayor que 0.';
+    }
+
+    if (controlName === 'usosMaximos') {
+      return 'Los usos máximos deben ser mayores que 0.';
+    }
+
+    return getFieldError(control);
   }
 
   private cargarPromociones(): void {
@@ -524,6 +553,29 @@ export class PromocionComponent implements OnChanges {
       codigo: this.optionalString(raw.codigo),
       productoId: this.optionalNumber(raw.productoId),
     };
+  }
+
+  private validarFechasFormulario(): boolean {
+    const inicio = String(this.form.controls.fechaInicio.value ?? '').trim();
+    const caducidad = String(this.form.controls.fechaCaducidad.value ?? '').trim();
+
+    if (inicio && Number.isNaN(new Date(inicio).getTime())) {
+      this.form.controls.fechaInicio.setErrors({
+        ...(this.form.controls.fechaInicio.errors ?? {}),
+        api: 'La fecha seleccionada no es válida.',
+      });
+      return false;
+    }
+
+    if (!caducidad || Number.isNaN(new Date(caducidad).getTime())) {
+      this.form.controls.fechaCaducidad.setErrors({
+        ...(this.form.controls.fechaCaducidad.errors ?? {}),
+        api: 'La fecha seleccionada no es válida.',
+      });
+      return false;
+    }
+
+    return true;
   }
 
   private normalizeEstado(value: unknown): PromocionEstado {

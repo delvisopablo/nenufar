@@ -10,6 +10,12 @@ import {
   savePendingEmailVerification,
 } from '../../servicios/authService/email-verification.storage';
 import { getUserErrorMessage, isAppErrorModel } from '../../core/errors/error-parser';
+import {
+  clearFormApiErrors,
+  getFieldError,
+  mapApiError,
+  setFormErrors,
+} from '../../core/errors/form-error.utils';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
 
 @Component({
@@ -83,6 +89,7 @@ export class ConfirmarEmailComponent implements OnInit, OnDestroy {
   confirmarCodigo(): void {
     this.errorMensaje.set('');
     this.exitoMensaje.set('');
+    clearFormApiErrors(this.verificationForm);
 
     if (this.verificationForm.invalid) {
       this.verificationForm.markAllAsTouched();
@@ -109,7 +116,12 @@ export class ConfirmarEmailComponent implements OnInit, OnDestroy {
       },
       error: (error: unknown) => {
         this.confirmando.set(false);
-        this.errorMensaje.set(this.getMensajeConfirmacionError(error));
+        const apiError = mapApiError(error, this.getMensajeConfirmacionError(error));
+        if (!Object.keys(apiError.fieldErrors).length && this.esErrorDeCodigo(error)) {
+          apiError.fieldErrors['code'] = this.getMensajeConfirmacionError(error);
+        }
+        setFormErrors(this.verificationForm, apiError.fieldErrors);
+        this.errorMensaje.set(apiError.message && !Object.keys(apiError.fieldErrors).length ? apiError.message : '');
       }
     });
   }
@@ -171,6 +183,10 @@ export class ConfirmarEmailComponent implements OnInit, OnDestroy {
       return '';
     }
 
+    if (control.hasError('api')) {
+      return String(control.getError('api'));
+    }
+
     if (control.hasError('required')) {
       return 'Introduce el código de 6 dígitos.';
     }
@@ -179,7 +195,7 @@ export class ConfirmarEmailComponent implements OnInit, OnDestroy {
       return 'El código debe tener exactamente 6 dígitos.';
     }
 
-    return 'Revisa el código.';
+    return getFieldError(control);
   }
 
   volverAlRegistro(): void {
@@ -266,6 +282,16 @@ export class ConfirmarEmailComponent implements OnInit, OnDestroy {
       errorText.includes('EXPIR') ||
       errorText.includes('CADUC') ||
       errorText.includes('VENCID')
+    );
+  }
+
+  private esErrorDeCodigo(error: unknown): boolean {
+    const errorText = this.getErrorText(error);
+    return (
+      errorText.includes('CODE') ||
+      errorText.includes('CODIGO') ||
+      errorText.includes('CÓDIGO') ||
+      errorText.includes('TOKEN')
     );
   }
 

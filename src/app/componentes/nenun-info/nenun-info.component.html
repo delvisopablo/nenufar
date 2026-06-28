@@ -5,7 +5,10 @@
 
       <div class="modal-header">
         <h2>¿Cómo funciona el estanque?</h2>
-        <p>Cada nenúfar es interactivo. Prueba tú mismo los tres gestos.</p>
+        <p>
+          Pasa el cursor por encima de un nenúfar para ver una vista rápida. Haz doble clic
+          sobre un nenúfar para abrir su información completa. También puedes usar clic derecho.
+        </p>
       </div>
 
       <div class="cards">
@@ -51,8 +54,8 @@
             </div>
           </div>
 
-          <div class="card-label">Hover</div>
-          <div class="card-hint">Pasa el cursor encima</div>
+          <div class="card-label">Vista rápida</div>
+          <div class="card-hint">Pasa el cursor por encima</div>
           <span class="card-cue">👆 Apúntame</span>
         </div>
 
@@ -90,14 +93,20 @@
             </div>
           </div>
 
-          <div class="card-label">Click izquierdo</div>
+          <div class="card-label">Clic izquierdo</div>
           <div class="card-hint">Empuja según donde hagas clic</div>
           <span class="card-cue">🖱 Empújame</span>
         </div>
 
         <div class="card" id="card-detail">
           <div class="arena">
-            <div class="lily-wrap" id="lily-detail" #lilyDetail (contextmenu)="onDetailContextMenu($event)">
+            <div
+              class="lily-wrap"
+              id="lily-detail"
+              #lilyDetail
+              (dblclick)="onDetailContextMenu($event)"
+              (contextmenu)="onDetailContextMenu($event)"
+            >
               <div class="detail-popup" #detailPopup [class.visible]="detailPopupVisible()">
                 <button class="dp-close" type="button" (click)="closeDetail($event)">✕</button>
 
@@ -147,9 +156,9 @@
             </div>
           </div>
 
-          <div class="card-label">Click derecho</div>
+          <div class="card-label">Doble clic o clic derecho</div>
           <div class="card-hint">Abre la ficha completa del lugar</div>
-          <span class="card-cue">🖱 Clic derecho</span>
+          <span class="card-cue">🖱 Doble clic</span>
         </div>
       </div>
     </div>

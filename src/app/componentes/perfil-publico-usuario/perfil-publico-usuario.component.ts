@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, forkJoin, of, switchMap } from 'rxjs';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { AccessRequiredModalComponent } from '../../components/shared/access-required-modal/access-required-modal.component';
 import { EstanqueBackgroundComponent } from '../shared/estanque-background/estanque-background.component';
@@ -12,11 +12,22 @@ import {
   resolvePrivateProfileRoute,
 } from '../../servicios/authService/auth.service';
 import { Logro, LogroServiceService } from '../../servicios/logroServicio/logroService.service';
-import { resolveNegocioRouteCommands } from '../../servicios/negocioService/negocio.service';
+import {
+  extractEmbeddedLogrosDestacados,
+  LogroVisualData,
+  normalizeLogroVisual,
+  resolveLogroIconAsset,
+} from '../../core/logros/logro-visuals';
+import {
+  NegocioService,
+  NegocioSummary,
+  resolveNegocioRouteCommands,
+} from '../../servicios/negocioService/negocio.service';
 import { ReviewProductMetaService } from '../../servicios/reviewProductMeta/review-product-meta.service';
 import { ResenaService } from '../../servicios/reviewServicio/resena.service';
 import {
   PerfilUsuarioResponse,
+  SeguidorEntry,
   UsuarioServiceService,
 } from '../../servicios/usuarioServicio/usuarioService.service';
 
@@ -66,6 +77,7 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
   private readonly resenaService = inject(ResenaService);
   private readonly reviewProductMeta = inject(ReviewProductMetaService);
   private readonly logroService = inject(LogroServiceService);
+  private readonly negocioService = inject(NegocioService);
 
   readonly cargando = signal(true);
   readonly error = signal('');
@@ -73,9 +85,16 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
   readonly usuarioActual = signal<AuthUser | null>(this.authService.obtenerUsuario());
   readonly resenas = signal<UserReview[]>([]);
   readonly logros = signal<Logro[]>([]);
+  readonly logrosDestacados = signal<LogroVisualData[]>([]);
+  readonly logroTooltipActivo = signal<number | null>(null);
   readonly seguidoresTotal = signal(0);
   readonly siguiendoTotal = signal(0);
   readonly siguiendoUsuario = signal(false);
+
+  readonly panelSeguimientoTipo = signal<'seguidores' | 'siguiendo' | null>(null);
+  readonly seguidoresLista = signal<SeguidorEntry[]>([]);
+  readonly siguiendoUsuariosLista = signal<SeguidorEntry[]>([]);
+  readonly siguiendoNegociosLista = signal<NegocioSummary[]>([]);
   readonly accessModalAbierto = signal(false);
   readonly accessModalMensaje = signal('Necesitas iniciar sesion para seguir a este usuario.');
 
@@ -133,11 +152,13 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
               return forkJoin({
                 resenas: resenas$,
                 logros: this.cargarLogros(perfil.id),
+                destacados: this.cargarLogrosDestacados(perfil),
               }).pipe(
                 catchError(() =>
                   of({
                     resenas: [],
                     logros: [],
+                    destacados: [],
                   }),
                 ),
               );
@@ -156,6 +177,7 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
         if (result) {
           this.resenas.set(this.reviewProductMeta.mergeReviews(result.resenas));
           this.logros.set(result.logros);
+          this.logrosDestacados.set(result.destacados);
         }
 
         this.cargando.set(false);
@@ -226,6 +248,43 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
     return resolveNegocioRouteCommands(negocio);
   }
 
+  getLogroIcon(logro: unknown, collection: readonly unknown[] = this.logros()): string {
+    return resolveLogroIconAsset(logro, collection);
+  }
+
+  mostrarLogroTooltip(logroId: number): void {
+    this.logroTooltipActivo.set(logroId);
+  }
+
+  ocultarLogroTooltip(): void {
+    this.logroTooltipActivo.set(null);
+  }
+
+  alternarLogroTooltip(logroId: number, event: Event): void {
+    event.stopPropagation();
+    this.logroTooltipActivo.update((actual) => actual === logroId ? null : logroId);
+  }
+
+  getLogroDestacadoTooltip(logro: LogroVisualData): string {
+    return [
+      logro.descripcion,
+      logro.conseguidoEn ? `Conseguido el ${this.formatFecha(logro.conseguidoEn)}` : '',
+      logro.motivo || logro.progreso,
+    ].filter(Boolean).join(' · ');
+  }
+
+  formatFecha(fecha?: string): string {
+    if (!fecha) {
+      return '';
+    }
+
+    return new Date(fecha).toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
   private cargarLogros(usuarioId: number) {
     return forkJoin({
       asignados: this.logroService.porUsuario(usuarioId).pipe(catchError(() => of([]))),
@@ -241,11 +300,34 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
     );
   }
 
+  private cargarLogrosDestacados(perfil: PerfilUsuarioResponse) {
+    const embebidos = extractEmbeddedLogrosDestacados(perfil);
+    if (embebidos.length) {
+      return of(embebidos);
+    }
+
+    const request$ = this.esPerfilPropio()
+      ? this.logroService.misLogrosDestacados()
+      : this.logroService.logrosDestacadosUsuario(perfil.id);
+
+    return request$.pipe(
+      map((items) =>
+        items
+          .map((item) => normalizeLogroVisual(item))
+          .filter((item): item is LogroVisualData => Boolean(item))
+          .slice(0, 3),
+      ),
+      catchError(() => of([] as LogroVisualData[])),
+    );
+  }
+
   private cargarSeguimiento(perfil: PerfilUsuarioResponse): void {
     forkJoin({
       seguidores: this.usuarioService.getSeguidores(perfil.id).pipe(catchError(() => of([]))),
       siguiendo: this.usuarioService.getSiguiendo(perfil.id).pipe(catchError(() => of([]))),
     }).subscribe(({ seguidores, siguiendo }) => {
+      this.seguidoresLista.set(seguidores);
+      this.siguiendoUsuariosLista.set(siguiendo);
       this.seguidoresTotal.set(
         seguidores.length ||
         Number(perfil._count?.seguidores ?? 0) ||
@@ -257,6 +339,13 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
         0,
       );
     });
+
+    if (this.esPerfilPropio()) {
+      this.negocioService.listSeguidos().pipe(catchError(() => of([]))).subscribe((negocios) => {
+        this.siguiendoNegociosLista.set(negocios);
+        this.siguiendoTotal.update((total) => total + negocios.length);
+      });
+    }
 
     const actual = this.usuarioActual();
     if (!actual?.id || this.esPerfilPropio()) {
@@ -271,6 +360,33 @@ export class PerfilPublicoUsuarioComponent implements OnInit {
         items.some((item) => item.usuario?.id === perfil.id),
       );
     });
+  }
+
+  abrirPanelSeguidores(): void {
+    this.panelSeguimientoTipo.set('seguidores');
+  }
+
+  abrirPanelSiguiendo(): void {
+    this.panelSeguimientoTipo.set('siguiendo');
+  }
+
+  cerrarPanelSeguimiento(): void {
+    this.panelSeguimientoTipo.set(null);
+  }
+
+  getSeguidorRoute(entry: SeguidorEntry): (string | number)[] {
+    const usuario = entry.usuario;
+    const actual = this.usuarioActual();
+
+    if (actual?.id != null && usuario?.id === actual.id) {
+      return resolvePrivateProfileRoute(actual);
+    }
+
+    return ['/usuario', usuario.id];
+  }
+
+  getNegocioSeguidoRoute(negocio: NegocioSummary): (string | number)[] | null {
+    return resolveNegocioRouteCommands(negocio);
   }
 
   irALogin(): void {

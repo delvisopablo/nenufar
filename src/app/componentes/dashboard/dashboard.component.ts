@@ -200,7 +200,7 @@ export class DashboardComponent implements OnInit {
     this.negocioService.getMine().subscribe({
       next: (negocio) => {
         if (!negocio?.id) {
-          this.error.set('Falta el identificador del negocio para abrir el dashboard.');
+          this.error.set('Falta el identificador del negocio para abrir Minenufas.');
           this.cargando.set(false);
           return;
         }
@@ -209,7 +209,7 @@ export class DashboardComponent implements OnInit {
         this.cargarNegocioBase(negocio.id);
       },
       error: () => {
-        this.error.set('Falta el identificador del negocio para abrir el dashboard.');
+        this.error.set('Falta el identificador del negocio para abrir Minenufas.');
         this.cargando.set(false);
       },
     });
@@ -219,7 +219,7 @@ export class DashboardComponent implements OnInit {
     const negocioId = this.negocioId();
 
     if (!negocioId) {
-      this.error.set('Falta el identificador del negocio para abrir el dashboard.');
+      this.error.set('Falta el identificador del negocio para abrir Minenufas.');
       this.cargando.set(false);
       return;
     }
@@ -271,7 +271,7 @@ export class DashboardComponent implements OnInit {
         this.cargando.set(false);
       },
       error: () => {
-        this.error.set('El dashboard del negocio no se cargó.');
+        this.error.set('Minenufas no se cargó.');
         this.cargando.set(false);
       },
     });
@@ -284,7 +284,7 @@ export class DashboardComponent implements OnInit {
         this.cargarDashboard();
       },
       error: () => {
-        this.error.set('El negocio del dashboard no se resolvió.');
+        this.error.set('El negocio de Minenufas no se resolvió.');
         this.cargando.set(false);
       },
     });

@@ -122,6 +122,7 @@ export class ResenaDetalleModalComponent implements OnChanges {
   comentarioDraft = '';
   comentariosError = '';
   loadingComentarios = false;
+  comentariosAbiertos = false;
   publicandoComentario = false;
   likedByMe = false;
   likesCount = 0;
@@ -155,6 +156,7 @@ export class ResenaDetalleModalComponent implements OnChanges {
       this.comentarioDraft = '';
       this.comentarios = [];
       this.comentariosError = '';
+      this.comentariosAbiertos = false;
       this.likeError = '';
       this.loadedReviewId = null;
       this.loadedLikeReviewId = null;
@@ -162,9 +164,24 @@ export class ResenaDetalleModalComponent implements OnChanges {
       this.likesCount = this.parseCount(this.resena?.likesCount);
 
       if (reviewId) {
-        this.cargarComentarios();
         this.cargarLikes();
       }
+    }
+  }
+
+  /** Número de comentarios a mostrar en la flecha antes de desplegarlos (no dispara carga). */
+  getComentariosCount(): number {
+    if (this.comentarios.length) {
+      return this.comentarios.length;
+    }
+    return this.parseCount(this.resena?.['comentariosCount']);
+  }
+
+  toggleComentarios(): void {
+    this.comentariosAbiertos = !this.comentariosAbiertos;
+
+    if (this.comentariosAbiertos && !this.comentarios.length) {
+      this.cargarComentarios();
     }
   }
 

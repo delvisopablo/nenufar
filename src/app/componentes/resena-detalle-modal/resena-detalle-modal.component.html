@@ -69,50 +69,60 @@
     </div>
 
     <section class="review-comments" aria-label="Comentarios de la reseña">
-      <div class="review-comments__head">
+      <button
+        type="button"
+        class="review-comments__toggle"
+        [attr.aria-expanded]="comentariosAbiertos"
+        (click)="toggleComentarios()"
+      >
+        <span class="review-comments__arrow" [class.review-comments__arrow--open]="comentariosAbiertos" aria-hidden="true">›</span>
         <h3>Comentarios</h3>
-        <span>{{ comentarios.length }}</span>
-      </div>
+        @if (getComentariosCount() > 0) {
+          <span>{{ getComentariosCount() }}</span>
+        }
+      </button>
 
-      @if (loadingComentarios) {
-        <p class="review-comments__muted">Cargando comentarios...</p>
-      } @else if (comentarios.length) {
-        <div class="review-comments__list">
-          @for (comment of comentarios; track comment.id ?? $index) {
-            <article class="review-comment">
-              <div class="review-comment__head">
-                <strong>{{ getCommentAuthor(comment) }}</strong>
-                @if (getCommentDate(comment)) {
-                  <time>{{ getCommentDate(comment) }}</time>
-                }
-              </div>
-              <p>{{ comment.contenido }}</p>
-            </article>
-          }
+      @if (comentariosAbiertos) {
+        @if (loadingComentarios) {
+          <p class="review-comments__muted">Cargando comentarios...</p>
+        } @else if (comentarios.length) {
+          <div class="review-comments__list">
+            @for (comment of comentarios; track comment.id ?? $index) {
+              <article class="review-comment">
+                <div class="review-comment__head">
+                  <strong>{{ getCommentAuthor(comment) }}</strong>
+                  @if (getCommentDate(comment)) {
+                    <time>{{ getCommentDate(comment) }}</time>
+                  }
+                </div>
+                <p>{{ comment.contenido }}</p>
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="review-comments__muted">Todavía no hay comentarios en esta reseña.</p>
+        }
+
+        <div class="review-comments__form">
+          <textarea
+            [value]="comentarioDraft"
+            (input)="updateComentarioDraft($any($event.target).value)"
+            placeholder="Añadir comentario"
+            rows="3"
+          ></textarea>
+          <button
+            type="button"
+            class="review-detail__secondary"
+            [disabled]="publicandoComentario || !comentarioDraft.trim()"
+            (click)="publicarComentario()"
+          >
+            {{ publicandoComentario ? 'Publicando...' : 'Comentar' }}
+          </button>
         </div>
-      } @else {
-        <p class="review-comments__muted">Todavía no hay comentarios en esta reseña.</p>
-      }
 
-      <div class="review-comments__form">
-        <textarea
-          [value]="comentarioDraft"
-          (input)="updateComentarioDraft($any($event.target).value)"
-          placeholder="Añadir comentario"
-          rows="3"
-        ></textarea>
-        <button
-          type="button"
-          class="review-detail__secondary"
-          [disabled]="publicandoComentario || !comentarioDraft.trim()"
-          (click)="publicarComentario()"
-        >
-          {{ publicandoComentario ? 'Publicando...' : 'Comentar' }}
-        </button>
-      </div>
-
-      @if (comentariosError) {
-        <p class="review-comments__error" role="alert">{{ comentariosError }}</p>
+        @if (comentariosError) {
+          <p class="review-comments__error" role="alert">{{ comentariosError }}</p>
+        }
       }
     </section>
 

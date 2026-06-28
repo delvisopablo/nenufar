@@ -2,10 +2,6 @@
   <app-estanque-background class="profile-pond-bg" />
 
   <div class="profile-page">
-    <nav class="negocio-topbar">
-      <button class="back-btn" type="button" (click)="volver()">← Volver</button>
-    </nav>
-
     @if (errorMensaje) {
       <div class="alert-error" role="alert">{{ errorMensaje }}</div>
     }
@@ -18,10 +14,13 @@
             [src]="getNenufarAsset()"
             alt="Nenúfar del negocio"
           >
-          <span class="petalos-chip">{{ getPetalosPerfil() }} pétalos</span>
+          <span class="petalos-chip">
+            <img class="petalos-chip__icon" src="assets/imagenes/petalos-flor-5.png" alt="Pétalos">
+            <span>{{ getPetalosPerfil() }} pétalos</span>
+          </span>
         </div>
 
-        <div class="business-card__content" [class.business-card__content--with-summary]="tieneHorarioConfigurado()">
+        <div class="business-card__content" [class.business-card__content--with-summary]="tieneResumenDerecho()">
           <div class="business-card__body">
             <h1 class="business-name">{{ negocio?.nombre || 'Cargando…' }}</h1>
             <p class="business-handle">{{ getBusinessNickname() }}</p>
@@ -81,13 +80,35 @@
             </div>
           </div>
 
-          @if (tieneHorarioConfigurado()) {
+          @if (tieneResumenDerecho()) {
             <aside class="business-card__summary">
-              <app-business-horario-resumen
-                [horario]="negocio?.horario"
-                [reservasActivas]="getReservasActivas()"
-                [intervaloReserva]="negocio?.intervaloReserva"
-              />
+              @if (tieneHorarioConfigurado()) {
+                <app-business-horario-resumen
+                  [horario]="negocio?.horario"
+                  [reservasActivas]="getReservasActivas()"
+                  [intervaloReserva]="negocio?.intervaloReserva"
+                />
+              }
+
+              @if (getLogrosNegocio().length) {
+                <section class="business-achievements-panel" aria-label="Logros de negocio">
+                  <div class="business-achievements-panel__head">
+                    <span>Logros de negocio</span>
+                  </div>
+
+                  <div class="business-achievements-list">
+                    @for (logro of getLogrosNegocio(); track logro.id) {
+                      <article class="business-achievement">
+                        <img [src]="getLogroNegocioIcon(logro)" alt="">
+                        <div>
+                          <strong>{{ logro.titulo }}</strong>
+                          <span>{{ getLogroNegocioText(logro) }}</span>
+                        </div>
+                      </article>
+                    }
+                  </div>
+                </section>
+              }
             </aside>
           }
         </div>
@@ -99,7 +120,7 @@
             <button class="action-btn action-btn--primary" type="button" (click)="irAEditarNegocio()">
               Nenúditar
             </button>
-            <button class="action-btn" type="button" (click)="irADashboardNegocio()">Dashboard</button>
+            <button class="action-btn" type="button" (click)="irADashboardNegocio()">Mi Nenúfar</button>
             <button class="action-btn" type="button" (click)="abrirHorario()">Horario</button>
             <button class="action-btn" type="button" (click)="abrirCatalogo()">Catálogo</button>
             <button class="action-btn" type="button" (click)="abrirPromociones()">Promociones</button>
@@ -148,9 +169,9 @@
             tabindex="0"
             role="button"
             aria-label="Abrir detalle de reseña"
-            (click)="abrirDetalleResena(resena)"
-            (keydown.enter)="abrirDetalleResena(resena)"
-            (keydown.space)="abrirDetalleResena(resena); $event.preventDefault()"
+            (click)="onResenaCardClick(resena)"
+            (keydown.enter)="onResenaCardClick(resena)"
+            (keydown.space)="onResenaCardClick(resena); $event.preventDefault()"
           >
             <img
               class="review-avatar"
@@ -190,6 +211,55 @@
               <p class="review-text">{{ resena.contenido }}</p>
               @if (resena.selloNenufar) {
                 <span class="nenufar-seal">Sello Nenúfar</span>
+              }
+
+              <button
+                type="button"
+                class="review-comments-toggle"
+                [attr.aria-expanded]="comentariosResenaAbiertos(resena)"
+                (click)="toggleComentariosResena(resena, $event)"
+              >
+                <span
+                  class="review-comments-toggle__arrow"
+                  [class.review-comments-toggle__arrow--open]="comentariosResenaAbiertos(resena)"
+                  aria-hidden="true"
+                >›</span>
+                @if (haySabidoComentarios(resena)) {
+                  {{ getComentariosCountResena(resena) }} comentario{{ getComentariosCountResena(resena) !== 1 ? 's' : '' }}
+                } @else {
+                  Comentarios
+                }
+              </button>
+
+              @if (comentariosResenaAbiertos(resena)) {
+                <div class="review-comments-inline" (click)="$event.stopPropagation()">
+                  @if (cargandoComentariosResena(resena)) {
+                    <p class="review-comments-inline__muted">Cargando comentarios...</p>
+                  } @else if (getComentariosErrorDeResena(resena)) {
+                    <p class="review-comments-inline__error">{{ getComentariosErrorDeResena(resena) }}</p>
+                  } @else if (getComentariosDeResena(resena).length) {
+                    @for (comentario of getComentariosDeResena(resena); track comentario.id) {
+                      <div class="review-comment-inline">
+                        <img
+                          class="review-comment-inline__avatar"
+                          [src]="comentario.usuario?.foto || 'assets/imagenes/rana1_profile_foto.png'"
+                          alt=""
+                        >
+                        <div>
+                          <div class="review-comment-inline__head">
+                            <strong>{{ comentario.usuario?.nombre || 'Cliente de Nenúfar' }}</strong>
+                            @if (getComentarioFecha(comentario)) {
+                              <time>{{ getComentarioFecha(comentario) }}</time>
+                            }
+                          </div>
+                          <p>{{ comentario.contenido }}</p>
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    <p class="review-comments-inline__muted">Todavía no hay comentarios.</p>
+                  }
+                </div>
               }
             </div>
           </article>
@@ -263,6 +333,7 @@
               [negocio]="negocio"
               [embebido]="true"
               [permitirMisReservas]="false"
+              (reservaCreada)="manejarReservaCreada()"
             />
           }
 
@@ -294,6 +365,7 @@
               [negocio]="negocio"
               [puedeGestionar]="esDueno"
               [mostrarSugerencias]="esDueno"
+              (productoGuardado)="manejarProductoCatalogoGuardado()"
             />
           }
         </section>
