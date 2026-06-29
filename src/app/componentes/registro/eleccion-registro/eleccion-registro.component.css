@@ -138,6 +138,11 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
+.choice-note__action {
+  width: fit-content;
+  margin-top: 0.4rem;
+}
+
 .choice-note h2 {
   margin: 0;
   color: #fff4f9;

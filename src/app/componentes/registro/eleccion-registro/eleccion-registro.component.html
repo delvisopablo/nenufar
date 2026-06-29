@@ -50,11 +50,19 @@
         <section class="choice-note">
           <h2>Como rana</h2>
           <p>Guarda tus saltos, deja reseñas, reserva con calma y sigue el movimiento del estanque.</p>
+          <!-- Duplica la acción del nenúfar flotante de usuario (misma función, sin lógica nueva) para mejorar accesibilidad/usabilidad. -->
+          <button type="button" class="lily-action__button choice-note__action" (click)="seleccionarTipoRegistro('usuario')">
+            Registrarme como rana
+          </button>
         </section>
 
         <section class="choice-note">
           <h2>Como nenúfar</h2>
           <p>Prepara tu perfil, activa horarios, mueve promociones y abre hueco a nuevas reservas.</p>
+          <!-- Duplica la acción del nenúfar flotante de negocio (misma función, sin lógica nueva) para mejorar accesibilidad/usabilidad. -->
+          <button type="button" class="lily-action__button choice-note__action" (click)="seleccionarTipoRegistro('negocio')">
+            Registrar mi nenúfar
+          </button>
         </section>
       </div>
 
