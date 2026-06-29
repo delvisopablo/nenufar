@@ -121,7 +121,10 @@
           <button class="action-btn" type="button" (click)="abrirHorario()">Horario</button>
           <button class="action-btn" type="button" (click)="abrirCatalogo()">Catálogo</button>
           <button class="action-btn" type="button" (click)="abrirPromociones()">Promociones</button>
-          <a class="action-btn" routerLink="/mis-logros">Logros</a>
+          <!-- Botón "Logros" oculto en perfil de negocio a petición del usuario. -->
+          @if (false) {
+            <a class="action-btn" routerLink="/mis-logros">Logros</a>
+          }
         </div>
 
         <button class="nenufar-active-card" type="button" (click)="abrirSelectorNenufar()">
