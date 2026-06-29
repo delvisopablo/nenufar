@@ -252,6 +252,31 @@
   transform: translateY(-2px) scale(1.02);
 }
 
+.floating-review-btn::after {
+  content: 'Hacer reseña';
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  right: 0;
+  white-space: nowrap;
+  padding: 0.4rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(10, 25, 20, 0.92);
+  color: #f7fbff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+@media (hover: hover) {
+  .floating-review-btn:hover::after {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .floating-review-btn__flower {
   width: 100%;
   height: 100%;

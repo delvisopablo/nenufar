@@ -12,10 +12,8 @@ import {
   signal
 } from '@angular/core';
 import {
-  AbstractControl,
   FormBuilder,
   ReactiveFormsModule,
-  ValidationErrors,
   Validators
 } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
@@ -29,6 +27,12 @@ import {
   setFormErrors,
 } from '../../../core/errors/form-error.utils';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
+import {
+  getPasswordRequirements as buildPasswordRequirements,
+  passwordsMatchValidator,
+  passwordStrengthValidator,
+  PasswordRequirements,
+} from '../../../core/forms/password-validators';
 
 type PondSource = {
   x: number;
@@ -259,11 +263,11 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
       nombre: ['', [Validators.required, Validators.minLength(2)]],
       nickname: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8)]],
+      password: ['', [Validators.required, passwordStrengthValidator]],
       confirmarContrasena: ['', [Validators.required]],
       biografia: ['', [Validators.maxLength(220)]],
     },
-    { validators: this.passwordMatchValidator }
+    { validators: passwordsMatchValidator() }
   );
 
   ngOnInit(): void {
@@ -361,6 +365,10 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
     return !!control && control.invalid && (control.touched || control.dirty);
   }
 
+  tieneErrorApi(nombreCampo: string): boolean {
+    return !!this.registroForm.get(nombreCampo)?.hasError('api');
+  }
+
   getErrorCampo(nombreCampo: string): string {
     const control = this.registroForm.get(nombreCampo);
 
@@ -375,15 +383,8 @@ export class RegistroComponent implements OnInit, AfterViewInit, OnDestroy {
     return getFieldError(control);
   }
 
-  private passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
-    const password = control.get('password')?.value;
-    const confirmacion = control.get('confirmarContrasena')?.value;
-
-    if (!password || !confirmacion) {
-      return null;
-    }
-
-    return password === confirmacion ? null : { passwordMismatch: true };
+  getPasswordRequirements(): PasswordRequirements {
+    return buildPasswordRequirements(this.registroForm.get('password')?.value);
   }
 
   private aplicarErroresRegistro(error: unknown): void {

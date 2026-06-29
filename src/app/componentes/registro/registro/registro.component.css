@@ -191,6 +191,33 @@
   color: #ffe3ef;
 }
 
+.password-checklist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.password-checklist li {
+  font-size: 0.78rem;
+  color: rgba(234, 244, 255, 0.55);
+  transition: color 160ms ease;
+}
+
+.password-checklist li::before {
+  content: '○ ';
+}
+
+.password-checklist li.is-met {
+  color: #9be3b8;
+}
+
+.password-checklist li.is-met::before {
+  content: '✓ ';
+}
+
 .form-feedback {
   padding: 0.9rem 1rem;
   border: 1px solid rgba(244, 92, 156, 0.28);

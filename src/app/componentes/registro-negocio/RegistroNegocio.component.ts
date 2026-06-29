@@ -9,10 +9,8 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
-  AbstractControl,
   FormBuilder,
   ReactiveFormsModule,
-  ValidationErrors,
   Validators
 } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
@@ -26,6 +24,12 @@ import {
   setFormErrors,
 } from '../../core/errors/form-error.utils';
 import { buildApiUrl } from '../../config/api.config';
+import {
+  getPasswordRequirements as buildPasswordRequirements,
+  passwordsMatchValidator,
+  passwordStrengthValidator,
+  PasswordRequirements,
+} from '../../core/forms/password-validators';
 import { hasHorarioConfigurado } from '../../core/negocio/negocio-horario';
 import {
   AuthResponse,
@@ -112,7 +116,7 @@ export class RegistroNegocioComponent implements OnInit {
       nombreDueno: ['', [Validators.required, Validators.minLength(2)]],
       nickname: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8)]],
+      password: ['', [Validators.required, passwordStrengthValidator]],
       confirmarContrasena: ['', [Validators.required]],
       nombreNegocio: ['', [Validators.required, Validators.minLength(2)]],
       categoriaId: [null as number | null, [Validators.required]],
@@ -124,7 +128,7 @@ export class RegistroNegocioComponent implements OnInit {
       historia: ['', [Validators.maxLength(320)]],
       descripcionCorta: ['', [Validators.maxLength(160)]],
     },
-    { validators: this.passwordMatchValidator }
+    { validators: passwordsMatchValidator() }
   );
 
   ngOnInit(): void {
@@ -320,15 +324,12 @@ export class RegistroNegocioComponent implements OnInit {
     );
   }
 
-  private passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
-    const password = control.get('password')?.value;
-    const confirmacion = control.get('confirmarContrasena')?.value;
+  getPasswordRequirements(): PasswordRequirements {
+    return buildPasswordRequirements(this.negocioForm.get('password')?.value);
+  }
 
-    if (!password || !confirmacion) {
-      return null;
-    }
-
-    return password === confirmacion ? null : { passwordMismatch: true };
+  tieneErrorApi(nombreCampo: string): boolean {
+    return !!this.negocioForm.get(nombreCampo)?.hasError('api');
   }
 
   private configurarValidacionCodigo(): void {

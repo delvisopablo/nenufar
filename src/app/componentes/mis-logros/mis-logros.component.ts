@@ -7,7 +7,9 @@ import { getUserErrorMessage } from '../../core/errors/error-parser';
 import { AuthService } from '../../servicios/authService/auth.service';
 import {
   AccionLogro,
+  Dificultad,
   Logro,
+  LogroTipo,
   LogroUsuario,
   LogroServiceService,
   MiLogro,
@@ -15,10 +17,6 @@ import {
   NivelProgreso,
   ProgresoEscalera,
 } from '../../servicios/logroServicio/logroService.service';
-import {
-  LOGRO_ICON_ASSETS,
-  resolveLogroIconAsset,
-} from '../../core/logros/logro-visuals';
 import { PetalosService } from '../../servicios/petalosServicio/petalos.service';
 
 export interface CategoriaLogros {
@@ -271,7 +269,7 @@ export class MisLogrosComponent implements OnInit {
       .subscribe({
         next: ({ escaleras, logros, balance, usuarioPetalosSaldo }) => {
           this.escaleras.set(escaleras);
-          this.misLogros.set(logros.logros);
+          this.misLogros.set(this.normalizeMisLogros(logros.logros));
           this.saldoPetalos.set(
             this.resolvePetalosSaldo(logros, balance, usuarioPetalosSaldo),
           );
@@ -280,7 +278,7 @@ export class MisLogrosComponent implements OnInit {
         error: (error: unknown) => {
           this.cargando.set(false);
           this.errorMensaje.set(
-            getUserErrorMessage(error, 'Tus logros no se cargaron.'),
+            getUserErrorMessage(error, 'No se han podido cargar tus logros. Inténtalo de nuevo.'),
           );
         },
       });
@@ -383,6 +381,50 @@ export class MisLogrosComponent implements OnInit {
       .filter((item): item is MiLogro => item !== null);
   }
 
+  /**
+   * GET /me/logros devuelve un array plano con TODOS los logros (bloqueados
+   * y desbloqueados): {id, titulo, ..., desbloqueado, conseguido, conseguidoEn}.
+   * La plantilla espera la forma anidada legada de LogroUsuario
+   * ({id, conseguidoEn, logro: {titulo, ...}}). Aquí se adapta y se filtra a
+   * solo los conseguidos (igual que el comportamiento histórico de "Mis logros").
+   */
+  private normalizeMisLogros(items: unknown[]): MiLogro[] {
+    return items
+      .map((raw): MiLogro | null => {
+        const record = raw as Record<string, unknown>;
+
+        if (record['logro'] && typeof record['logro'] === 'object') {
+          return raw as MiLogro;
+        }
+
+        const desbloqueado = Boolean(record['desbloqueado'] ?? record['conseguido']);
+        if (!desbloqueado) {
+          return null;
+        }
+
+        const id = Number(record['id']);
+        if (!Number.isFinite(id) || id <= 0) {
+          return null;
+        }
+
+        return {
+          id,
+          conseguidoEn: String(record['conseguidoEn'] ?? ''),
+          logro: {
+            id,
+            titulo: String(record['titulo'] ?? 'Logro'),
+            descripcion: record['descripcion'] as string | undefined,
+            tipo: record['tipo'] as LogroTipo,
+            dificultad: record['dificultad'] as Dificultad,
+            umbral: Number(record['umbral'] ?? 0),
+            recompensaPuntos: Number(record['recompensaPuntos'] ?? 0),
+            accion: record['accion'] as AccionLogro | undefined,
+          },
+        } satisfies MiLogro;
+      })
+      .filter((item): item is MiLogro => item !== null);
+  }
+
   private logDevSecondary(area: string, error: unknown): void {
     if (!environment.production) {
       console.warn(`[MisLogrosComponent] ${area} no disponible`, error);
@@ -405,16 +447,31 @@ export class MisLogrosComponent implements OnInit {
     return map[accion] ?? accion;
   }
 
-  getLogroIcon(logro: unknown, collection: readonly unknown[] = this.misLogros()): string {
-    return resolveLogroIconAsset(logro, collection);
-  }
+  /** Fallback real y comprobado: el nenúfar normal, que siempre carga. */
+  readonly LOGRO_ICON_NORMAL = 'assets/imagenes/nenufar_small.png';
 
-  getNivelIcon(nivel: NivelProgreso, niveles: readonly NivelProgreso[]): string {
-    return resolveLogroIconAsset(nivel, niveles);
+  /** Sistema estable de iconos de logro: un nenúfar de color por id, de los 17 disponibles en assets/nenufares_colores. */
+  getLogroIconLegacy(id: number | null | undefined): string {
+    const safeId = Number(id);
+    if (!Number.isFinite(safeId) || safeId < 0) {
+      return this.LOGRO_ICON_NORMAL;
+    }
+
+    return `assets/nenufares_colores/nenufar_var${(safeId % 17) + 1}.png`;
   }
 
   getIconoNormal(): string {
-    return LOGRO_ICON_ASSETS.normal;
+    return this.LOGRO_ICON_NORMAL;
+  }
+
+  onLogroIconError(event: Event): void {
+    const img = event.target as HTMLImageElement | null;
+    if (!img || img.dataset['fallbackApplied'] === 'true') {
+      return;
+    }
+
+    img.dataset['fallbackApplied'] = 'true';
+    img.src = this.LOGRO_ICON_NORMAL;
   }
 
   esNivelActual(escalera: ProgresoEscalera, nivel: NivelProgreso): boolean {

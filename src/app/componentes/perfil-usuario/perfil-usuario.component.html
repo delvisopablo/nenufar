@@ -92,12 +92,9 @@
             </div>
 
             <div class="hero-actions">
-              <!-- Acceso a "Mis logros" oculto temporalmente desde el perfil para estabilizar la interfaz; la ruta /mis-logros sigue activa. -->
-              @if (false) {
-                <a class="follow-btn" routerLink="/mis-logros">
-                  Mis logros
-                </a>
-              }
+              <a class="follow-btn" routerLink="/mis-logros">
+                Mis logros
+              </a>
 
               @if (esPerfilPropio()) {
                 <a class="follow-btn follow-btn--soft" routerLink="/Nenulista">
@@ -400,12 +397,9 @@
           @if (logros().length) {
             <span class="meta-chip">{{ logros().length }} logro{{ logros().length !== 1 ? 's' : '' }} desbloqueado{{ logros().length !== 1 ? 's' : '' }}</span>
           }
-          <!-- Acceso a "Mis logros" oculto temporalmente desde el perfil para estabilizar la interfaz; la ruta /mis-logros sigue activa. -->
-          @if (false) {
-            <a class="follow-btn" routerLink="/mis-logros">
-              Ver todos los logros →
-            </a>
-          }
+          <a class="follow-btn" routerLink="/mis-logros">
+            Ver todos los logros →
+          </a>
         </div>
       </section>
 
@@ -413,7 +407,8 @@
   </div>
 </div>
 
-@if (esPerfilPropio()) {
+<!-- Botón flotante "Nenúditar perfil" oculto: ya existe el mismo acceso en el botón "Nenúditar" de la cabecera del perfil. -->
+@if (false) {
   <button
     type="button"
     class="profile-flower-btn"

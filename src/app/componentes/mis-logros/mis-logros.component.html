@@ -54,15 +54,22 @@
           @for (ml of logrosRecientes(); track ml.id) {
             <div class="reciente-item">
               <img
-                [src]="getLogroIcon(ml)"
-                alt="Logro"
+                [src]="getLogroIconLegacy(ml.id)"
+                alt=""
                 class="reciente-nenufar"
+                (error)="onLogroIconError($event)"
               />
               <span class="reciente-titulo">{{ ml.logro.titulo }}</span>
               <span class="reciente-fecha">{{ formatFecha(ml.conseguidoEn) }}</span>
             </div>
           }
         </div>
+      </section>
+    } @else if (!cargando() && !errorMensaje()) {
+      <section class="bloque">
+        <p class="empty-state">
+          Aún no has desbloqueado logros. Participa, reseña y explora nuevos nenúfares para empezar.
+        </p>
       </section>
     }
 
@@ -102,10 +109,11 @@
                     >
                       <div class="nivel-medalla">
                         <img
-                          [src]="getNivelIcon(n, esc.niveles)"
-                          alt="Logro"
+                          [src]="getLogroIconLegacy(n.id)"
+                          alt=""
                           class="nenufar-img"
                           [class.nenufar-img--locked]="!n.desbloqueado"
+                          (error)="onLogroIconError($event)"
                         />
                         @if (!n.desbloqueado) {
                           <span class="nivel-lock" aria-label="Bloqueado" title="Bloqueado">
@@ -252,7 +260,7 @@
 
       <div class="modal-estado" [class.desbloqueado]="detalleAbierto()!.desbloqueado">
         @if (detalleAbierto()!.desbloqueado) {
-          <img [src]="getIconoNormal()" alt="desbloqueado" class="modal-nenufar" />
+          <img [src]="getIconoNormal()" alt="desbloqueado" class="modal-nenufar" (error)="onLogroIconError($event)" />
           <span class="modal-estado-texto desbloqueado">Desbloqueado</span>
         } @else {
           <span class="modal-lock">

@@ -70,7 +70,13 @@
               autocomplete="new-password"
               placeholder="Mínimo 8 caracteres"
             >
-            @if (campoInvalido('password')) {
+            <ul class="password-checklist">
+              <li [class.is-met]="getPasswordRequirements().minLength">Mínimo 8 caracteres</li>
+              <li [class.is-met]="getPasswordRequirements().mayuscula">Una mayúscula</li>
+              <li [class.is-met]="getPasswordRequirements().minuscula">Una minúscula</li>
+              <li [class.is-met]="getPasswordRequirements().numero">Un número</li>
+            </ul>
+            @if (tieneErrorApi('password')) {
               <small class="field-error">{{ getErrorCampo('password') }}</small>
             }
           </label>

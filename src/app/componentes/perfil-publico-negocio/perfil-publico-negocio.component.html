@@ -372,13 +372,15 @@
       </div>
     }
 
-    @if (!esDueno) {
+    <!-- Botón flotante de "hacer reseña" oculto en perfiles: ahora solo debe aparecer en inicio. El modal sigue intacto, solo se quita el acceso visible aquí. -->
+    @if (false) {
       <button
         class="btn-flotante"
         type="button"
         [class.is-spinning]="reviewFlowerSpinning()"
         (click)="onFloatingReviewClick()"
-        aria-label="Nueva reseña"
+        aria-label="Hacer reseña"
+        title="Hacer reseña"
       >
         <img
           class="btn-flotante__flower"
