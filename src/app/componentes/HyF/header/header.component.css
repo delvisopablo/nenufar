@@ -206,6 +206,10 @@
   flex: 0 1 auto;
 }
 
+.filter-btn.hover-tip {
+  overflow: visible;
+}
+
 .filter-btn--active {
   background: #fff2c6;
   color: #4d3607;
@@ -783,17 +787,15 @@
 }
 
 /*
- * Tooltip rápido (sin el retardo del "title" nativo del navegador), como el
- * hover de los nenúfares del estanque: aparece casi al instante al pasar el
- * cursor o al enfocar con teclado. El atributo title/aria-label se mantiene
- * para accesibilidad; este ::after solo reproduce ese mismo texto al vuelo.
+ * Tooltip rápido sin el "title" nativo del navegador. Usa aria-label para
+ * mantener una única burbuja visual y conservar accesibilidad.
  */
 .hover-tip {
   position: relative;
 }
 
 .hover-tip::after {
-  content: attr(title);
+  content: attr(aria-label);
   position: absolute;
   top: calc(100% + 0.5rem);
   left: 50%;

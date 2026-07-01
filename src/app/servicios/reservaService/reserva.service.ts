@@ -15,6 +15,7 @@ export type ReservaEstado =
   | 'COMPLETADA'
   | 'NO_SHOW'
   | string;
+export type ReservaCanceladaPor = 'USUARIO' | 'NEGOCIO' | string;
 
 export interface AvailabilityResponse {
   date: string;
@@ -47,6 +48,7 @@ export interface ReservaRecord {
   numPersonas?: number | null;
   canceladaEn?: string | null;
   motivoCancelacion?: string | null;
+  canceladaPor?: ReservaCanceladaPor | null;
   creadoEn?: string | null;
   actualizadoEn?: string | null;
   /** Solo viene informado por GET /api/me/reservas; ausente en otras vistas. */
@@ -351,6 +353,7 @@ export class ReservaService {
       numPersonas: this.toOptionalNumber(raw['numPersonas']) ?? 1,
       canceladaEn: this.toOptionalString(raw['canceladaEn']),
       motivoCancelacion: this.toOptionalString(raw['motivoCancelacion']),
+      canceladaPor: this.toOptionalString(raw['canceladaPor']),
       creadoEn: this.toOptionalString(raw['creadoEn']),
       actualizadoEn: this.toOptionalString(raw['actualizadoEn']),
       puedeCancelar: this.toOptionalBoolean(raw['puedeCancelar']),

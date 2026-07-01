@@ -39,7 +39,6 @@
             (click)="toggleFiltros()"
             aria-haspopup="true"
             [attr.aria-expanded]="filtrosAbiertos()"
-            title="Añade categorías y subcategorías y busca tu negocio ideal."
             aria-label="Añade categorías y subcategorías y busca tu negocio ideal."
           >
             Filtros
@@ -77,7 +76,6 @@
 
           <div
             class="nenufar-limit"
-            title="Número de nenúfares en el estanque. Pon tantos como quieras mostrar."
             aria-label="Número de nenúfares en el estanque. Pon tantos como quieras mostrar."
           >
             <button
@@ -90,7 +88,6 @@
             <span
               class="nenufar-limit__value hover-tip"
               tabindex="0"
-              title="Número de nenúfares en el estanque. Pon tantos como quieras mostrar."
               aria-label="Número de nenúfares en el estanque. Pon tantos como quieras mostrar."
             >{{ selectedNenufarLimit() }}</span>
             <button
@@ -106,7 +103,6 @@
               (click)="aplicarNenufarLimit()"
               [disabled]="selectedNenufarLimit() === appliedNenufarLimit()"
               aria-label="Aplicar cantidad de nenúfares"
-              title="Aplicar cantidad de nenúfares"
             ><span class="nenufar-limit__ok-icon" aria-hidden="true">✓</span> OK</button>
           </div>
 
@@ -307,7 +303,6 @@
           type="button"
           class="top-action top-action--shopping hover-tip"
           (click)="irAListaCompra()"
-          title="Nenulista: guarda productos, organízalos en listas y prepara tus pedidos."
           aria-label="Nenulista: guarda productos, organízalos en listas y prepara tus pedidos."
         >
           Nenulista

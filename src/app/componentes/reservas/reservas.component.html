@@ -29,11 +29,6 @@
         <h2>{{ tituloPrincipal }}</h2>
       </div>
 
-      @if (modoResuelto !== 'negocio' && mostrarTabMis) {
-        <button type="button" class="ghost-btn" (click)="irAReservasPrivadas()">
-          Abrir mis reservas
-        </button>
-      }
     </header>
   }
 
@@ -433,11 +428,6 @@
             </div>
           }
 
-          @if (mostrarTabMis) {
-            <button type="button" class="ghost-btn ghost-btn--full" (click)="seleccionarPestanaCliente('mis')">
-              Ver mis reservas
-            </button>
-          }
         </aside>
       </div>
     }
@@ -469,9 +459,29 @@
                 <div class="client-booking-copy">
                   <div class="booking-top">
                     <strong>{{ reserva.negocio?.nombre || 'Negocio' }}</strong>
-                    <span class="state-pill" [class]="estadoClass(reserva.estado)">
-                      {{ estadoLabel(reserva.estado) }}
-                    </span>
+                    <div class="state-menu" (click)="$event.stopPropagation()">
+                      <button
+                        type="button"
+                        class="state-pill state-pill--button"
+                        [ngClass]="estadoClass(reserva.estado)"
+                        [attr.aria-expanded]="reservaMenuAbiertoId === reserva.id"
+                        (click)="toggleMenuReserva(reserva, $event)"
+                      >
+                        {{ estadoLabel(reserva.estado) }}
+                      </button>
+
+                      @if (reservaMenuAbiertoId === reserva.id) {
+                        <div class="state-actions-popover" role="menu">
+                          @if (puedeCancelarReserva(reserva)) {
+                            <button type="button" class="tiny-btn tiny-btn--warn" role="menuitem" (click)="abrirCancelacion(reserva, $event)">
+                              Cancelar reserva
+                            </button>
+                          } @else {
+                            <span>Sin acciones disponibles</span>
+                          }
+                        </div>
+                      }
+                    </div>
                   </div>
 
                   <p>
@@ -491,15 +501,6 @@
                   }
                 </div>
 
-                @if (puedeCancelarReserva(reserva)) {
-                  <button
-                    type="button"
-                    class="tiny-btn tiny-btn--warn"
-                    (click)="abrirCancelacion(reserva)"
-                  >
-                    Cancelar reserva
-                  </button>
-                }
               </article>
             }
           </div>

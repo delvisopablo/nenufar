@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
@@ -25,7 +25,7 @@ import {
   NegocioSummary,
   resolveNegocioRouteCommands,
 } from '../../../servicios/negocioService/negocio.service';
-import { ReservaService } from '../../../servicios/reservaService/reserva.service';
+import { ReservaRecord, ReservaService } from '../../../servicios/reservaService/reserva.service';
 import { ReviewProductMetaService } from '../../../servicios/reviewProductMeta/review-product-meta.service';
 import { ResenaService } from '../../../servicios/reviewServicio/resena.service';
 import { NenufarizarService } from '../../../services/nenufarizar.service';
@@ -103,7 +103,7 @@ export class PerfilComponent implements OnInit, OnDestroy {
   readonly usuarioActual = signal<AuthUser | null>(this.authService.obtenerUsuario());
   readonly modoEdicion = signal(false);
   readonly resenas = signal<UserReview[]>([]);
-  readonly reservas = signal<any[]>([]);
+  readonly reservas = signal<ReservaRecord[]>([]);
   readonly logros = signal<Logro[]>([]);
   readonly logrosDestacados = signal<LogroVisualData[]>([]);
   readonly logrosDestacadosSeleccionados = signal<number[]>([]);
@@ -131,6 +131,11 @@ export class PerfilComponent implements OnInit, OnDestroy {
   readonly fotoPerfilError = signal('');
   readonly fotoPerfilArchivo = signal<File | null>(null);
   readonly fotoPerfilPreview = signal<string | null>(null);
+  readonly reservaMenuAbiertoId = signal<number | null>(null);
+  readonly reservaACancelar = signal<ReservaRecord | null>(null);
+  readonly motivoCancelacionReserva = signal('');
+  readonly cancelandoReserva = signal(false);
+  readonly errorCancelacionReserva = signal('');
   readonly fotoPerfilEdicionSrc = computed(
     () =>
       this.fotoPerfilPreview() ||
@@ -253,6 +258,11 @@ export class PerfilComponent implements OnInit, OnDestroy {
     if (this.perfilEditSuccessTimerId) {
       window.clearTimeout(this.perfilEditSuccessTimerId);
     }
+  }
+
+  @HostListener('document:click')
+  cerrarReservaMenuDesdeDocumento(): void {
+    this.reservaMenuAbiertoId.set(null);
   }
 
   getStars(n: number): string {
@@ -452,6 +462,110 @@ export class PerfilComponent implements OnInit, OnDestroy {
     });
   }
 
+  estadoReservaLabel(estado: string | null | undefined): string {
+    const normalizado = String(estado || 'PENDIENTE').toUpperCase();
+    return (
+      {
+        PENDIENTE: 'Pendiente',
+        CONFIRMADA: 'Aceptada',
+        ACEPTADA: 'Aceptada',
+        CANCELADA: 'Cancelada',
+        COMPLETADA: 'Completada',
+        NO_SHOW: 'No show',
+      }[normalizado] ?? normalizado
+    );
+  }
+
+  reservaEstadoTexto(reserva: ReservaRecord): string {
+    if (String(reserva.estado || '').toUpperCase() !== 'CANCELADA') {
+      return this.estadoReservaLabel(reserva.estado);
+    }
+
+    const canceladaPor = String(reserva.canceladaPor || '').toUpperCase();
+    if (canceladaPor === 'USUARIO') {
+      return 'Cancelada por ti';
+    }
+
+    if (canceladaPor === 'NEGOCIO') {
+      return 'Cancelada por el negocio';
+    }
+
+    return 'Cancelada';
+  }
+
+  estadoReservaClass(estado: string | null | undefined): string {
+    const normalizado = String(estado || 'PENDIENTE').toLowerCase();
+    return `estado-tag--${normalizado === 'aceptada' ? 'confirmada' : normalizado}`;
+  }
+
+  toggleReservaMenu(reserva: ReservaRecord, event: Event): void {
+    event.stopPropagation();
+    this.reservaMenuAbiertoId.update((actual) => (actual === reserva.id ? null : reserva.id));
+  }
+
+  puedeCancelarReservaUsuario(reserva: ReservaRecord): boolean {
+    const estado = String(reserva.estado || '').toUpperCase();
+    const estadoCancelable = estado === 'PENDIENTE' || estado === 'CONFIRMADA' || estado === 'ACEPTADA';
+
+    return estadoCancelable && reserva.puedeCancelar !== false && !this.reservaYaPaso(reserva);
+  }
+
+  abrirCancelacionReserva(reserva: ReservaRecord, event?: Event): void {
+    event?.stopPropagation();
+
+    if (!reserva.id || !this.puedeCancelarReservaUsuario(reserva)) {
+      return;
+    }
+
+    this.reservaMenuAbiertoId.set(null);
+    this.reservaACancelar.set(reserva);
+    this.motivoCancelacionReserva.set('');
+    this.errorCancelacionReserva.set('');
+    this.cancelandoReserva.set(false);
+  }
+
+  cerrarCancelacionReserva(): void {
+    if (this.cancelandoReserva()) {
+      return;
+    }
+
+    this.reservaACancelar.set(null);
+    this.motivoCancelacionReserva.set('');
+    this.errorCancelacionReserva.set('');
+  }
+
+  confirmarCancelacionReserva(): void {
+    const reserva = this.reservaACancelar();
+    if (!reserva?.id || this.cancelandoReserva()) {
+      return;
+    }
+
+    const motivo = this.motivoCancelacionReserva().trim();
+    if (!motivo) {
+      this.errorCancelacionReserva.set('Escribe un motivo para cancelar la reserva.');
+      return;
+    }
+
+    this.cancelandoReserva.set(true);
+    this.errorCancelacionReserva.set('');
+
+    this.reservaService.cancelarPorUsuario(reserva.id, motivo).subscribe({
+      next: (actualizada) => {
+        const actualizadaCompleta = this.mergeReserva(reserva, actualizada);
+        this.reservas.update((items) =>
+          items.map((item) => (item.id === actualizada.id ? this.mergeReserva(item, actualizadaCompleta) : item)),
+        );
+        this.cancelandoReserva.set(false);
+        this.reservaACancelar.set(null);
+        this.motivoCancelacionReserva.set('');
+      },
+      error: () => {
+        this.cancelandoReserva.set(false);
+        this.errorCancelacionReserva.set('No se ha podido cancelar la reserva. Inténtalo de nuevo.');
+      },
+    });
+  }
+
   getReferidoInitial(nickname: string | null | undefined): string {
     const normalized = String(nickname ?? '').trim();
     return normalized ? normalized.charAt(0).toUpperCase() : 'N';
@@ -501,6 +615,21 @@ export class PerfilComponent implements OnInit, OnDestroy {
           );
         },
       });
+  }
+
+  private reservaYaPaso(reserva: ReservaRecord): boolean {
+    const fecha = new Date(reserva.fecha ?? '').getTime();
+    return Number.isFinite(fecha) && fecha < Date.now();
+  }
+
+  private mergeReserva(base: ReservaRecord, actualizada: ReservaRecord): ReservaRecord {
+    return {
+      ...base,
+      ...actualizada,
+      negocio: actualizada.negocio ?? base.negocio,
+      usuario: actualizada.usuario ?? base.usuario,
+      recurso: actualizada.recurso ?? base.recurso,
+    };
   }
 
   private cargarLogros(usuarioId: number) {

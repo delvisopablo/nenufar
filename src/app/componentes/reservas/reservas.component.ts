@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   EventEmitter,
+  HostListener,
   Input,
   OnChanges,
   OnInit,
@@ -119,6 +120,7 @@ export class ReservasComponent implements OnInit, OnChanges {
   motivoCancelacion = '';
   cancelandoReserva = false;
   errorCancelacion = '';
+  reservaMenuAbiertoId: number | null = null;
 
   fechaSeleccionada = this.todayIso();
   ventanaDiasOffset = 0;
@@ -466,14 +468,30 @@ export class ReservasComponent implements OnInit, OnChanges {
   }
 
   puedeCancelarReserva(reserva: ReservaRecord): boolean {
-    return reserva.estado !== 'CANCELADA' && reserva.puedeCancelar !== false;
+    const estado = String(reserva.estado || '').toUpperCase();
+    const estadoCancelable = estado === 'PENDIENTE' || estado === 'CONFIRMADA' || estado === 'ACEPTADA';
+
+    return estadoCancelable && reserva.puedeCancelar !== false && !this.reservaYaPaso(reserva);
   }
 
-  abrirCancelacion(reserva: ReservaRecord): void {
+  @HostListener('document:click')
+  cerrarMenuReserva(): void {
+    this.reservaMenuAbiertoId = null;
+  }
+
+  toggleMenuReserva(reserva: ReservaRecord, event: Event): void {
+    event.stopPropagation();
+    this.reservaMenuAbiertoId = this.reservaMenuAbiertoId === reserva.id ? null : reserva.id;
+  }
+
+  abrirCancelacion(reserva: ReservaRecord, event?: Event): void {
+    event?.stopPropagation();
+
     if (!reserva.id || !this.puedeCancelarReserva(reserva)) {
       return;
     }
 
+    this.reservaMenuAbiertoId = null;
     this.reservaACancelar = reserva;
     this.motivoCancelacion = '';
     this.errorCancelacion = '';
@@ -515,14 +533,12 @@ export class ReservasComponent implements OnInit, OnChanges {
         this.motivoCancelacion = '';
         this.exito = 'Reserva cancelada.';
         this.patchReserva(actualizada);
+        this.reservaMenuAbiertoId = null;
         this.loadAvailability(this.negocioActual?.id ?? null);
       },
-      error: (error: unknown) => {
+      error: () => {
         this.cancelandoReserva = false;
-        this.errorCancelacion = getUserErrorMessage(
-          error,
-          'No se ha podido cancelar la reserva. Inténtalo de nuevo.',
-        );
+        this.errorCancelacion = 'No se ha podido cancelar la reserva. Inténtalo de nuevo.';
       },
     });
   }
@@ -547,7 +563,7 @@ export class ReservasComponent implements OnInit, OnChanges {
   estadoLabel(estado: ReservaEstado): string {
     return (
       {
-        PENDIENTE: 'Pendiente de aceptación',
+        PENDIENTE: 'Pendiente',
         CONFIRMADA: 'Aceptada',
         CANCELADA: 'Cancelada',
         COMPLETADA: 'Completada',
@@ -585,10 +601,6 @@ export class ReservasComponent implements OnInit, OnChanges {
 
   puedeGestionar(reserva: ReservaRecord): boolean {
     return reserva.estado === 'PENDIENTE' || reserva.estado === 'CONFIRMADA';
-  }
-
-  irAReservasPrivadas(): void {
-    void this.router.navigate(['/reservas']);
   }
 
   irAGestionNegocio(): void {
@@ -875,6 +887,11 @@ export class ReservasComponent implements OnInit, OnChanges {
     }
 
     return '';
+  }
+
+  private reservaYaPaso(reserva: ReservaRecord): boolean {
+    const fecha = new Date(reserva.fecha ?? '').getTime();
+    return Number.isFinite(fecha) && fecha < Date.now();
   }
 
   private patchReserva(actualizada: ReservaRecord): void {

@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, of } from 'rxjs';
+import { catchError, finalize, forkJoin, map, of } from 'rxjs';
 import { resolveBusinessImage, addUnsplashParams, buildUnsplashSrcset } from '../../core/negocio/negocio-visuals';
 import {
   HORARIO_DAY_ORDER,
@@ -15,7 +15,7 @@ import {
   resolveOwnedBusinessId,
 } from '../../servicios/authService/auth.service';
 import { NegocioService, NegocioSummary } from '../../servicios/negocioService/negocio.service';
-import { Pedido, PedidoService } from '../../servicios/pedidoServicio/pedido.service';
+import { Pedido, PedidoEstado, PedidoService } from '../../servicios/pedidoServicio/pedido.service';
 import { Promocion, PromocionService } from '../../servicios/promocionServicio/promocionService.service';
 import {
   DashboardDisponibilidad,
@@ -62,6 +62,14 @@ export class DashboardComponent implements OnInit {
   readonly pedidosDisponibles = signal(true);
   readonly promocionesDisponibles = signal(true);
   readonly resenasDisponibles = signal(true);
+  readonly pedidoDetalle = signal<Pedido | null>(null);
+  readonly cargandoPedidoDetalle = signal(false);
+  readonly pedidoDetalleError = signal('');
+  readonly pedidoEstadoActualizandoId = signal<number | null>(null);
+  readonly pedidoCancelacion = signal<Pedido | null>(null);
+  readonly motivoCancelacionPedido = signal('');
+  readonly pedidoAccionMensaje = signal('');
+  readonly pedidoAccionError = signal('');
 
   readonly metricMax = computed(() =>
     Math.max(...this.metricas().map((item) => item.value), 1)
@@ -428,6 +436,7 @@ export class DashboardComponent implements OnInit {
     return {
       PENDIENTE: 'Pendiente',
       COMPLETADO: 'Completado',
+      ENTREGADO: 'Entregado',
       CANCELADO: 'Cancelado',
     }[estado] ?? estado;
   }
@@ -439,10 +448,145 @@ export class DashboardComponent implements OnInit {
       : 'Total pendiente';
   }
 
+  formatPedidoSubtotal(subtotal: unknown): string {
+    const total = Number(subtotal);
+    return Number.isFinite(total)
+      ? total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
+      : 'Sin subtotal';
+  }
+
   getPedidoMeta(pedido: Pedido): string {
     const items = Array.isArray(pedido.items) ? pedido.items.length : 0;
     const canal = pedido.canalVenta ? String(pedido.canalVenta).toLowerCase() : 'local';
     return items ? `${items} artículo${items !== 1 ? 's' : ''} · ${canal}` : canal;
+  }
+
+  getPedidoCliente(pedido: Pedido): string {
+    return (
+      pedido.usuario?.nombre ||
+      pedido.usuario?.nickname ||
+      pedido.usuario?.email ||
+      'Cliente de Nenúfar'
+    );
+  }
+
+  getPedidoItems(pedido: Pedido): NonNullable<Pedido['items']> {
+    return Array.isArray(pedido.items) ? pedido.items : [];
+  }
+
+  puedeCompletarPedido(pedido: Pedido): boolean {
+    return this.getPedidoEstado(pedido) === 'PENDIENTE';
+  }
+
+  puedeEntregarPedido(pedido: Pedido): boolean {
+    return this.getPedidoEstado(pedido) === 'COMPLETADO';
+  }
+
+  puedeCancelarPedido(pedido: Pedido): boolean {
+    return this.getPedidoEstado(pedido) === 'PENDIENTE';
+  }
+
+  abrirDetallePedido(pedido: Pedido): void {
+    this.pedidoDetalle.set(pedido);
+    this.pedidoDetalleError.set('');
+    this.cargandoPedidoDetalle.set(true);
+
+    this.pedidoService
+      .getPedido(pedido.id)
+      .pipe(finalize(() => this.cargandoPedidoDetalle.set(false)))
+      .subscribe({
+        next: (detalle) => {
+          const actualizado = this.mergePedido(pedido, detalle);
+          this.pedidoDetalle.set(actualizado);
+          this.reemplazarPedido(actualizado);
+        },
+        error: () => {
+          this.pedidoDetalleError.set('No se pudo cargar el detalle completo del pedido.');
+        },
+      });
+  }
+
+  cerrarDetallePedido(): void {
+    this.pedidoDetalle.set(null);
+    this.pedidoDetalleError.set('');
+  }
+
+  actualizarPedidoEstado(pedido: Pedido, estado: PedidoEstado): void {
+    if (this.pedidoEstadoActualizandoId()) {
+      return;
+    }
+
+    this.pedidoEstadoActualizandoId.set(pedido.id);
+    this.pedidoAccionMensaje.set('');
+    this.pedidoAccionError.set('');
+
+    this.pedidoService
+      .actualizarEstadoPedido(pedido.id, estado)
+      .pipe(finalize(() => this.pedidoEstadoActualizandoId.set(null)))
+      .subscribe({
+        next: (actualizado) => {
+          const pedidoActualizado = this.reemplazarPedido(this.mergePedido(pedido, actualizado));
+          this.pedidoAccionMensaje.set(
+            estado === 'ENTREGADO' ? 'Pedido marcado como entregado.' : 'Pedido marcado como completado.',
+          );
+          if (this.pedidoDetalle()?.id === pedidoActualizado.id) {
+            this.pedidoDetalle.set(pedidoActualizado);
+          }
+        },
+        error: () => {
+          this.pedidoAccionError.set('No se pudo actualizar el estado del pedido.');
+        },
+      });
+  }
+
+  abrirCancelarPedido(pedido: Pedido, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.puedeCancelarPedido(pedido) || this.pedidoEstadoActualizandoId()) {
+      return;
+    }
+
+    this.pedidoCancelacion.set(pedido);
+    this.motivoCancelacionPedido.set('');
+    this.pedidoAccionError.set('');
+    this.pedidoAccionMensaje.set('');
+  }
+
+  cerrarCancelarPedido(): void {
+    if (this.pedidoEstadoActualizandoId()) {
+      return;
+    }
+
+    this.pedidoCancelacion.set(null);
+    this.motivoCancelacionPedido.set('');
+  }
+
+  confirmarCancelarPedido(): void {
+    const pedido = this.pedidoCancelacion();
+    if (!pedido || this.pedidoEstadoActualizandoId()) {
+      return;
+    }
+
+    this.pedidoEstadoActualizandoId.set(pedido.id);
+    this.pedidoAccionError.set('');
+    this.pedidoAccionMensaje.set('');
+
+    this.pedidoService
+      .cancelarPedido(pedido.id, this.motivoCancelacionPedido())
+      .pipe(finalize(() => this.pedidoEstadoActualizandoId.set(null)))
+      .subscribe({
+        next: (actualizado) => {
+          const pedidoActualizado = this.reemplazarPedido(this.mergePedido(pedido, actualizado));
+          this.pedidoCancelacion.set(null);
+          this.motivoCancelacionPedido.set('');
+          this.pedidoAccionMensaje.set('Pedido cancelado.');
+          if (this.pedidoDetalle()?.id === pedidoActualizado.id) {
+            this.pedidoDetalle.set(pedidoActualizado);
+          }
+        },
+        error: () => {
+          this.pedidoAccionError.set('No se pudo cancelar el pedido.');
+        },
+      });
   }
 
   formatPedidoFecha(pedido: Pedido): string {
@@ -502,6 +646,44 @@ export class DashboardComponent implements OnInit {
       pedido['updatedAt'];
     const date = new Date(String(raw ?? ''));
     return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+  }
+
+  private getPedidoEstado(pedido: Pedido): string {
+    return String(pedido.estado ?? '').toUpperCase();
+  }
+
+  private mergePedido(base: Pedido, actualizado: Pedido): Pedido {
+    const itemsActualizados = this.getPedidoItems(actualizado);
+    return {
+      ...base,
+      ...actualizado,
+      negocio: actualizado.negocio ?? base.negocio,
+      usuario: actualizado.usuario ?? base.usuario,
+      items: itemsActualizados.length ? itemsActualizados : base.items,
+    };
+  }
+
+  private reemplazarPedido(actualizado: Pedido): Pedido {
+    let result = actualizado;
+
+    this.pedidos.update((items) =>
+      items.map((item) => {
+        if (item.id !== actualizado.id) {
+          return item;
+        }
+
+        result = this.mergePedido(item, actualizado);
+        return result;
+      }),
+    );
+
+    const detalle = this.pedidoDetalle();
+    if (detalle?.id === actualizado.id) {
+      result = this.mergePedido(detalle, result);
+      this.pedidoDetalle.set(result);
+    }
+
+    return result;
   }
 
   private getReviewTimestamp(review: DashboardReview): number {

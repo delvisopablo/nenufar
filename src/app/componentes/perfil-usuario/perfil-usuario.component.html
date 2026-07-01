@@ -101,9 +101,10 @@
                   Mi Nenulista
                 </a>
 
-                <a class="follow-btn follow-btn--soft" routerLink="/reservas">
-                  Mis reservas
-                </a>
+                <!--
+                  Acceso directo oculto: las acciones de reservas se gestionan
+                  desde la sección inferior "Mis reservas" de este perfil.
+                -->
               }
 
               @if (!esPerfilPropio()) {
@@ -370,15 +371,43 @@
                 <div class="reserva-info">
                   <strong class="reserva-negocio">{{ r.negocio?.nombre || 'Negocio' }}</strong>
                   <span class="reserva-fecha">
-                    {{ r.fecha | date:'d MMM yyyy' }} · {{ r.fecha?.split('T')[1]?.substring(0,5) }}h
+                    {{ r.fecha | date:'d MMM yyyy' }} · {{ r.fecha | date:'HH:mm' }}h
                   </span>
                   @if (r.nota) {
                     <span class="reserva-nota">{{ r.nota }}</span>
                   }
                 </div>
-                <span class="estado-tag estado-tag--{{ r.estado?.toLowerCase() }}">
-                  {{ r.estado || 'PENDIENTE' }}
-                </span>
+                <div class="reserva-status-menu" (click)="$event.stopPropagation()">
+                  @if (puedeCancelarReservaUsuario(r)) {
+                    <button
+                      type="button"
+                      class="estado-tag estado-tag--button"
+                      [ngClass]="estadoReservaClass(r.estado)"
+                      [attr.aria-expanded]="reservaMenuAbiertoId() === r.id"
+                      (click)="toggleReservaMenu(r, $event)"
+                    >
+                      {{ reservaEstadoTexto(r) }}
+                    </button>
+
+                    @if (reservaMenuAbiertoId() === r.id) {
+                      <div class="reserva-actions-popover" role="menu">
+                        <button type="button" role="menuitem" (click)="abrirCancelacionReserva(r, $event)">
+                          Cancelar reserva
+                        </button>
+                      </div>
+                    }
+                  } @else {
+                    <span class="estado-tag" [ngClass]="estadoReservaClass(r.estado)">
+                      {{ reservaEstadoTexto(r) }}
+                    </span>
+                  }
+                </div>
+
+                @if (r.estado === 'CANCELADA' && r.motivoCancelacion) {
+                  <span class="reserva-nota" style="flex-basis: 100%;">
+                    Motivo: {{ r.motivoCancelacion }}
+                  </span>
+                }
               </article>
             }
           </div>
@@ -437,6 +466,47 @@
   (closed)="accessModalAbierto.set(false)"
   (loginRequested)="irALogin()"
 />
+
+@if (reservaACancelar(); as reserva) {
+  <div class="seguimiento-backdrop" (click)="cerrarCancelacionReserva()">
+    <section class="seguimiento-panel profile-cancel-panel" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <button type="button" class="seguimiento-panel__close" aria-label="Cerrar" (click)="cerrarCancelacionReserva()">×</button>
+      <h3>Cancelar reserva</h3>
+      <p>
+        Indica el motivo para cancelar la reserva
+        @if (reserva.negocio?.nombre; as nombreNegocio) {
+          en <strong>{{ nombreNegocio }}</strong>.
+        } @else {
+          seleccionada.
+        }
+      </p>
+
+      <label class="profile-cancel-modal__field">
+        <span>Motivo de cancelación</span>
+        <textarea
+          rows="3"
+          [value]="motivoCancelacionReserva()"
+          (input)="motivoCancelacionReserva.set($any($event.target).value)"
+          [disabled]="cancelandoReserva()"
+          placeholder="Ej. No puedo acudir finalmente."
+        ></textarea>
+      </label>
+
+      @if (errorCancelacionReserva()) {
+        <p class="profile-cancel-modal__error" role="alert">{{ errorCancelacionReserva() }}</p>
+      }
+
+      <div class="profile-cancel-modal__actions">
+        <button type="button" class="follow-btn follow-btn--soft" [disabled]="cancelandoReserva()" (click)="cerrarCancelacionReserva()">
+          Volver
+        </button>
+        <button type="button" class="follow-btn" [disabled]="cancelandoReserva()" (click)="confirmarCancelacionReserva()">
+          {{ cancelandoReserva() ? 'Cancelando...' : 'Confirmar cancelación' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
 
 @if (panelSeguimientoTipo(); as tipo) {
   <div class="seguimiento-backdrop" (click)="cerrarPanelSeguimiento()">

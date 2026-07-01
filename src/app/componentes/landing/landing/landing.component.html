@@ -29,16 +29,6 @@
           autocomplete="current-password"
         >
 
-        <label class="remember-row">
-          <input
-            type="checkbox"
-            name="rememberMe"
-            [(ngModel)]="rememberMe"
-          >
-          <span class="remember-box" aria-hidden="true"></span>
-          <span>Recuérdame</span>
-        </label>
-
         @if (loginError()) {
           <p class="feedback">{{ loginError() }}</p>
         }

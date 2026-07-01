@@ -253,16 +253,58 @@
             <span>El panel quedará activo cuando el endpoint de pedidos esté disponible para este negocio.</span>
           </div>
         } @else if (pedidosRecientes().length) {
+          @if (pedidoAccionMensaje()) {
+            <p class="dashboard-feedback dashboard-feedback--success" role="status">{{ pedidoAccionMensaje() }}</p>
+          }
+          @if (pedidoAccionError()) {
+            <p class="dashboard-feedback dashboard-feedback--error" role="alert">{{ pedidoAccionError() }}</p>
+          }
+
           <div class="compact-list">
             @for (pedido of pedidosRecientes(); track pedido.id) {
-              <div class="compact-item">
+              <div class="compact-item compact-item--pedido">
                 <div>
                   <strong>Pedido #{{ pedido.id }}</strong>
-                  <span>{{ getPedidoMeta(pedido) }} · {{ formatPedidoFecha(pedido) }}</span>
+                  <span>{{ getPedidoCliente(pedido) }} · {{ getPedidoMeta(pedido) }} · {{ formatPedidoFecha(pedido) }}</span>
                 </div>
                 <div class="compact-item__side">
                   <strong>{{ formatPedidoTotal(pedido) }}</strong>
                   <span>{{ getPedidoEstadoLabel(pedido.estado) }}</span>
+                </div>
+                <div class="pedido-actions">
+                  <button type="button" class="mini-action" (click)="abrirDetallePedido(pedido)">
+                    Ver
+                  </button>
+                  @if (puedeCompletarPedido(pedido)) {
+                    <button
+                      type="button"
+                      class="mini-action mini-action--success"
+                      [disabled]="pedidoEstadoActualizandoId() === pedido.id"
+                      (click)="actualizarPedidoEstado(pedido, 'COMPLETADO')"
+                    >
+                      Completar
+                    </button>
+                  }
+                  @if (puedeEntregarPedido(pedido)) {
+                    <button
+                      type="button"
+                      class="mini-action mini-action--info"
+                      [disabled]="pedidoEstadoActualizandoId() === pedido.id"
+                      (click)="actualizarPedidoEstado(pedido, 'ENTREGADO')"
+                    >
+                      Entregar
+                    </button>
+                  }
+                  @if (puedeCancelarPedido(pedido)) {
+                    <button
+                      type="button"
+                      class="mini-action mini-action--danger"
+                      [disabled]="pedidoEstadoActualizandoId() === pedido.id"
+                      (click)="abrirCancelarPedido(pedido, $event)"
+                    >
+                      Cancelar
+                    </button>
+                  }
                 </div>
               </div>
             }
@@ -346,5 +388,133 @@
         }
       </article>
     </section>
+  }
+
+  @if (pedidoDetalle(); as pedido) {
+    <div class="dashboard-modal-backdrop" (click)="cerrarDetallePedido()">
+      <article class="dashboard-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <button type="button" class="modal-close" aria-label="Cerrar" (click)="cerrarDetallePedido()">×</button>
+
+        <span class="modal-kicker">Pedido #{{ pedido.id }}</span>
+        <h2>{{ getPedidoCliente(pedido) }}</h2>
+
+        <div class="pedido-detail-meta">
+          <span>{{ getPedidoEstadoLabel(pedido.estado) }}</span>
+          <span>{{ formatPedidoFecha(pedido) }}</span>
+          <span>{{ formatPedidoTotal(pedido) }}</span>
+        </div>
+
+        @if (cargandoPedidoDetalle()) {
+          <p class="dashboard-feedback">Cargando detalle...</p>
+        }
+        @if (pedidoDetalleError()) {
+          <p class="dashboard-feedback dashboard-feedback--error" role="alert">{{ pedidoDetalleError() }}</p>
+        }
+
+        @if (getPedidoItems(pedido).length) {
+          <div class="pedido-lines">
+            @for (linea of getPedidoItems(pedido); track linea.id ?? linea.productoId ?? linea.nombre) {
+              <div class="pedido-line">
+                <div>
+                  <strong>{{ linea.nombre }}</strong>
+                  <span>x{{ linea.cantidad }}</span>
+                </div>
+                <span>{{ formatPedidoSubtotal(linea.subtotal) }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state empty-state--dashed">
+            <strong>Sin líneas de producto</strong>
+            <span>El detalle del pedido no incluye productos en esta respuesta.</span>
+          </div>
+        }
+
+        @if (pedido.estado === 'CANCELADO' && pedido.motivoCancelacion) {
+          <p class="dashboard-feedback dashboard-feedback--error">Motivo: {{ pedido.motivoCancelacion }}</p>
+        }
+
+        <div class="modal-actions">
+          @if (puedeCompletarPedido(pedido)) {
+            <button
+              type="button"
+              class="primary-btn"
+              [disabled]="pedidoEstadoActualizandoId() === pedido.id"
+              (click)="actualizarPedidoEstado(pedido, 'COMPLETADO')"
+            >
+              Completar pedido
+            </button>
+          }
+          @if (puedeEntregarPedido(pedido)) {
+            <button
+              type="button"
+              class="primary-btn"
+              [disabled]="pedidoEstadoActualizandoId() === pedido.id"
+              (click)="actualizarPedidoEstado(pedido, 'ENTREGADO')"
+            >
+              Marcar entregado
+            </button>
+          }
+          @if (puedeCancelarPedido(pedido)) {
+            <button
+              type="button"
+              class="ghost-btn ghost-btn--danger"
+              [disabled]="pedidoEstadoActualizandoId() === pedido.id"
+              (click)="abrirCancelarPedido(pedido, $event)"
+            >
+              Cancelar pedido
+            </button>
+          }
+        </div>
+      </article>
+    </div>
+  }
+
+  @if (pedidoCancelacion(); as pedido) {
+    <div class="dashboard-modal-backdrop" (click)="cerrarCancelarPedido()">
+      <article class="dashboard-modal dashboard-modal--small" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <button type="button" class="modal-close" aria-label="Cerrar" (click)="cerrarCancelarPedido()">×</button>
+
+        <span class="modal-kicker">Pedido #{{ pedido.id }}</span>
+        <h2>Cancelar pedido</h2>
+        <p class="modal-copy">
+          El pedido de {{ getPedidoCliente(pedido) }} pasará a cancelado. Puedes añadir un motivo para que quede registrado.
+        </p>
+
+        <label class="modal-field">
+          <span>Motivo</span>
+          <textarea
+            rows="3"
+            placeholder="Ej. Producto no disponible."
+            [value]="motivoCancelacionPedido()"
+            [disabled]="pedidoEstadoActualizandoId() === pedido.id"
+            (input)="motivoCancelacionPedido.set($any($event.target).value)"
+          ></textarea>
+        </label>
+
+        @if (pedidoAccionError()) {
+          <p class="dashboard-feedback dashboard-feedback--error" role="alert">{{ pedidoAccionError() }}</p>
+        }
+
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="primary-btn"
+            [disabled]="pedidoEstadoActualizandoId() === pedido.id"
+            (click)="confirmarCancelarPedido()"
+          >
+            {{ pedidoEstadoActualizandoId() === pedido.id ? 'Cancelando...' : 'Confirmar cancelación' }}
+          </button>
+          <button
+            type="button"
+            class="ghost-btn"
+            [disabled]="pedidoEstadoActualizandoId() === pedido.id"
+            (click)="cerrarCancelarPedido()"
+          >
+            Volver
+          </button>
+        </div>
+      </article>
+    </div>
   }
 </section>

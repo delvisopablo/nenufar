@@ -855,6 +855,9 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         next: (respuesta) => {
           this.resumenCierre.set(respuesta);
           this.exitoMensaje.set('Pedido generado. La lista sigue disponible.');
+          if (this.historialAbierto() || this.historial().length) {
+            this.cargarMisPedidos();
+          }
           window.setTimeout(() => this.cerrarResumenCierre(), 1000);
         },
         error: (error: unknown) => {
@@ -952,12 +955,19 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
 
     this.pedidoService.cancelarPedido(pedido.id, this.motivoCancelacionPedido()).subscribe({
       next: (actualizado) => {
+        const actualizadoCompleto = this.mergePedidoParaVista(pedido, actualizado);
         this.cancelandoPedido.set(false);
         this.pedidoACancelar.set(null);
         this.motivoCancelacionPedido.set('');
         this.historial.update((items) =>
-          items.map((item) => (item.id === actualizado.id ? { ...item, ...actualizado } : item)),
+          items.map((item) =>
+            item.id === actualizado.id ? this.mergePedidoParaVista(item, actualizadoCompleto) : item,
+          ),
         );
+        const detalle = this.pedidoDetalleAbierto();
+        if (detalle?.id === actualizado.id) {
+          this.pedidoDetalleAbierto.set(this.mergePedidoParaVista(detalle, actualizadoCompleto));
+        }
         this.exitoMensaje.set('Pedido cancelado.');
       },
       error: (error: unknown) => {
@@ -967,6 +977,17 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
         );
       },
     });
+  }
+
+  private mergePedidoParaVista(base: Pedido, actualizado: Pedido): Pedido {
+    const itemsActualizados = Array.isArray(actualizado.items) ? actualizado.items : [];
+    return {
+      ...base,
+      ...actualizado,
+      negocio: actualizado.negocio ?? base.negocio,
+      usuario: actualizado.usuario ?? base.usuario,
+      items: itemsActualizados.length ? itemsActualizados : base.items,
+    };
   }
 
   // ===== Compartir / importar por código =====
