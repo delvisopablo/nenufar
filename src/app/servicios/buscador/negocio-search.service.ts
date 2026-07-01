@@ -41,6 +41,7 @@ export type NegocioReviewSnippet = {
   precioProducto?: number;
   productos?: ReviewProductChip[];
   productosSugeridos?: SuggestedReviewProduct[];
+  usuarioId?: number;
   usuarioNickname?: string;
   usuarioFoto?: string;
 };
@@ -266,6 +267,7 @@ export class NegocioSearchService {
         selloNenufar: review.selloNenufar,
         ...(review.productoNombre ? { productoNombre: review.productoNombre } : {}),
         ...(typeof review.precioProducto === 'number' ? { precioProducto: review.precioProducto } : {}),
+        ...(typeof review.usuarioId === 'number' ? { usuarioId: review.usuarioId } : {}),
         ...(review.usuarioNickname ? { usuarioNickname: review.usuarioNickname } : {}),
         ...(review.usuarioFoto ? { usuarioFoto: review.usuarioFoto } : {}),
       });
@@ -282,12 +284,14 @@ export class NegocioSearchService {
 
     const usuario = (review['usuario'] ?? null) as
       | {
+          id?: number | string;
           nombre?: string;
           autorNombre?: string;
           nickname?: string;
           foto?: string;
         }
       | null;
+    const usuarioIdRaw = Number(review.usuarioId ?? usuario?.id ?? NaN);
 
     const contenido = String(review.contenido ?? review['comentario'] ?? '').trim();
     const autorNombre =
@@ -330,6 +334,7 @@ export class NegocioSearchService {
       ...(Number.isFinite(precioProductoRaw) ? { precioProducto: precioProductoRaw } : {}),
       ...(productos.length ? { productos } : {}),
       ...(productosSugeridos.length ? { productosSugeridos } : {}),
+      ...(Number.isFinite(usuarioIdRaw) && usuarioIdRaw > 0 ? { usuarioId: usuarioIdRaw } : {}),
       ...(usuario?.nickname?.trim() ? { usuarioNickname: usuario.nickname.trim() } : {}),
       ...(usuario?.foto?.trim() ? { usuarioFoto: usuario.foto.trim() } : {}),
     };

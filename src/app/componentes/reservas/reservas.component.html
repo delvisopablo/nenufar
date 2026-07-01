@@ -169,8 +169,12 @@
 
       @if (cargando) {
         <p class="empty-state">Cargando listado del día...</p>
+      } @else if (reservasNegocioError) {
+        <p class="empty-state empty-state--error">{{ reservasNegocioError }}</p>
       } @else if (!reservasNegocioFiltradas.length) {
-        <p class="empty-state">No hay reservas para este filtro en la fecha seleccionada.</p>
+        <p class="empty-state">
+          {{ filtroEstado === 'TODAS' ? 'Este negocio todavía no tiene reservas.' : 'No hay reservas para este filtro en la fecha seleccionada.' }}
+        </p>
       } @else {
         <div class="booking-list">
           @for (reserva of reservasNegocioFiltradas; track reserva.id) {
@@ -202,8 +206,11 @@
                     <small>{{ reserva.nota }}</small>
                   }
 
-                  @if (reserva.motivoCancelacion && reserva.estado === 'CANCELADA') {
-                    <small>Motivo: {{ reserva.motivoCancelacion }}</small>
+                  @if (reserva.estado === 'CANCELADA') {
+                    <p class="cancel-banner">Reserva cancelada</p>
+                    @if (reserva.motivoCancelacion) {
+                      <small>Motivo: {{ reserva.motivoCancelacion }}</small>
+                    }
                   }
                 </div>
               </div>
@@ -444,9 +451,11 @@
           </div>
         </div>
 
-        @if (!misReservasOrdenadas.length) {
+        @if (misReservasError) {
+          <p class="empty-state empty-state--error">{{ misReservasError }}</p>
+        } @else if (!misReservasOrdenadas.length) {
           <p class="empty-state">
-            Todavía no tienes reservas guardadas. Cuando confirmes una aparecerá aquí.
+            Aún no tienes reservas activas.
           </p>
         } @else {
           <div class="client-bookings">
@@ -476,16 +485,21 @@
                   @if (reserva.nota) {
                     <small>{{ reserva.nota }}</small>
                   }
+
+                  @if (reserva.estado === 'CANCELADA' && reserva.motivoCancelacion) {
+                    <small>Motivo: {{ reserva.motivoCancelacion }}</small>
+                  }
                 </div>
 
-                <button
-                  type="button"
-                  class="tiny-btn tiny-btn--warn"
-                  [disabled]="reserva.estado === 'CANCELADA'"
-                  (click)="cancelarReservaPropia(reserva)"
-                >
-                  {{ reserva.estado === 'CANCELADA' ? 'Cancelada' : 'Cancelar' }}
-                </button>
+                @if (puedeCancelarReserva(reserva)) {
+                  <button
+                    type="button"
+                    class="tiny-btn tiny-btn--warn"
+                    (click)="abrirCancelacion(reserva)"
+                  >
+                    Cancelar reserva
+                  </button>
+                }
               </article>
             }
           </div>
@@ -504,6 +518,66 @@
     }
   }
 </div>
+
+@if (cancelModalAbierto) {
+  <div class="cancel-modal-backdrop" (click)="cerrarCancelacion()">
+    <section
+      class="cancel-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cancel-modal-title"
+      (click)="$event.stopPropagation()"
+    >
+      <button type="button" class="cancel-modal__close" (click)="cerrarCancelacion()" aria-label="Cerrar">
+        ×
+      </button>
+
+      <h3 id="cancel-modal-title">Cancelar reserva</h3>
+      <p class="cancel-modal__copy">
+        Cuéntanos brevemente por qué cancelas
+        @if (reservaACancelar?.negocio?.nombre; as nombreNegocio) {
+          la reserva en <strong>{{ nombreNegocio }}</strong>.
+        } @else {
+          esta reserva.
+        }
+      </p>
+
+      <label class="cancel-modal__field">
+        <span>Motivo de cancelación</span>
+        <textarea
+          rows="3"
+          [ngModel]="motivoCancelacion"
+          (ngModelChange)="motivoCancelacion = $event"
+          placeholder="Ej. No puedo acudir finalmente."
+          [disabled]="cancelandoReserva"
+        ></textarea>
+      </label>
+
+      @if (errorCancelacion) {
+        <p class="cancel-modal__error" role="alert">{{ errorCancelacion }}</p>
+      }
+
+      <div class="cancel-modal__actions">
+        <button
+          type="button"
+          class="ghost-btn"
+          (click)="cerrarCancelacion()"
+          [disabled]="cancelandoReserva"
+        >
+          Volver
+        </button>
+        <button
+          type="button"
+          class="tiny-btn tiny-btn--warn"
+          (click)="confirmarCancelacion()"
+          [disabled]="cancelandoReserva"
+        >
+          {{ cancelandoReserva ? 'Cancelando…' : 'Confirmar cancelación' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
 
 <app-access-required-modal
   [open]="modalAccesoAbierto"

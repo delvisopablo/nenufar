@@ -112,7 +112,7 @@ export class HeaderComponent implements OnDestroy {
       return 'Buscando nenúfares...';
     }
 
-    const total = this.resultadosBusqueda().length;
+    const total = this.resultadosVisibles().length;
     if (total === 0) {
       return 'No hay nenúfares para estos filtros';
     }
@@ -132,16 +132,23 @@ export class HeaderComponent implements OnDestroy {
   readonly subcategoriaSeleccionada = computed(
     () => this.subcategorias().find((item) => item.id === this.subcategoriaSeleccionadaId()) ?? null,
   );
-  readonly resumenFiltros = computed(() => {
-    const categoria = this.categoriaSeleccionada()?.nombre;
-    const subcategoria = this.subcategoriaSeleccionada()?.nombre;
 
-    if (categoria && subcategoria) {
-      return `${categoria} · ${subcategoria}`;
-    }
+  readonly minNenufarLimit = 1;
+  readonly maxNenufarLimit = 30;
+  /** Valor que el usuario está editando con las flechitas, aún no aplicado al estanque. */
+  readonly selectedNenufarLimit = signal(10);
+  /** Valor realmente aplicado a los resultados visibles; solo cambia al pulsar "OK". */
+  readonly appliedNenufarLimit = signal(10);
+  private readonly businessPreviewLimit = 5;
 
-    return categoria || 'Filtros';
-  });
+  /** Resultados de negocio recortados al valor confirmado con "OK". */
+  readonly resultadosVisibles = computed(() => this.resultadosBusqueda().slice(0, this.appliedNenufarLimit()));
+  readonly resultadosBusinessesPreview = computed(() =>
+    this.resultadosVisibles().slice(0, this.businessPreviewLimit),
+  );
+  readonly resultadosBusquedaExtraCount = computed(() =>
+    Math.max(0, this.resultadosVisibles().length - this.businessPreviewLimit),
+  );
 
   private readonly searchSubscription: Subscription;
 
@@ -198,7 +205,7 @@ export class HeaderComponent implements OnDestroy {
     }
 
     const target = event.target instanceof Element ? event.target : null;
-    if (target?.closest('.filter-panel, .filter-btn')) {
+    if (target?.closest('.filter-panel, .filter-btn, .filter-chips, .nenufar-limit')) {
       return;
     }
 
@@ -386,6 +393,40 @@ export class HeaderComponent implements OnDestroy {
     this.filtrosAbiertos.set(false);
     this.filtrosEstanqueService.limpiar();
     void this.ejecutarBusquedaActual();
+  }
+
+  clearSelectedCategory(event?: Event): void {
+    event?.stopPropagation();
+    this.seleccionarCategoria(null);
+  }
+
+  clearSelectedSubcategory(event?: Event): void {
+    event?.stopPropagation();
+    this.seleccionarSubcategoria(null);
+  }
+
+  setNenufarLimit(value: number): void {
+    const safeValue = Number.isFinite(value) ? Math.round(value) : this.minNenufarLimit;
+    const clamped = Math.min(this.maxNenufarLimit, Math.max(this.minNenufarLimit, safeValue));
+    this.selectedNenufarLimit.set(clamped);
+  }
+
+  increaseNenufarLimit(): void {
+    this.setNenufarLimit(this.selectedNenufarLimit() + 1);
+  }
+
+  decreaseNenufarLimit(): void {
+    this.setNenufarLimit(this.selectedNenufarLimit() - 1);
+  }
+
+  /**
+   * Aplica selectedNenufarLimit a los resultados visibles del buscador y al estanque
+   * de inicio (via FiltrosEstanqueService). Solo se dispara al pulsar "OK", nunca al
+   * subir/bajar con +/-.
+   */
+  aplicarNenufarLimit(): void {
+    this.appliedNenufarLimit.set(this.selectedNenufarLimit());
+    this.filtrosEstanqueService.setLimite(this.selectedNenufarLimit());
   }
 
   irAPerfilUsuario(usuario: UsuarioBusquedaResultado): void {

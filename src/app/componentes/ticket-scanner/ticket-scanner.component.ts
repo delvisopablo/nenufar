@@ -26,6 +26,7 @@ import {
   TicketScannerService,
   TicketScannerSubmitResult,
 } from '../../servicios/ticketScannerServicio/ticket-scanner.service';
+import { validateImageFile } from '../../core/forms/image-file-validators';
 
 type TicketHistoryEntry = {
   id: string;
@@ -201,6 +202,16 @@ export class TicketScannerComponent implements OnChanges, OnDestroy {
       return;
     }
 
+    const fileError = validateImageFile(file);
+    if (fileError) {
+      this.errorMessage = fileError;
+      if (input) {
+        input.value = '';
+      }
+      return;
+    }
+
+    this.errorMessage = '';
     this.stopCamera();
     this.revokePreviewUrl();
     this.previewUrl = URL.createObjectURL(file);

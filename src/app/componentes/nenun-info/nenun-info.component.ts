@@ -11,11 +11,12 @@ import {
   inject,
   signal
 } from '@angular/core';
+import { InformacionComponent } from '../informacion/informacion.component';
 
 @Component({
   selector: 'app-nenun-info',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, InformacionComponent],
   templateUrl: './nenun-info.component.html',
   styleUrl: './nenun-info.component.scss',
 })
@@ -29,6 +30,7 @@ export class NenunInfoComponent implements OnDestroy {
   @ViewChild('lilyDetail') private readonly lilyDetailRef?: ElementRef<HTMLElement>;
 
   readonly detailPopupVisible = signal(false);
+  readonly guiaVisualAbierta = signal(false);
   readonly pushTransform = signal('translate(0, 0) rotate(0deg)');
   readonly pushRippleActive = signal(false);
   readonly impactFlashActive = signal(false);
@@ -132,9 +134,29 @@ export class NenunInfoComponent implements OnDestroy {
     this.detailPopupVisible.set(false);
   }
 
+  abrirGuiaVisual(): void {
+    this.guiaVisualAbierta.set(true);
+  }
+
+  cerrarGuiaVisual(event?: Event): void {
+    event?.stopPropagation();
+    this.guiaVisualAbierta.set(false);
+  }
+
+  onGuiaOverlayClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.cerrarGuiaVisual();
+    }
+  }
+
   @HostListener('document:keydown', ['$event'])
   onDocumentKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') {
+      return;
+    }
+
+    if (this.guiaVisualAbierta()) {
+      this.guiaVisualAbierta.set(false);
       return;
     }
 

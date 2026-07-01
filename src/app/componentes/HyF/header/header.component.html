@@ -34,14 +34,81 @@
         <form class="searchbar" (ngSubmit)="buscarPrimerNegocio()">
           <button
             type="button"
-            class="filter-btn"
+            class="filter-btn hover-tip"
             [class.filter-btn--active]="hayFiltrosActivos()"
             (click)="toggleFiltros()"
             aria-haspopup="true"
             [attr.aria-expanded]="filtrosAbiertos()"
+            title="Añade categorías y subcategorías y busca tu negocio ideal."
+            aria-label="Añade categorías y subcategorías y busca tu negocio ideal."
           >
-            {{ resumenFiltros() }}
+            Filtros
           </button>
+
+          @if (hayFiltrosActivos()) {
+            <div class="filter-chips">
+              @if (categoriaSeleccionada(); as categoria) {
+                <span class="filter-chip">
+                  <span class="filter-chip__label">{{ categoria.nombre }}</span>
+                  <button
+                    type="button"
+                    class="filter-chip__remove"
+                    (click)="clearSelectedCategory($event)"
+                    aria-label="Quitar categoría"
+                    title="Quitar categoría"
+                  >×</button>
+                </span>
+              }
+
+              @if (subcategoriaSeleccionada(); as subcategoria) {
+                <span class="filter-chip">
+                  <span class="filter-chip__label">{{ subcategoria.nombre }}</span>
+                  <button
+                    type="button"
+                    class="filter-chip__remove"
+                    (click)="clearSelectedSubcategory($event)"
+                    aria-label="Quitar subcategoría"
+                    title="Quitar subcategoría"
+                  >×</button>
+                </span>
+              }
+            </div>
+          }
+
+          <div
+            class="nenufar-limit"
+            title="Número de nenúfares en el estanque. Pon tantos como quieras mostrar."
+            aria-label="Número de nenúfares en el estanque. Pon tantos como quieras mostrar."
+          >
+            <button
+              type="button"
+              class="nenufar-limit__btn"
+              (click)="decreaseNenufarLimit()"
+              [disabled]="selectedNenufarLimit() <= minNenufarLimit"
+              aria-label="Mostrar menos nenúfares"
+            >−</button>
+            <span
+              class="nenufar-limit__value hover-tip"
+              tabindex="0"
+              title="Número de nenúfares en el estanque. Pon tantos como quieras mostrar."
+              aria-label="Número de nenúfares en el estanque. Pon tantos como quieras mostrar."
+            >{{ selectedNenufarLimit() }}</span>
+            <button
+              type="button"
+              class="nenufar-limit__btn"
+              (click)="increaseNenufarLimit()"
+              [disabled]="selectedNenufarLimit() >= maxNenufarLimit"
+              aria-label="Mostrar más nenúfares"
+            >+</button>
+            <button
+              type="button"
+              class="nenufar-limit__ok"
+              (click)="aplicarNenufarLimit()"
+              [disabled]="selectedNenufarLimit() === appliedNenufarLimit()"
+              aria-label="Aplicar cantidad de nenúfares"
+              title="Aplicar cantidad de nenúfares"
+            ><span class="nenufar-limit__ok-icon" aria-hidden="true">✓</span> OK</button>
+          </div>
 
           <label class="searchbar-field" for="header-business-search">
             <input
@@ -128,11 +195,29 @@
               <p class="filter-results-line" role="status" aria-live="polite">
                 {{ resumenResultadoFiltro() }}
               </p>
+
+              @if (resultadosVisibles().length) {
+                <div class="filter-results-businesses">
+                  @for (negocio of resultadosBusinessesPreview(); track negocio.id) {
+                    <button
+                      type="button"
+                      class="filter-results-business"
+                      (click)="seleccionarNegocio(negocio)"
+                    >
+                      {{ negocio.nombre }}
+                    </button>
+                  }
+
+                  @if (resultadosBusquedaExtraCount() > 0) {
+                    <span class="filter-results-more">y {{ resultadosBusquedaExtraCount() }} más</span>
+                  }
+                </div>
+              }
             }
           </div>
         }
 
-        @if (resultadosUsuarios().length || resultadosBusqueda().length) {
+        @if (resultadosUsuarios().length || resultadosVisibles().length) {
           <div class="search-results" role="list">
             @if (resultadosUsuarios().length) {
               <p class="search-results__section-label">Personas</p>
@@ -161,11 +246,11 @@
               }
             }
 
-            @if (resultadosBusqueda().length) {
+            @if (resultadosVisibles().length) {
               @if (resultadosUsuarios().length) {
                 <p class="search-results__section-label">Negocios</p>
               }
-              @for (negocio of resultadosBusqueda(); track negocio.id) {
+              @for (negocio of resultadosVisibles(); track negocio.id) {
                 <article class="search-result">
                   <button type="button" class="search-result__main" (click)="seleccionarNegocio(negocio)">
                     <span class="search-result__media">
@@ -218,7 +303,13 @@
       </div>
 
       @if (mostrarMiPerfil()) {
-        <button type="button" class="top-action top-action--shopping" (click)="irAListaCompra()">
+        <button
+          type="button"
+          class="top-action top-action--shopping hover-tip"
+          (click)="irAListaCompra()"
+          title="Nenulista: guarda productos, organízalos en listas y prepara tus pedidos."
+          aria-label="Nenulista: guarda productos, organízalos en listas y prepara tus pedidos."
+        >
           Nenulista
         </button>
 

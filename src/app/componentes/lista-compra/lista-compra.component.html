@@ -320,29 +320,50 @@
           <p class="nenu-search-status">Cargando historial...</p>
         } @else if (!historial().length) {
           <div class="nenu-empty nenu-empty--soft">
-            <strong>Todavía no hay pedidos</strong>
+            <strong>Aún no tienes pedidos en tu Nenulista.</strong>
             <span>Cuando cierres una lista, los pedidos generados aparecerán aquí.</span>
           </div>
         } @else {
           <div class="nenu-historial-list">
-            @for (pedido of historial(); track pedido.pedidoId) {
+            @for (pedido of historial(); track pedido.id) {
               <article class="nenu-historial-item">
                 <div class="nenu-historial-item__head">
-                  <strong>{{ pedido.negocio.nombre }}</strong>
-                  <span class="nenu-pill">{{ pedido.estado }}</span>
+                  <strong>{{ pedido.negocio?.nombre ?? 'Negocio' }}</strong>
+                  <span class="nenu-pill">{{ pedidoEstadoLabel(pedido.estado) }}</span>
                 </div>
                 <div class="nenu-historial-item__meta">
-                  <span>{{ pedido.fecha | date: 'd MMM yyyy, HH:mm' }}</span>
+                  <span>{{ pedido.creadoEn | date: 'd MMM yyyy, HH:mm' }}</span>
                   <span class="nenu-price-tag">{{ formatPrice(pedido.total) }}</span>
-                  @if (pedido.listaOrigen) {
-                    <span class="nenu-category-chip">Desde "{{ pedido.listaOrigen.nombre }}"</span>
-                  }
                 </div>
                 <div class="nenu-historial-item__productos">
-                  @for (linea of pedido.items; track linea.id) {
+                  @for (linea of pedido.items; track linea.id ?? linea.productoId) {
                     <span class="nenu-category-chip">
-                      {{ linea.producto?.nombre ?? 'Producto' }} x{{ linea.cantidad }}
+                      {{ linea.nombre }} x{{ linea.cantidad }}
                     </span>
+                  }
+                </div>
+
+                @if (pedido.estado === 'CANCELADO') {
+                  <p class="nenu-pedido-cancelado">
+                    Pedido cancelado
+                    @if (pedido.motivoCancelacion) {
+                      <span>Motivo: {{ pedido.motivoCancelacion }}</span>
+                    }
+                  </p>
+                }
+
+                <div class="nenu-historial-item__acciones">
+                  <button type="button" class="nenu-soft-btn nenu-soft-btn--compact" (click)="abrirDetallePedido(pedido)">
+                    Ver pedido
+                  </button>
+                  @if (puedeCancelarPedido(pedido)) {
+                    <button
+                      type="button"
+                      class="nenu-danger-btn nenu-danger-btn--compact"
+                      (click)="abrirCancelarPedido(pedido, $event)"
+                    >
+                      Cancelar pedido
+                    </button>
                   }
                 </div>
               </article>
@@ -352,6 +373,98 @@
       </section>
     }
   </main>
+
+  @if (pedidoDetalleAbierto(); as pedido) {
+    <div class="nenu-detail-backdrop" (click)="cerrarDetallePedido()">
+      <article class="nenu-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <button type="button" class="nenu-detail__close" aria-label="Cerrar" (click)="cerrarDetallePedido()">×</button>
+
+        <h2>{{ pedido.negocio?.nombre ?? 'Negocio' }}</h2>
+        <div class="nenu-historial-item__meta">
+          <span>{{ pedido.creadoEn | date: 'd MMM yyyy, HH:mm' }}</span>
+          <span class="nenu-pill">{{ pedidoEstadoLabel(pedido.estado) }}</span>
+        </div>
+
+        <div class="nenu-historial-list">
+          @for (linea of pedido.items; track linea.id ?? linea.productoId) {
+            <div class="nenu-historial-item">
+              <div class="nenu-historial-item__head">
+                <strong>{{ linea.nombre }}</strong>
+                <span>x{{ linea.cantidad }}</span>
+              </div>
+              @if (linea.subtotal != null) {
+                <span class="nenu-price-tag">{{ formatPrice(linea.subtotal) }}</span>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="nenu-historial-item__meta">
+          <strong>Total</strong>
+          <span class="nenu-price-tag">{{ formatPrice(pedido.total) }}</span>
+        </div>
+
+        @if (pedido.estado === 'CANCELADO') {
+          <p class="nenu-pedido-cancelado">
+            Pedido cancelado
+            @if (pedido.motivoCancelacion) {
+              <span>Motivo: {{ pedido.motivoCancelacion }}</span>
+            }
+          </p>
+        }
+
+        @if (puedeCancelarPedido(pedido)) {
+          <div class="nenu-modal__actions">
+            <button type="button" class="nenu-danger-btn nenu-danger-btn--compact" (click)="abrirCancelarPedido(pedido)">
+              Cancelar pedido
+            </button>
+          </div>
+        }
+      </article>
+    </div>
+  }
+
+  @if (pedidoACancelar(); as pedido) {
+    <div class="nenu-detail-backdrop" (click)="cerrarCancelarPedido()">
+      <article class="nenu-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <button type="button" class="nenu-detail__close" aria-label="Cerrar" (click)="cerrarCancelarPedido()">×</button>
+
+        <h2>Cancelar pedido</h2>
+        <p>
+          Vas a cancelar el pedido en <strong>{{ pedido.negocio?.nombre ?? 'este negocio' }}</strong>.
+          Puedes contarnos el motivo (opcional).
+        </p>
+
+        <div class="nenu-field">
+          <textarea
+            rows="3"
+            placeholder="Ej. Me he equivocado al cerrar la lista."
+            [value]="motivoCancelacionPedido()"
+            (input)="motivoCancelacionPedido.set($any($event.target).value)"
+            [disabled]="cancelandoPedido()"
+          ></textarea>
+        </div>
+
+        @if (errorCancelacionPedido()) {
+          <p class="field-error">{{ errorCancelacionPedido() }}</p>
+        }
+
+        <div class="nenu-modal__actions">
+          <button
+            type="button"
+            class="nenu-primary-btn"
+            [disabled]="cancelandoPedido()"
+            (click)="confirmarCancelarPedido()"
+          >
+            {{ cancelandoPedido() ? 'Cancelando...' : 'Sí, cancelar pedido' }}
+          </button>
+          <button type="button" class="nenu-soft-btn" [disabled]="cancelandoPedido()" (click)="cerrarCancelarPedido()">
+            Volver
+          </button>
+        </div>
+      </article>
+    </div>
+  }
 
   @if (productoDetalle(); as detalle) {
     <div class="nenu-detail-backdrop" (click)="cerrarDetalleProducto()">

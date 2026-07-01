@@ -73,6 +73,24 @@
   min-width: 0;
 }
 
+.review-detail__author {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.review-detail__author:hover h2,
+.review-detail__author:focus-visible h2 {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
 .review-business__handle,
 .review-business__category,
 .review-comments__muted,

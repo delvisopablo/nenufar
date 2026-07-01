@@ -42,10 +42,9 @@ import {
   PendingProductSuggestionRequest,
   ReviewProductMetaService,
 } from '../../servicios/reviewProductMeta/review-product-meta.service';
+import { validateImageFile } from '../../core/forms/image-file-validators';
 
 type CatalogoFormControlName = 'nombre' | 'descripcion' | 'precio' | 'codigoSKU' | 'foto';
-
-const FOTO_TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp'];
 
 @Component({
   selector: 'app-catalogo-negocio-modal',
@@ -151,8 +150,9 @@ export class CatalogoNegocioModalComponent implements OnChanges, OnDestroy {
       return;
     }
 
-    if (!FOTO_TIPOS_PERMITIDOS.includes(file.type)) {
-      this.fotoArchivoError.set('Solo se aceptan imágenes JPG, PNG o WEBP.');
+    const fileError = validateImageFile(file);
+    if (fileError) {
+      this.fotoArchivoError.set(fileError);
       input.value = '';
       return;
     }

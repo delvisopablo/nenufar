@@ -204,6 +204,37 @@ export class ResenaDetalleModalComponent implements OnChanges {
     );
   }
 
+  /** Id numérico del autor de la reseña, si el dato viene disponible en la fuente real. */
+  getAutorId(): number | null {
+    const candidato =
+      this.resena?.usuario?.id ??
+      (this.resena?.['usuarioId'] as number | string | undefined) ??
+      (this.resena?.['user'] as { id?: number | string } | undefined)?.id ??
+      (this.resena?.['autor'] as { id?: number | string } | undefined)?.id ??
+      null;
+
+    const id = Number(candidato ?? 0);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+
+  /** Navega al perfil del autor de la reseña: privado si es el usuario actual, público si no. */
+  irAlAutor(): void {
+    const autorId = this.getAutorId();
+    if (!autorId) {
+      return;
+    }
+
+    this.cerrar.emit();
+
+    const currentUserId = Number(this.usuarioActual?.id ?? 0);
+    if (Number.isFinite(currentUserId) && currentUserId > 0 && currentUserId === autorId) {
+      void this.router.navigate(resolvePrivateProfileRoute(this.usuarioActual));
+      return;
+    }
+
+    void this.router.navigate(['/usuario', autorId]);
+  }
+
   getFechaLabel(): string {
     const raw = this.resena?.fechaISO ?? this.resena?.creadoEn ?? this.resena?.fecha ?? '';
     const date = new Date(String(raw));

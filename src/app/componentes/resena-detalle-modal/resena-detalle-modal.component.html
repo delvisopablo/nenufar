@@ -22,7 +22,18 @@
       >
 
       <div class="review-detail__title">
-        <h2>{{ getAutor() }}</h2>
+        @if (getAutorId()) {
+          <button
+            type="button"
+            class="review-detail__author"
+            (click)="irAlAutor()"
+            [attr.aria-label]="'Ir al perfil de ' + getAutor()"
+          >
+            <h2>{{ getAutor() }}</h2>
+          </button>
+        } @else {
+          <h2>{{ getAutor() }}</h2>
+        }
         <div class="review-detail__meta">
           <span>{{ getFechaLabel() }}</span>
           <span class="review-detail__stars">{{ getEstrellas() }}</span>

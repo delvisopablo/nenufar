@@ -128,9 +128,11 @@
           </div>
         } @else {
           <div class="action-rail">
-            <button class="action-btn action-btn--primary" type="button" (click)="abrirReservas()">
-              Reservar
-            </button>
+            @if (getReservasActivas()) {
+              <button class="action-btn action-btn--primary" type="button" (click)="abrirReservas()">
+                Reservar
+              </button>
+            }
             <button class="action-btn" type="button" (click)="abrirCatalogo()">Catálogo</button>
           </div>
         }

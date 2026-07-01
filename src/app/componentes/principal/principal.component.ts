@@ -373,6 +373,11 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       const subcategoria = this.filtrosEstanqueService.subcategoria();
       this.aplicarFiltroEstanque(categoria, subcategoria);
     }, { allowSignalWrites: true });
+
+    effect(() => {
+      const limite = this.filtrosEstanqueService.limite();
+      this.aplicarLimiteEstanque(limite);
+    }, { allowSignalWrites: true });
   }
 
   ngOnInit(): void {
@@ -802,9 +807,14 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  /** Pool de negocios que debe usarse para construir los nenufares del estanque. */
+  /**
+   * Pool de negocios que debe usarse para construir los nenufares del estanque, recortado
+   * a la cantidad elegida en el contador del header (FiltrosEstanqueService.limite), que
+   * solo cambia cuando el usuario pulsa "OK".
+   */
   private negociosParaEstanque(): NegocioLite[] {
-    return this.negociosFiltrados() ?? this.negociosDestacados();
+    const pool = this.negociosFiltrados() ?? this.negociosDestacados();
+    return pool.slice(0, this.filtrosEstanqueService.limite());
   }
 
   private filtroEstanqueActivoAnterior = false;
@@ -869,6 +879,46 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         this.reconcileZonePopulation('promos');
         this.queueZoneSync();
         this.changeDetector.markForCheck();
+      },
+    });
+  }
+
+  /** Ultimo limite ya aplicado al estanque; evita resincronizar en el primer render del effect. */
+  private limiteEstanqueAnterior = this.filtrosEstanqueService.limite();
+
+  /**
+   * Reacciona al contador de nenúfares del header (solo cambia al pulsar "OK"): si no hay
+   * categoria/subcategoria activa y se pide más negocios de los que ya están cargados,
+   * amplia negociosDestacados pidiendo ese límite al backend antes de resincronizar el
+   * estanque. Si hay filtro activo, no hace falta: aplicarFiltroEstanque ya trae hasta 30
+   * resultados por búsqueda y negociosParaEstanque() recorta al límite elegido.
+   */
+  private aplicarLimiteEstanque(limite: number): void {
+    if (limite === this.limiteEstanqueAnterior) {
+      // Primer disparo del effect (o mismo valor ya aplicado): nada que resincronizar.
+      return;
+    }
+
+    this.limiteEstanqueAnterior = limite;
+
+    if (!this.hayFiltroEstanqueActivo() && limite > this.negociosDestacados().length) {
+      this.ampliarNegociosDestacados(limite);
+    }
+
+    this.resincronizarZonasFiltradas();
+  }
+
+  private ampliarNegociosDestacados(limite: number): void {
+    this.negocioSearchService.showcase(limite).subscribe({
+      next: (items) => {
+        this.negociosDestacados.update((current) => this.mergeBusinesses(current, items));
+        this.reconcileZonePopulation('resenas');
+        this.reconcileZonePopulation('promos');
+        this.queueZoneSync();
+        this.changeDetector.markForCheck();
+      },
+      error: () => {
+        // Si falla la ampliacion, negociosParaEstanque() ya recorta al pool ya disponible.
       },
     });
   }

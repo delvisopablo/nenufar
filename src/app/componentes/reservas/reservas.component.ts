@@ -108,9 +108,17 @@ export class ReservasComponent implements OnInit, OnChanges {
 
   error = '';
   exito = '';
+  misReservasError = '';
+  reservasNegocioError = '';
 
   modalAccesoAbierto = false;
   mensajeAcceso = 'Necesitas iniciar sesion para continuar con las reservas.';
+
+  cancelModalAbierto = false;
+  reservaACancelar: ReservaRecord | null = null;
+  motivoCancelacion = '';
+  cancelandoReserva = false;
+  errorCancelacion = '';
 
   fechaSeleccionada = this.todayIso();
   ventanaDiasOffset = 0;
@@ -457,36 +465,64 @@ export class ReservasComponent implements OnInit, OnChanges {
       });
   }
 
-  cancelarReservaPropia(reserva: ReservaRecord): void {
-    if (!reserva.id) {
+  puedeCancelarReserva(reserva: ReservaRecord): boolean {
+    return reserva.estado !== 'CANCELADA' && reserva.puedeCancelar !== false;
+  }
+
+  abrirCancelacion(reserva: ReservaRecord): void {
+    if (!reserva.id || !this.puedeCancelarReserva(reserva)) {
       return;
     }
 
-    const confirmed = confirm('¿Quieres cancelar esta reserva?');
-    if (!confirmed) {
+    this.reservaACancelar = reserva;
+    this.motivoCancelacion = '';
+    this.errorCancelacion = '';
+    this.cancelandoReserva = false;
+    this.cancelModalAbierto = true;
+  }
+
+  cerrarCancelacion(): void {
+    if (this.cancelandoReserva) {
       return;
     }
 
-    const motivo = prompt('Motivo de cancelación (opcional):')?.trim() || undefined;
-    this.accionEnCurso = true;
-    this.error = '';
-    this.exito = '';
+    this.cancelModalAbierto = false;
+    this.reservaACancelar = null;
+    this.motivoCancelacion = '';
+    this.errorCancelacion = '';
+  }
 
-    this.reservaService.cancelarReserva(reserva.id, motivo).subscribe({
+  confirmarCancelacion(): void {
+    const reserva = this.reservaACancelar;
+    if (!reserva?.id || this.cancelandoReserva) {
+      return;
+    }
+
+    const motivo = this.motivoCancelacion.trim();
+    if (!motivo) {
+      this.errorCancelacion = 'Escribe un motivo para cancelar la reserva.';
+      return;
+    }
+
+    this.cancelandoReserva = true;
+    this.errorCancelacion = '';
+
+    this.reservaService.cancelarPorUsuario(reserva.id, motivo).subscribe({
       next: (actualizada) => {
-        this.accionEnCurso = false;
+        this.cancelandoReserva = false;
+        this.cancelModalAbierto = false;
+        this.reservaACancelar = null;
+        this.motivoCancelacion = '';
         this.exito = 'Reserva cancelada.';
-        if (actualizada) {
-          this.patchReserva(actualizada);
-        } else {
-          this.misReservas = this.misReservas.filter((item) => item.id !== reserva.id);
-          this.reservasNegocio = this.reservasNegocio.filter((item) => item.id !== reserva.id);
-        }
+        this.patchReserva(actualizada);
         this.loadAvailability(this.negocioActual?.id ?? null);
       },
       error: (error: unknown) => {
-        this.accionEnCurso = false;
-        this.error = getUserErrorMessage(error, 'La reserva no se canceló.');
+        this.cancelandoReserva = false;
+        this.errorCancelacion = getUserErrorMessage(
+          error,
+          'No se ha podido cancelar la reserva. Inténtalo de nuevo.',
+        );
       },
     });
   }
@@ -511,8 +547,8 @@ export class ReservasComponent implements OnInit, OnChanges {
   estadoLabel(estado: ReservaEstado): string {
     return (
       {
-        PENDIENTE: 'Pendiente',
-        CONFIRMADA: 'Confirmada',
+        PENDIENTE: 'Pendiente de aceptación',
+        CONFIRMADA: 'Aceptada',
         CANCELADA: 'Cancelada',
         COMPLETADA: 'Completada',
         NO_SHOW: 'No show',
@@ -647,12 +683,18 @@ export class ReservasComponent implements OnInit, OnChanges {
   }
 
   private loadClientMode(targetBusinessId: number | null): void {
+    this.misReservasError = '';
     const negocio$ = targetBusinessId
       ? this.getBusinessContext(targetBusinessId).pipe(catchError(() => of(null)))
       : of(null);
     const misReservas$ = this.canUsePrivateSession()
-      ? this.reservaService.getMisReservas({ limit: 50 }).pipe(catchError(() => of([])))
-      : of([]);
+      ? this.reservaService.getMisReservas({ limit: 50 }).pipe(
+          catchError(() => {
+            this.misReservasError = 'No se han podido cargar las reservas.';
+            return of([] as ReservaRecord[]);
+          }),
+        )
+      : of([] as ReservaRecord[]);
 
     forkJoin({ negocio: negocio$, misReservas: misReservas$ }).subscribe({
       next: ({ negocio, misReservas }) => {
@@ -678,6 +720,7 @@ export class ReservasComponent implements OnInit, OnChanges {
   }
 
   private loadBusinessDayData(negocioId: number): void {
+    this.reservasNegocioError = '';
     forkJoin({
       reservas: this.canUsePrivateSession()
         ? this.reservaService
@@ -686,8 +729,13 @@ export class ReservasComponent implements OnInit, OnChanges {
               to: this.endOfDayIso(this.fechaSeleccionada),
               limit: 100,
             })
-            .pipe(catchError(() => of([])))
-        : of([]),
+            .pipe(
+              catchError(() => {
+                this.reservasNegocioError = 'No se han podido cargar las reservas.';
+                return of([] as ReservaRecord[]);
+              }),
+            )
+        : of([] as ReservaRecord[]),
       disponibilidad: this.tieneHorarioConfigurado
         ? this.reservaService
             .availability(negocioId, this.fechaSeleccionada)
@@ -712,12 +760,14 @@ export class ReservasComponent implements OnInit, OnChanges {
       return;
     }
 
+    this.misReservasError = '';
     this.reservaService.getMisReservas({ limit: 50 }).subscribe({
       next: (reservas) => {
         this.misReservas = reservas;
       },
       error: () => {
         this.misReservas = [];
+        this.misReservasError = 'No se han podido cargar las reservas.';
       },
     });
   }

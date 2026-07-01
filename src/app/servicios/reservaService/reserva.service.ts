@@ -49,6 +49,8 @@ export interface ReservaRecord {
   motivoCancelacion?: string | null;
   creadoEn?: string | null;
   actualizadoEn?: string | null;
+  /** Solo viene informado por GET /api/me/reservas; ausente en otras vistas. */
+  puedeCancelar?: boolean;
   usuario?: ReservaUsuarioResumen;
   negocio?: ReservaNegocioResumen;
   recurso?: {
@@ -182,6 +184,20 @@ export class ReservaService {
             .pipe(map((response) => this.normalizeReserva(response)));
         }),
       );
+  }
+
+  /**
+   * PATCH /api/reservas/:id/cancelar — cancelación iniciada por el propio usuario.
+   * El motivo es obligatorio (el backend lo valida con CancelarReservaDto).
+   */
+  cancelarPorUsuario(id: number, motivo: string): Observable<ReservaRecord> {
+    return this.http
+      .patch<unknown>(
+        buildApiUrl(`/reservas/${id}/cancelar`),
+        { motivo: motivo.trim() },
+        { withCredentials: true },
+      )
+      .pipe(map((response) => this.normalizeReserva(response)));
   }
 
   cancelarReserva(id: number, motivo?: string): Observable<ReservaRecord | null> {
@@ -337,6 +353,7 @@ export class ReservaService {
       motivoCancelacion: this.toOptionalString(raw['motivoCancelacion']),
       creadoEn: this.toOptionalString(raw['creadoEn']),
       actualizadoEn: this.toOptionalString(raw['actualizadoEn']),
+      puedeCancelar: this.toOptionalBoolean(raw['puedeCancelar']),
       usuario: Object.keys(usuarioRaw).length
         ? {
             id: this.toOptionalNumber(usuarioRaw['id']),
@@ -383,6 +400,10 @@ export class ReservaService {
 
   private toOptionalString(value: unknown): string | null {
     return typeof value === 'string' && value.trim() ? value : null;
+  }
+
+  private toOptionalBoolean(value: unknown): boolean | undefined {
+    return typeof value === 'boolean' ? value : undefined;
   }
 
   private isNotImplementedAlias(error: unknown): boolean {

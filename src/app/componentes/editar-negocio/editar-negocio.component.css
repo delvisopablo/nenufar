@@ -217,7 +217,9 @@
 
 .image-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Solo queda la tarjeta de foto de perfil (la de portada se desactivó temporalmente). */
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 420px;
   gap: 0.9rem;
 }
 

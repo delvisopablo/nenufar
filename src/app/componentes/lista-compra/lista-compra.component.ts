@@ -22,12 +22,12 @@ import { AuthService } from '../../servicios/authService/auth.service';
 import {
   AddListaCompraItemPayload,
   CerrarListaResponse,
-  HistorialPedidoNenulista,
   Lista,
   ListaCompraItem,
   ListaCompraService,
   PreviewCodigoResponse,
 } from '../../servicios/listaCompraServicio/lista-compra.service';
+import { Pedido, PedidoService } from '../../servicios/pedidoServicio/pedido.service';
 import {
   BuscarProductosFiltros,
   Producto,
@@ -59,6 +59,7 @@ interface NegocioFiltroOpcion {
 export class ListaCompraComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly listaCompraService = inject(ListaCompraService);
+  private readonly pedidoService = inject(PedidoService);
   private readonly productoFavoritoService = inject(ProductoFavoritoService);
   private readonly productoService = inject(ProductoServiceService);
   private readonly categoriaService = inject(CategoriaServiceService);
@@ -110,7 +111,14 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
 
   readonly historialAbierto = signal(false);
   readonly cargandoHistorial = signal(false);
-  readonly historial = signal<HistorialPedidoNenulista[]>([]);
+  readonly historial = signal<Pedido[]>([]);
+
+  readonly pedidoDetalleAbierto = signal<Pedido | null>(null);
+
+  readonly pedidoACancelar = signal<Pedido | null>(null);
+  readonly motivoCancelacionPedido = signal('');
+  readonly cancelandoPedido = signal(false);
+  readonly errorCancelacionPedido = signal('');
 
   readonly codigoAbierto = signal(false);
   readonly generandoCodigo = signal(false);
@@ -867,17 +875,98 @@ export class ListaCompraComponent implements OnInit, OnDestroy {
     this.historialAbierto.set(abrir);
 
     if (abrir && !this.historial().length) {
-      this.cargandoHistorial.set(true);
-      this.listaCompraService
-        .getHistorialPedidosNenulista()
-        .pipe(finalize(() => this.cargandoHistorial.set(false)))
-        .subscribe({
-          next: (historial) => this.historial.set(historial),
-          error: (error: unknown) => {
-            this.errorMensaje.set(this.obtenerMensajeErrorPrivado(error, 'El historial no se cargó.'));
-          },
-        });
+      this.cargarMisPedidos();
     }
+  }
+
+  private cargarMisPedidos(): void {
+    this.cargandoHistorial.set(true);
+    this.pedidoService
+      .misPedidos({ limit: 50 })
+      .pipe(finalize(() => this.cargandoHistorial.set(false)))
+      .subscribe({
+        next: (pedidos) => this.historial.set(pedidos),
+        error: (error: unknown) => {
+          this.errorMensaje.set(
+            this.obtenerMensajeErrorPrivado(error, 'No se han podido cargar los pedidos.'),
+          );
+        },
+      });
+  }
+
+  // ===== Detalle y cancelación de pedido =====
+
+  pedidoEstadoLabel(estado: string): string {
+    return (
+      {
+        PENDIENTE: 'Pendiente',
+        COMPLETADO: 'Completado',
+        ENTREGADO: 'Entregado',
+        CANCELADO: 'Cancelado',
+      }[estado] ?? estado
+    );
+  }
+
+  puedeCancelarPedido(pedido: Pedido): boolean {
+    return pedido.puedeCancelar === true;
+  }
+
+  abrirDetallePedido(pedido: Pedido): void {
+    this.pedidoDetalleAbierto.set(pedido);
+  }
+
+  cerrarDetallePedido(): void {
+    this.pedidoDetalleAbierto.set(null);
+  }
+
+  abrirCancelarPedido(pedido: Pedido, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.puedeCancelarPedido(pedido)) {
+      return;
+    }
+
+    this.pedidoACancelar.set(pedido);
+    this.motivoCancelacionPedido.set('');
+    this.errorCancelacionPedido.set('');
+    this.cancelandoPedido.set(false);
+  }
+
+  cerrarCancelarPedido(): void {
+    if (this.cancelandoPedido()) {
+      return;
+    }
+
+    this.pedidoACancelar.set(null);
+    this.motivoCancelacionPedido.set('');
+    this.errorCancelacionPedido.set('');
+  }
+
+  confirmarCancelarPedido(): void {
+    const pedido = this.pedidoACancelar();
+    if (!pedido || this.cancelandoPedido()) {
+      return;
+    }
+
+    this.cancelandoPedido.set(true);
+    this.errorCancelacionPedido.set('');
+
+    this.pedidoService.cancelarPedido(pedido.id, this.motivoCancelacionPedido()).subscribe({
+      next: (actualizado) => {
+        this.cancelandoPedido.set(false);
+        this.pedidoACancelar.set(null);
+        this.motivoCancelacionPedido.set('');
+        this.historial.update((items) =>
+          items.map((item) => (item.id === actualizado.id ? { ...item, ...actualizado } : item)),
+        );
+        this.exitoMensaje.set('Pedido cancelado.');
+      },
+      error: (error: unknown) => {
+        this.cancelandoPedido.set(false);
+        this.errorCancelacionPedido.set(
+          this.obtenerMensajeErrorPrivado(error, 'No se ha podido cancelar el pedido. Inténtalo de nuevo.'),
+        );
+      },
+    });
   }
 
   // ===== Compartir / importar por código =====

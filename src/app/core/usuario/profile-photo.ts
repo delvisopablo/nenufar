@@ -1,3 +1,8 @@
+import {
+  MAX_IMAGE_FILE_SIZE_BYTES,
+  validateImageFile,
+} from '../forms/image-file-validators';
+
 export type UserProfilePhotoSource = {
   foto?: string | null;
   fotoPerfil?: string | null;
@@ -5,12 +10,8 @@ export type UserProfilePhotoSource = {
 };
 
 export const DEFAULT_PROFILE_PHOTO = 'assets/imagenes/rana1_profile_foto.png';
-export const MAX_PROFILE_PHOTO_BYTES = 3 * 1024 * 1024;
-export const ALLOWED_PROFILE_PHOTO_TYPES = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-]);
+/** @deprecated usa MAX_IMAGE_FILE_SIZE_BYTES de core/forms/image-file-validators */
+export const MAX_PROFILE_PHOTO_BYTES = MAX_IMAGE_FILE_SIZE_BYTES;
 
 export function resolveProfilePhoto(
   usuario: UserProfilePhotoSource | null | undefined,
@@ -23,14 +24,7 @@ export function resolveProfilePhoto(
   return typeof foto === 'string' && foto.trim() ? foto.trim() : null;
 }
 
+/** Valida la foto de perfil de usuario con la misma regla común de imágenes de toda la app. */
 export function getProfilePhotoFileError(file: File): string {
-  if (!ALLOWED_PROFILE_PHOTO_TYPES.has(file.type)) {
-    return 'La foto debe ser JPG, PNG o WEBP.';
-  }
-
-  if (file.size > MAX_PROFILE_PHOTO_BYTES) {
-    return 'La foto no puede superar 3 MB.';
-  }
-
-  return '';
+  return validateImageFile(file) ?? '';
 }

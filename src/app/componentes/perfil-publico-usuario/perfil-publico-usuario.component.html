@@ -34,11 +34,12 @@
             </div>
 
             <div class="hero-actions">
-              @if (logros().length || usuario()?.petalosSaldo != null) {
-                <a class="follow-btn" href="#perfil-logros">
-                  {{ esPerfilPropio() ? 'Mis logros' : 'Logros' }}
-                </a>
-              }
+              <!--
+                Acceso visible a "Mis logros"/"Logros" desde el perfil público desactivado
+                temporalmente a petición de producto. No se toca la ruta /mis-logros, la
+                página de logros, ni la sección de logros más abajo en este mismo perfil
+                (id="perfil-logros"); solo se oculta este botón de acceso rápido.
+              -->
 
               @if (!esPerfilPropio()) {
                 <button class="follow-btn" type="button" (click)="toggleSeguirUsuario()">

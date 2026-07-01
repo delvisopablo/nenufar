@@ -22,6 +22,7 @@ import {
   resolveOwnedBusinessId,
 } from '../../servicios/authService/auth.service';
 import { NegocioService } from '../../servicios/negocioService/negocio.service';
+import { validateImageFile } from '../../core/forms/image-file-validators';
 import {
   NenufarSelectorComponent,
 } from '../../components/shared/nenufar-selector/nenufar-selector.component';
@@ -332,8 +333,9 @@ export class EditarNegocioComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
-      this.errorMensaje = 'Selecciona una imagen válida para la previsualización.';
+    const fileError = validateImageFile(file);
+    if (fileError) {
+      this.errorMensaje = fileError;
       if (input) {
         input.value = '';
       }

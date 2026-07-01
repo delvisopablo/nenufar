@@ -161,6 +161,32 @@
           <span class="card-cue">🖱 Doble clic</span>
         </div>
       </div>
+
+      <div class="guia-visual-trigger">
+        <button
+          type="button"
+          class="guia-visual-btn"
+          (click)="abrirGuiaVisual()"
+          aria-label="Ver guía del Nenúfar"
+        >
+          Ver guía del Nenúfar
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (guiaVisualAbierta()) {
+  <div class="guia-overlay" (click)="onGuiaOverlayClick($event)">
+    <div class="guia-modal" role="dialog" aria-modal="true" aria-label="Guía visual de Nenúfar">
+      <button
+        type="button"
+        class="guia-close-btn"
+        (click)="cerrarGuiaVisual()"
+        aria-label="Cerrar guía visual"
+      >✕</button>
+
+      <app-informacion></app-informacion>
     </div>
   </div>
 }
