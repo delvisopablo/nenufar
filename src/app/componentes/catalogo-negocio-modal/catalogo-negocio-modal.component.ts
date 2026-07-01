@@ -920,14 +920,13 @@ export class CatalogoNegocioModalComponent implements OnChanges, OnDestroy {
     const raw = this.form.getRawValue();
     const nombre = String(raw.nombre ?? '').trim();
     const descripcion = String(raw.descripcion ?? '').trim();
-    const codigoSKU = String(raw.codigoSKU ?? '').trim();
     const foto = String(raw.foto ?? '').trim();
+    // Campo de código de producto oculto temporalmente: no se usa en el flujo actual.
 
     return {
       nombre,
       precio: Number(raw.precio ?? 0),
       ...(descripcion ? { descripcion } : {}),
-      ...(codigoSKU ? { codigoSKU } : {}),
       ...(foto ? { foto } : {}),
     };
   }

@@ -87,23 +87,25 @@
     }
   </div>
 
-  <button
-    type="button"
-    class="floating-review-btn"
-    [class.is-spinning]="reviewButtonSpinning()"
-    (click)="onCreateReviewClick()"
-    aria-label="Hacer reseña"
-    title="Hacer reseña"
-  >
-    <img
-      class="floating-review-btn__flower"
-      src="assets/imagenes/flor_logo.ico"
-      alt=""
-      aria-hidden="true"
-      width="84"
-      height="84"
+  @if (mostrarBotonFlotanteResena()) {
+    <button
+      type="button"
+      class="floating-review-btn"
+      [class.is-spinning]="reviewButtonSpinning()"
+      (click)="onCreateReviewClick()"
+      aria-label="Hacer reseña"
+      title="Hacer reseña"
     >
-  </button>
+      <img
+        class="floating-review-btn__flower"
+        src="assets/imagenes/flor_logo.ico"
+        alt=""
+        aria-hidden="true"
+        width="84"
+        height="84"
+      >
+    </button>
+  }
 
   @if (hoveredTooltip(); as tooltip) {
     <div

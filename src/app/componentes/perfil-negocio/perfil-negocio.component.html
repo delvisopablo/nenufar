@@ -251,7 +251,8 @@
       </div>
     </section>
 
-    @if (negocio?.id) {
+    <!-- Botón de scanner ticket oculto temporalmente: funcionalidad desactivada. -->
+    @if (false && negocio?.id) {
       <div class="ticket-inline">
         <button class="ticket-inline__toggle" type="button" (click)="alternarTicketScanner()">
           Escanear ticket{{ ticketScannerAbierto ? '' : ' (en desarrollo)' }}

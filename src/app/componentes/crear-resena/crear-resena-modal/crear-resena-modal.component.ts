@@ -127,6 +127,7 @@ export class CrearResenaModalComponent implements OnInit, OnChanges, OnDestroy {
   readonly selloPetalos = [0, 1, 2, 3, 4];
   selectorProductosAbierto = signal(false);
   sugerirProductoAbierto = signal(false);
+  mostrarBuscadorProductos = signal(false);
   productoBusqueda = signal('');
   productosNegocio = signal<Producto[]>([]);
   productosSeleccionados = signal<ReviewProductChip[]>([]);
@@ -476,7 +477,15 @@ export class CrearResenaModalComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   toggleSelectorProductos(): void {
-    this.selectorProductosAbierto.update((value) => !value);
+    this.selectorProductosAbierto.update((value) => {
+      const next = !value;
+      if (next) {
+        this.mostrarBuscadorProductos.set(
+          this.productosSeleccionados().length === 0 && this.productosSugeridos().length === 0,
+        );
+      }
+      return next;
+    });
   }
 
   actualizarBusquedaProducto(value: string): void {
@@ -504,6 +513,7 @@ export class CrearResenaModalComponent implements OnInit, OnChanges, OnDestroy {
         {
           id: productoId,
           nombre: producto.nombre,
+          cantidad: 1,
           foto:
             String(producto.foto ?? '').trim() ||
             String(producto.imagen ?? '').trim() ||
@@ -519,6 +529,37 @@ export class CrearResenaModalComponent implements OnInit, OnChanges, OnDestroy {
     this.productosSeleccionados.update((items) =>
       items.filter((item) => Number(item.id ?? 0) !== normalizedId),
     );
+  }
+
+  getCantidadProducto(producto: ReviewProductChip): number {
+    return this.normalizarCantidad(producto.cantidad);
+  }
+
+  incrementarCantidadSeleccionado(productoId: number | null | undefined): void {
+    const normalizedId = Number(productoId ?? 0);
+    this.productosSeleccionados.update((items) =>
+      items.map((item) =>
+        Number(item.id ?? 0) === normalizedId
+          ? { ...item, cantidad: this.normalizarCantidad(item.cantidad) + 1 }
+          : item,
+      ),
+    );
+  }
+
+  decrementarCantidadSeleccionado(productoId: number | null | undefined): void {
+    const normalizedId = Number(productoId ?? 0);
+    this.productosSeleccionados.update((items) =>
+      items.map((item) =>
+        Number(item.id ?? 0) === normalizedId
+          ? { ...item, cantidad: Math.max(1, this.normalizarCantidad(item.cantidad) - 1) }
+          : item,
+      ),
+    );
+  }
+
+  private normalizarCantidad(value: number | null | undefined): number {
+    const normalized = Number(value);
+    return Number.isFinite(normalized) && normalized >= 1 ? Math.floor(normalized) : 1;
   }
 
   abrirFormularioSugerencia(): void {
@@ -641,6 +682,7 @@ export class CrearResenaModalComponent implements OnInit, OnChanges, OnDestroy {
   private resetProductComposer(): void {
     this.selectorProductosAbierto.set(false);
     this.sugerirProductoAbierto.set(false);
+    this.mostrarBuscadorProductos.set(false);
     this.productoBusqueda.set('');
     this.errorProductos.set('');
     this.productosSeleccionados.set([]);

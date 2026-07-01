@@ -336,7 +336,7 @@
                   <span class="nenu-price-tag">{{ formatPrice(pedido.total) }}</span>
                 </div>
                 <div class="nenu-historial-item__productos">
-                  @for (linea of pedido.items; track linea.id ?? linea.productoId) {
+                  @for (linea of pedido.items; track $index) {
                     <span class="nenu-category-chip">
                       {{ linea.nombre }} x{{ linea.cantidad }}
                     </span>
@@ -386,7 +386,7 @@
         </div>
 
         <div class="nenu-historial-list">
-          @for (linea of pedido.items; track linea.id ?? linea.productoId) {
+          @for (linea of pedido.items; track $index) {
             <div class="nenu-historial-item">
               <div class="nenu-historial-item__head">
                 <strong>{{ linea.nombre }}</strong>
@@ -579,7 +579,7 @@
 
         <form class="nenu-modal__form" novalidate (submit)="$event.preventDefault(); guardarEdicionLista()">
           <label class="nenu-field">
-            <span>Nombre</span>
+            <span>Nombre<span class="required-mark" aria-hidden="true">*</span></span>
             <input
               type="text"
               [value]="editarListaForm.controls.nombre.value ?? ''"

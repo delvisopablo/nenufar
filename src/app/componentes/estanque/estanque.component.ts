@@ -514,6 +514,14 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
     void this.router.navigate(['/registro-opciones']);
   }
 
+  onForgotPasswordClick(): void {
+    this.loginModalOpen = false;
+    this.loginSubmitting = false;
+    this.loginError = '';
+    this.cdr.markForCheck();
+    void this.router.navigate(['/recuperar-password']);
+  }
+
   continueAsGuest(): void {
     this.habilitarAcceso({ guest: true });
     this.loginModalOpen = false;

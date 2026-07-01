@@ -92,6 +92,8 @@ export class AppComponent implements OnInit, OnDestroy {
       '/registro-opciones',
       '/registro-negocio',
       '/confirmar-email',
+      '/recuperar-password',
+      '/restablecer-password',
     ].includes(this.normalizarRuta(ruta));
   }
 
@@ -102,6 +104,8 @@ export class AppComponent implements OnInit, OnDestroy {
       '/registro-opciones',
       '/registro-negocio',
       '/confirmar-email',
+      '/recuperar-password',
+      '/restablecer-password',
     ].includes(this.normalizarRuta(ruta));
   }
 

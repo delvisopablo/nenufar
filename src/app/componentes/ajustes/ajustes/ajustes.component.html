@@ -67,7 +67,7 @@
         </section>
 
         <label class="campo">
-          <span>Nombre</span>
+          <span>Nombre<span class="required-mark" aria-hidden="true">*</span></span>
           <input type="text" formControlName="nombre" maxlength="80" />
           @if (form.controls['nombre'].touched && form.controls['nombre'].invalid) {
           <small class="error">

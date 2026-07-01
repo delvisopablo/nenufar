@@ -367,13 +367,14 @@
     0 28px 72px rgba(0, 0, 0, 0.24),
     0 10px 24px rgba(0, 0, 0, 0.14),
     inset 0 1px 0 rgba(242, 227, 187, 0.1);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .login-card::before {
   content: '';
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   background:
     radial-gradient(circle at 18% 14%, rgba(242, 227, 187, 0.18), transparent 28%),
     radial-gradient(circle at 78% 18%, rgba(192, 184, 122, 0.12), transparent 30%),
@@ -457,6 +458,38 @@
 .login-form {
   display: grid;
   gap: 0.9rem;
+}
+
+.forgot-password-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -0.3rem;
+}
+
+.forgot-password-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(242, 227, 187, 0.82);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgba(242, 227, 187, 0.28);
+  text-underline-offset: 0.22rem;
+  cursor: pointer;
+  transition: color 160ms ease, text-decoration-color 160ms ease;
+}
+
+.forgot-password-link:hover {
+  color: #f2e3bb;
+  text-decoration-color: rgba(242, 227, 187, 0.52);
+}
+
+.forgot-password-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08), 0 0 0 7px rgba(244, 92, 156, 0.16);
+  border-radius: 4px;
 }
 
 .field {
@@ -669,6 +702,36 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
+.guest-link::after {
+  content: attr(aria-label);
+  position: absolute;
+  left: calc(100% + 0.6rem);
+  top: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: min(260px, 82vw);
+  padding: 0.48rem 0.72rem;
+  border-radius: 0.72rem;
+  background: rgba(9, 25, 18, 0.96);
+  color: #f7fff9;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.24);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) translateX(-2px);
+  transition: opacity 90ms ease, transform 90ms ease;
+}
+
+.guest-link:hover::after,
+.guest-link:focus-visible::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
 .footer-copy {
   margin: 0;
   color: rgba(242, 227, 187, 0.72);
@@ -761,6 +824,18 @@
 
   .submit-btn {
     padding: 0.92rem 1rem;
+  }
+
+  .guest-link::after {
+    right: calc(100% + 0.6rem);
+    left: auto;
+    max-width: min(220px, 58vw);
+    transform: translateY(-50%) translateX(2px);
+  }
+
+  .guest-link:hover::after,
+  .guest-link:focus-visible::after {
+    transform: translateY(-50%) translateX(0);
   }
 }
 

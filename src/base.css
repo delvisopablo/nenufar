@@ -122,3 +122,9 @@
   color: var(--text-primary);
   border: 1px solid rgba(192, 184, 122, 0.24);
 }
+
+.required-mark {
+  color: var(--nenufar-pink-500);
+  margin-left: 0.2em;
+  font-weight: 700;
+}

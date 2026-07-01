@@ -482,6 +482,101 @@
     rgba(255, 255, 255, 0.84);
 }
 
+.product-added-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.product-added-list__title {
+  margin: 0;
+  color: var(--modal-green-deep);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.product-added-rows {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.product-added-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.62rem 0.78rem;
+  border: 1px solid rgba(61, 138, 98, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.product-added-row--pending {
+  border-color: rgba(239, 124, 169, 0.22);
+  background: rgba(255, 245, 249, 0.96);
+}
+
+.product-added-row__nombre {
+  flex: 1 1 auto;
+  min-width: 6rem;
+  color: var(--modal-ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.product-added-row__qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.product-qty-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid rgba(61, 138, 98, 0.22);
+  border-radius: 999px;
+  background: rgba(240, 249, 243, 0.94);
+  color: var(--modal-green-deep);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.product-qty-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(240, 249, 243, 1);
+}
+
+.product-added-row__qty-value {
+  min-width: 1.4rem;
+  text-align: center;
+  color: var(--modal-ink);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.product-remove-btn {
+  padding: 0.42rem 0.75rem;
+  border: 1px solid rgba(212, 66, 100, 0.28);
+  border-radius: 999px;
+  background: rgba(239, 124, 169, 0.1);
+  color: #b42358;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.product-remove-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(239, 124, 169, 0.18);
+}
+
 .product-chip-group {
   display: flex;
   flex-wrap: wrap;

@@ -28,7 +28,7 @@
 
             <div class="field-grid">
               <label class="field">
-                <span>Tu nombre</span>
+                <span>Tu nombre<span class="required-mark" aria-hidden="true">*</span></span>
                 <input
                   type="text"
                   formControlName="nombreDueno"
@@ -41,7 +41,7 @@
               </label>
 
               <label class="field">
-                <span>Nombre de usuario</span>
+                <span>Nombre de usuario<span class="required-mark" aria-hidden="true">*</span></span>
                 <input
                   type="text"
                   formControlName="nickname"
@@ -55,7 +55,7 @@
             </div>
 
             <label class="field">
-              <span>Correo electrónico</span>
+              <span>Correo electrónico<span class="required-mark" aria-hidden="true">*</span></span>
               <input
                 type="email"
                 formControlName="email"
@@ -69,7 +69,7 @@
 
             <div class="field-grid">
               <label class="field">
-                <span>Contraseña</span>
+                <span>Contraseña<span class="required-mark" aria-hidden="true">*</span></span>
                 <input
                   type="password"
                   formControlName="password"
@@ -88,7 +88,7 @@
               </label>
 
               <label class="field">
-                <span>Repite la contraseña</span>
+                <span>Repite la contraseña<span class="required-mark" aria-hidden="true">*</span></span>
                 <input
                   type="password"
                   formControlName="confirmarContrasena"
@@ -109,7 +109,7 @@
 
             <div class="field-grid">
               <label class="field">
-                <span>Nombre del negocio</span>
+                <span>Nombre del negocio<span class="required-mark" aria-hidden="true">*</span></span>
                 <input
                   type="text"
                   formControlName="nombreNegocio"
@@ -132,7 +132,7 @@
 
             <div class="field-grid">
               <label class="field">
-                <span>Categoría</span>
+                <span>Categoría<span class="required-mark" aria-hidden="true">*</span></span>
                 <select formControlName="categoriaId" class="field-select">
                   @if (cargandoCategorias()) {
                     <option [ngValue]="null">Cargando categorías...</option>

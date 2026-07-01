@@ -550,7 +550,7 @@ export class PromocionComponent implements OnChanges {
       estado: this.normalizeEstado(raw.estado),
       stockMaximo: this.optionalPositiveNumber(raw.stockMaximo),
       usosMaximos: this.optionalPositiveNumber(raw.usosMaximos),
-      codigo: this.optionalString(raw.codigo),
+      // Campo manual de código de promoción oculto temporalmente: los códigos se gestionan mediante el sistema de canje.
       productoId: this.optionalNumber(raw.productoId),
     };
   }

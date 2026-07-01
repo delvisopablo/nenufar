@@ -286,6 +286,12 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   );
   readonly reviewButtonSpinning = signal(false);
   readonly usuarioLogueado = signal<AuthUser | null>(null);
+  // El botón flotante de reseña se oculta para cuentas de negocio.
+  readonly mostrarBotonFlotanteResena = computed(() => {
+    const usuario = this.usuarioLogueado();
+    const rol = String(usuario?.rol ?? '').toUpperCase();
+    return !resolveOwnedBusinessId(usuario) && rol !== 'NEGOCIO';
+  });
   readonly profileLilies = signal<LilyView[]>([]);
   readonly createLilies = signal<LilyView[]>([]);
   readonly reviewInteractions = signal<Record<number, ReviewInteractionState>>({});

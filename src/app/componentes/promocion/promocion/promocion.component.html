@@ -36,7 +36,7 @@
 
       <div class="promo-grid">
         <label class="field field--full">
-          <span>Título</span>
+          <span>Título<span class="required-mark" aria-hidden="true">*</span></span>
           <input type="text" formControlName="titulo" placeholder="Desayuno de barrio" />
           @if (hasControlError('titulo')) {
             <small class="field-error">{{ getControlError('titulo') }}</small>
@@ -62,7 +62,7 @@
         </label>
 
         <label class="field">
-          <span>Descuento</span>
+          <span>Descuento<span class="required-mark" aria-hidden="true">*</span></span>
           <input type="number" formControlName="descuento" min="0" step="0.01" />
           @if ((form.hasError('porcentajeFueraDeRango') || form.hasError('descuentoInvalido')) && (form.dirty || form.touched)) {
             <small class="field-error">{{ getControlError('descuento') }}</small>
@@ -80,7 +80,7 @@
         </label>
 
         <label class="field">
-          <span>Fecha de caducidad</span>
+          <span>Fecha de caducidad<span class="required-mark" aria-hidden="true">*</span></span>
           <input type="datetime-local" formControlName="fechaCaducidad" />
           @if (hasControlError('fechaCaducidad')) {
             <small class="field-error">{{ getControlError('fechaCaducidad') }}</small>
@@ -117,10 +117,7 @@
           }
         </label>
 
-        <label class="field">
-          <span>Código</span>
-          <input type="text" formControlName="codigo" placeholder="NENUFAR10" />
-        </label>
+        <!-- Campo manual de código de promoción oculto temporalmente: los códigos se gestionan mediante el sistema de canje. -->
 
         <label class="field field--full">
           <span>Producto asociado</span>
@@ -155,7 +152,7 @@
 
           <div class="promo-grid">
             <label class="field">
-              <span>Nombre del producto</span>
+              <span>Nombre del producto<span class="required-mark" aria-hidden="true">*</span></span>
               <input type="text" [formControl]="productoForm.controls.nombre" placeholder="Corte de pelo" />
               @if (productoForm.controls.nombre.invalid && (productoForm.controls.nombre.touched || productoForm.controls.nombre.dirty)) {
                 <small class="field-error">El nombre es obligatorio.</small>
@@ -163,7 +160,7 @@
             </label>
 
             <label class="field">
-              <span>Precio</span>
+              <span>Precio<span class="required-mark" aria-hidden="true">*</span></span>
               <input type="number" [formControl]="productoForm.controls.precio" min="0" step="0.01" />
               @if (productoForm.controls.precio.invalid && (productoForm.controls.precio.touched || productoForm.controls.precio.dirty)) {
                 <small class="field-error">El precio debe ser válido.</small>

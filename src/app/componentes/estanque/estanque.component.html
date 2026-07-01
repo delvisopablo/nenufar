@@ -124,6 +124,12 @@
               >
             </label>
 
+            <div class="forgot-password-row">
+              <button type="button" class="forgot-password-link" (click)="onForgotPasswordClick()">
+                ¿Has olvidado tu contraseña?
+              </button>
+            </div>
+
             @if (loginError) {
               <p class="login-feedback" role="alert">{{ loginError }}</p>
             }
@@ -138,8 +144,13 @@
           </form>
 
           <div class="login-card-footer">
-            <button type="button" class="guest-link" (click)="continueAsGuest()">
-              Entrar como rana
+            <button
+              type="button"
+              class="guest-link"
+              (click)="continueAsGuest()"
+              aria-label="Como rana invitada solo podrás explorar. No podrás hacer reseñas, reservas ni otras acciones."
+            >
+              Entrar como rana invitada
             </button>
             <p class="footer-copy">¿Es tu primera vez por aquí?</p>
             <button type="button" class="register-link" (click)="onRegisterClick()">

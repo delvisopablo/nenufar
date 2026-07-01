@@ -2,6 +2,8 @@ export interface ReviewProductChip {
   id?: number | null;
   nombre: string;
   foto?: string | null;
+  /** Cantidad local del composer de reseñas; no se persiste en backend (no soportado por POST /resena). */
+  cantidad?: number;
 }
 
 export interface SuggestedReviewProduct {

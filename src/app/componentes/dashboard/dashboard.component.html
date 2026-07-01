@@ -311,7 +311,7 @@
           </div>
         } @else {
           <div class="empty-state">
-            <strong>Sin pedidos recientes</strong>
+            <strong>Este negocio todavía no tiene pedidos.</strong>
             <span>Los pedidos nuevos o pendientes aparecerán en este bloque.</span>
           </div>
         }
@@ -413,7 +413,7 @@
 
         @if (getPedidoItems(pedido).length) {
           <div class="pedido-lines">
-            @for (linea of getPedidoItems(pedido); track linea.id ?? linea.productoId ?? linea.nombre) {
+            @for (linea of getPedidoItems(pedido); track $index) {
               <div class="pedido-line">
                 <div>
                   <strong>{{ linea.nombre }}</strong>

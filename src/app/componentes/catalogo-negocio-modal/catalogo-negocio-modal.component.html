@@ -38,7 +38,7 @@
 
       <div class="catalog-grid">
         <label class="field">
-          <span>Nombre</span>
+          <span>Nombre<span class="required-mark" aria-hidden="true">*</span></span>
           <input
             type="text"
             [value]="form.controls.nombre.value ?? ''"
@@ -52,7 +52,7 @@
         </label>
 
         <label class="field">
-          <span>Precio</span>
+          <span>Precio<span class="required-mark" aria-hidden="true">*</span></span>
           <input
             type="number"
             [value]="form.controls.precio.value ?? ''"
@@ -77,16 +77,7 @@
           ></textarea>
         </label>
 
-        <label class="field">
-          <span>Código de producto</span>
-          <input
-            type="text"
-            [value]="form.controls.codigoSKU.value ?? ''"
-            placeholder="CORT-001"
-            (input)="actualizarCampoTextoProducto('codigoSKU', $any($event.target).value)"
-            (blur)="marcarProductoControlTocado('codigoSKU')"
-          />
-        </label>
+        <!-- Campo de código de producto oculto temporalmente: no se usa en el flujo actual. -->
 
         <label class="field field--full">
           <span>Foto opcional</span>

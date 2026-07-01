@@ -23,7 +23,7 @@
 
       <form class="auth-form" [formGroup]="verificationForm" (ngSubmit)="confirmarCodigo()" novalidate>
         <label class="field" for="code">
-          <span>Código de confirmación</span>
+          <span>Código de confirmación<span class="required-mark" aria-hidden="true">*</span></span>
           <input
             id="code"
             type="text"

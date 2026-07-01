@@ -24,7 +24,7 @@
       <form [formGroup]="registroForm" (ngSubmit)="registrarUsuario()" class="auth-form" novalidate>
         <div class="form-layout">
           <label class="field">
-            <span>Tu nombre</span>
+            <span>Tu nombre<span class="required-mark" aria-hidden="true">*</span></span>
             <input
               type="text"
               formControlName="nombre"
@@ -37,7 +37,7 @@
           </label>
 
           <label class="field">
-            <span>Nombre de usuario</span>
+            <span>Nombre de usuario<span class="required-mark" aria-hidden="true">*</span></span>
             <input
               type="text"
               formControlName="nickname"
@@ -50,7 +50,7 @@
           </label>
 
           <label class="field">
-            <span>Correo electrónico</span>
+            <span>Correo electrónico<span class="required-mark" aria-hidden="true">*</span></span>
             <input
               type="email"
               formControlName="email"
@@ -63,7 +63,7 @@
           </label>
 
           <label class="field">
-            <span>Contraseña</span>
+            <span>Contraseña<span class="required-mark" aria-hidden="true">*</span></span>
             <input
               type="password"
               formControlName="password"
@@ -82,7 +82,7 @@
           </label>
 
           <label class="field">
-            <span>Repite la contraseña</span>
+            <span>Repite la contraseña<span class="required-mark" aria-hidden="true">*</span></span>
             <input
               type="password"
               formControlName="confirmarContrasena"

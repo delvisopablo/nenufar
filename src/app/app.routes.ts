@@ -18,6 +18,8 @@ export const routes: Routes = [
   { path: 'registro', loadComponent: () => import('./componentes/registro/registro/registro.component').then((m) => m.RegistroComponent) },
   { path: 'registro-negocio', loadComponent: () => import('./componentes/registro-negocio/RegistroNegocio.component').then((m) => m.RegistroNegocioComponent) },
   { path: 'confirmar-email', loadComponent: () => import('./componentes/confirmar-email/confirmar-email.component').then((m) => m.ConfirmarEmailComponent) },
+  { path: 'recuperar-password', loadComponent: () => import('./componentes/recuperar-password/recuperar-password.component').then((m) => m.RecuperarPasswordComponent) },
+  { path: 'restablecer-password', loadComponent: () => import('./componentes/restablecer-password/restablecer-password.component').then((m) => m.RestablecerPasswordComponent) },
   { path: 'perfil', redirectTo: 'mi-perfil', pathMatch: 'full' },
   { path: 'perfil/Nenuditar', loadComponent: () => import('./componentes/perfil/perfil/perfil.component').then((m) => m.PerfilComponent), canActivate: [authToEstanqueGuard] },
   { path: 'mi-perfil', loadComponent: () => import('./componentes/perfil/perfil/perfil.component').then((m) => m.PerfilComponent), canActivate: [authToEstanqueGuard] },
