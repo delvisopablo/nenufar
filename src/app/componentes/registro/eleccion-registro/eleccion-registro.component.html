@@ -30,9 +30,14 @@
         [style.left.px]="lily.state.x"
         [style.top.px]="lily.state.y - (lily.radius * 0.58)"
       >
-        <button type="button" class="lily-action__button" (click)="seleccionarTipoRegistro(lily.id)">
-          {{ lily.id === 'usuario' ? 'Entrar como rana' : 'Entrar como nenúfar' }}
-        </button>
+        @if (lily.id === 'negocio' && !businessAccessEnabled) {
+          <!-- Acceso de negocio deshabilitado temporalmente: etiqueta no interactiva. -->
+          <span class="dev-tag dev-tag--floating" aria-hidden="true">En desarrollo</span>
+        } @else {
+          <button type="button" class="lily-action__button" (click)="seleccionarTipoRegistro(lily.id)">
+            {{ lily.id === 'usuario' ? 'Entrar como rana' : 'Entrar como nenúfar' }}
+          </button>
+        }
       </div>
     }
   </div>
@@ -56,14 +61,26 @@
           </button>
         </section>
 
-        <section class="choice-note">
-          <h2>Como nenúfar</h2>
-          <p>Prepara tu perfil, activa horarios, mueve promociones y abre hueco a nuevas reservas.</p>
-          <!-- Duplica la acción del nenúfar flotante de negocio (misma función, sin lógica nueva) para mejorar accesibilidad/usabilidad. -->
-          <button type="button" class="lily-action__button choice-note__action" (click)="seleccionarTipoRegistro('negocio')">
-            Registrar mi nenúfar
-          </button>
-        </section>
+        @if (businessAccessEnabled) {
+          <section class="choice-note">
+            <h2>Como nenúfar</h2>
+            <p>Prepara tu perfil, activa horarios, mueve promociones y abre hueco a nuevas reservas.</p>
+            <!-- Duplica la acción del nenúfar flotante de negocio (misma función, sin lógica nueva) para mejorar accesibilidad/usabilidad. -->
+            <button type="button" class="lily-action__button choice-note__action" (click)="seleccionarTipoRegistro('negocio')">
+              Registrar mi nenúfar
+            </button>
+          </section>
+        } @else {
+          <!-- Acceso de cuentas de negocio deshabilitado temporalmente desde la interfaz.
+               Mantener lógica y rutas para poder reactivarlo más adelante. -->
+          <section class="choice-note choice-note--dev" role="note" aria-label="Acceso para Nenúfares en desarrollo">
+            <span class="dev-tape dev-tape--top" aria-hidden="true"></span>
+            <span class="dev-tape dev-tape--bottom" aria-hidden="true"></span>
+            <span class="dev-tag">En desarrollo</span>
+            <h2>Acceso para Nenúfares en desarrollo</h2>
+            <p>Estamos preparando esta parte de Nenúfar. Volverá a estar disponible próximamente.</p>
+          </section>
+        }
       </div>
 
       <p class="choice-hint">{{ contextHint() }}</p>

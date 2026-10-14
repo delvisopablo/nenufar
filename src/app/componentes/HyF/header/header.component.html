@@ -298,6 +298,38 @@
         }
       </div>
 
+      @if (mostrarOrganizarEstanque()) {
+        <button
+          type="button"
+          class="top-action top-action--organize hover-tip"
+          [class.top-action--organize-active]="estanqueOrganizado()"
+          (click)="toggleOrganizarEstanque()"
+          [attr.aria-pressed]="estanqueOrganizado()"
+          [attr.aria-label]="estanqueOrganizado() ? 'Soltar estanque' : 'Organizar estanque'"
+          [attr.data-tip]="estanqueOrganizado()
+            ? 'Devuelve el movimiento a los elementos del estanque.'
+            : 'Ordena los elementos del estanque y detén su movimiento.'"
+        >
+          <span class="top-action__icon" aria-hidden="true">
+            @if (estanqueOrganizado()) {
+              <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="4" cy="5" r="2"></circle>
+                <circle cx="11.5" cy="4" r="1.6"></circle>
+                <circle cx="8.5" cy="11.5" r="2.2"></circle>
+              </svg>
+            } @else {
+              <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+                <rect x="1.5" y="1.5" width="5" height="5" rx="1.4"></rect>
+                <rect x="9.5" y="1.5" width="5" height="5" rx="1.4"></rect>
+                <rect x="1.5" y="9.5" width="5" height="5" rx="1.4"></rect>
+                <rect x="9.5" y="9.5" width="5" height="5" rx="1.4"></rect>
+              </svg>
+            }
+          </span>
+          {{ estanqueOrganizado() ? 'Soltar estanque' : 'Organizar estanque' }}
+        </button>
+      }
+
       @if (mostrarMiPerfil()) {
         <button
           type="button"

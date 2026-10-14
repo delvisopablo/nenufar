@@ -24,6 +24,7 @@ import {
   setFormErrors,
 } from '../../core/errors/form-error.utils';
 import { buildApiUrl } from '../../config/api.config';
+import { BUSINESS_ACCESS_ENABLED } from '../../config/business-access.config';
 import {
   getPasswordRequirements as buildPasswordRequirements,
   passwordsMatchValidator,
@@ -132,6 +133,13 @@ export class RegistroNegocioComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    // Acceso de cuentas de negocio deshabilitado temporalmente desde la interfaz.
+    // Mantener lógica y rutas para poder reactivarlo más adelante.
+    if (!BUSINESS_ACCESS_ENABLED) {
+      void this.router.navigate(['/registro-opciones'], { replaceUrl: true });
+      return;
+    }
+
     this.title.setTitle('Registra tu negocio');
     this.configurarCambioCategoria();
     this.cargarCategorias();

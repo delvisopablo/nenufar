@@ -13,6 +13,21 @@ export class HomeHeaderService {
 
   readonly pendingPopup = this.pendingPopupSignal.asReadonly();
 
+  /**
+   * Vista "estanque organizado": solo afecta a cómo se colocan los nenúfares en /inicio,
+   * nunca a los datos (filtros, resultados o prioridades).
+   */
+  private readonly pondOrganizedSignal = signal(false);
+  readonly pondOrganized = this.pondOrganizedSignal.asReadonly();
+
+  togglePondOrganized(): void {
+    this.pondOrganizedSignal.update((value) => !value);
+  }
+
+  setPondOrganized(value: boolean): void {
+    this.pondOrganizedSignal.set(value);
+  }
+
   requestPopup(kind: HomeHeaderPopupKind): void {
     this.pendingPopupSignal.set({
       kind,

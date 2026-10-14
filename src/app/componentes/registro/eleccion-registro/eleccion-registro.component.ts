@@ -25,6 +25,10 @@ import {
 } from '../../nenufar/nenufar.types';
 import { OnboardingComponent, OnboardingModo } from '../../onboarding/onboarding.component';
 import { EstanqueBackgroundComponent } from '../../shared/estanque-background/estanque-background.component';
+import {
+  BUSINESS_ACCESS_DISABLED_MESSAGE,
+  BUSINESS_ACCESS_ENABLED
+} from '../../../config/business-access.config';
 
 type LilyId = 'acompanante' | 'negocio' | 'usuario';
 
@@ -96,6 +100,9 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
     defaultBoundsMode: 'bounce'
   });
 
+  // Acceso de cuentas de negocio deshabilitado temporalmente desde la interfaz.
+  // Mantener lógica y rutas para poder reactivarlo más adelante.
+  readonly businessAccessEnabled = BUSINESS_ACCESS_ENABLED;
   readonly lilies = signal<LilyView[]>([]);
   readonly popupInfoUsuario = signal(false);
   readonly popupInfoNegocio = signal(false);
@@ -162,6 +169,11 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
     }
 
     if (tipo === 'negocio') {
+      if (!this.businessAccessEnabled) {
+        this.contextHint.set(BUSINESS_ACCESS_DISABLED_MESSAGE);
+        return;
+      }
+
       this.popupInfoUsuario.set(false);
       this.popupInfoNegocio.set(true);
     }
@@ -179,6 +191,11 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
 
   continuarRegistroNegocio(): void {
     this.cerrarPopupInfo();
+
+    if (!this.businessAccessEnabled) {
+      return;
+    }
+
     this.irARuta('/registro-negocio');
   }
 
@@ -220,7 +237,9 @@ export class EleccionRegistroComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   onLilyRightClick(event: NenufarRightClickEvent<LilyView>): void {
-    const hint = event.data?.contextText;
+    const hint = event.id === 'negocio' && !this.businessAccessEnabled
+      ? BUSINESS_ACCESS_DISABLED_MESSAGE
+      : event.data?.contextText;
     if (!hint) {
       return;
     }

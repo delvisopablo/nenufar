@@ -1,12 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import {
   Subscription,
   catchError,
   debounceTime,
   distinctUntilChanged,
+  filter,
   firstValueFrom,
   forkJoin,
   map,
@@ -41,6 +43,7 @@ import {
   Subcategoria,
 } from '../../../servicios/categoriaServicio/categoriaService.service';
 import { FiltrosEstanqueService } from '../../../servicios/filtrosEstanqueServicio/filtros-estanque.service';
+import { HomeHeaderService } from '../../../servicios/homeHeaderServicio/home-header.service';
 import {
   UsuarioBusquedaResultado,
   UsuarioServiceService,
@@ -63,6 +66,15 @@ export class HeaderComponent implements OnDestroy {
   private readonly categoriaService = inject(CategoriaServiceService);
   private readonly usuarioService = inject(UsuarioServiceService);
   private readonly filtrosEstanqueService = inject(FiltrosEstanqueService);
+  private readonly homeHeaderService = inject(HomeHeaderService);
+  private readonly currentPath = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects),
+      map((url) => url.split('?')[0].split('#')[0]),
+    ),
+    { initialValue: this.router.url.split('?')[0].split('#')[0] },
+  );
 
   readonly logoSrc = 'assets/imagenes/logo_nenufar_small.png';
   readonly flowerSrc = 'assets/imagenes/flor_logo.png';
@@ -85,6 +97,11 @@ export class HeaderComponent implements OnDestroy {
   readonly navigationError = signal('');
   readonly usuarioActual = computed(() => this.authService.usuarioActual());
   readonly mostrarMiPerfil = computed(() => this.authService.isAuthenticated());
+  // Solo para sesiones reales (no invitado) y únicamente donde existe el estanque.
+  readonly mostrarOrganizarEstanque = computed(
+    () => this.authService.isAuthenticated() && this.currentPath() === '/inicio',
+  );
+  readonly estanqueOrganizado = this.homeHeaderService.pondOrganized;
   readonly mostrarAccesoAdmin = computed(
     () => this.usuarioActual()?.rolGlobal === 'ADMIN',
   );
@@ -247,6 +264,10 @@ export class HeaderComponent implements OnDestroy {
   irAEstanque(): void {
     this.resetearBusqueda();
     void this.router.navigate(['/estanque']);
+  }
+
+  toggleOrganizarEstanque(): void {
+    this.homeHeaderService.togglePondOrganized();
   }
 
   abrirNenunInfo(): void {

@@ -12,7 +12,8 @@ import {
   computed,
   effect,
   inject,
-  signal
+  signal,
+  untracked
 } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
@@ -166,9 +167,31 @@ type LilyView = {
   zone: ZoneKey;
 };
 
+/**
+ * Trayectoria hacia una casilla del modo "estanque organizado". Se interpola con una curva de
+ * Hermite que arranca con la velocidad que llevaba el nenúfar y llega con velocidad cero,
+ * así que no hay teletransporte ni frenazo seco.
+ */
+type LilyArrangement = {
+  delayUntil: number;
+  durationMs: number;
+  fromAngle: number;
+  fromScale: number;
+  fromX: number;
+  fromY: number;
+  startAt: number;
+  started: boolean;
+  tangentX: number;
+  tangentY: number;
+  toScale: number;
+  toX: number;
+  toY: number;
+};
+
 type LilyBody = {
   angle: number;
   angVel: number;
+  arrangement: LilyArrangement | null;
   dataRef: LilyView;
   driftSeed: number;
   element?: HTMLElement;
@@ -176,8 +199,19 @@ type LilyBody = {
   id: string;
   lastTouchedAt: number;
   r: number;
+  /** Escala visual (1 en movimiento libre; < 1 si el modo organizado necesita compactar). */
+  scale: number;
   vx: number;
   vy: number;
+  x: number;
+  y: number;
+};
+
+type OrganizedGroupKey = 'business' | 'review' | 'promo';
+
+type OrganizedGroupLabel = {
+  key: OrganizedGroupKey;
+  text: string;
   x: number;
   y: number;
 };
@@ -295,6 +329,8 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly profileLilies = signal<LilyView[]>([]);
   readonly createLilies = signal<LilyView[]>([]);
   readonly reviewInteractions = signal<Record<number, ReviewInteractionState>>({});
+  readonly organizedGroupLabels = signal<OrganizedGroupLabel[]>([]);
+  readonly estanqueOrganizado = this.homeHeaderService.pondOrganized;
   readonly nombreUsuario = computed(() => {
     const nombre = this.usuarioLogueado()?.nombre;
     return nombre ? String(nombre).split(' ')[0] : 'Invitado';
@@ -337,6 +373,8 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly highlightTimerByKey = new Map<string, number>();
   private lastLilyPrimaryPointer: { id: string; at: number } | null = null;
   private lastLilyDoubleClickAt = 0;
+  /** Vista ordenada del estanque (solo posiciones; los datos no cambian). */
+  private pondOrganized = false;
 
   constructor() {
     effect(() => {
@@ -383,6 +421,11 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     effect(() => {
       const limite = this.filtrosEstanqueService.limite();
       this.aplicarLimiteEstanque(limite);
+    }, { allowSignalWrites: true });
+
+    effect(() => {
+      const organized = this.homeHeaderService.pondOrganized();
+      untracked(() => this.setPondOrganized(organized));
     }, { allowSignalWrites: true });
   }
 
@@ -452,6 +495,9 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     this.zoneRuntimes.clear();
     this.highlightTimerByKey.forEach((timerId) => window.clearTimeout(timerId));
     this.highlightTimerByKey.clear();
+
+    // El modo organizado es propio de esta vista: al salir de /inicio se vuelve al movimiento.
+    this.homeHeaderService.setPondOrganized(false);
   }
 
   abrirAyuda(): void {
@@ -1755,6 +1801,12 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     event.stopPropagation();
     this.ocultarTooltip();
 
+    if (this.pondOrganized) {
+      // Organizado: los nenúfares quedan quietos; solo se deja la onda en el agua.
+      this.emitRipple(event.clientX, event.clientY, 0.6);
+      return;
+    }
+
     const runtime = this.zoneRuntimes.get(item.zone);
     const body = runtime?.bodies.find((candidate) => candidate.id === item.id);
     if (!runtime || !body) {
@@ -1912,29 +1964,57 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private animate = (timestamp: number): void => {
     const frameIntervalMs = this.performanceProfile.frameIntervalMs;
-    if (this.lastFrameTime && timestamp - this.lastFrameTime < frameIntervalMs) {
+    // Pequeña tolerancia: los timestamps de rAF oscilan ±1-2 ms y sin ella se saltaban
+    // frames de forma irregular (p. ej. 16 ms de intervalo en pantallas de 60/120 Hz).
+    if (this.lastFrameTime && timestamp - this.lastFrameTime < frameIntervalMs - 2) {
       this.animationFrameId = requestAnimationFrame(this.animate);
       return;
     }
 
-    const dt = this.lastFrameTime ? Math.min((timestamp - this.lastFrameTime) / 1000, 0.032) : 0.016;
+    // El tope de dt acompaña al intervalo del perfil: antes era fijo (32 ms) y en los perfiles
+    // de 48/80 ms la simulación iba a cámara lenta y a saltos. Se limita igualmente para que una
+    // pestaña que vuelve de segundo plano no provoque un salto grande.
+    const maxDt = Math.min(0.1, Math.max(0.032, (frameIntervalMs * 1.5) / 1000));
+    const dt = this.lastFrameTime ? Math.min((timestamp - this.lastFrameTime) / 1000, maxDt) : 0.016;
     const elapsed = timestamp * 0.001;
     this.lastFrameTime = timestamp;
 
-    const profile = this.performanceProfile;
-    this.physicsFrameCounter += 1;
-    const runLocalCollisions =
-      this.physicsFrameCounter % Math.max(1, profile.localCollisionEveryNFrames) === 0;
-    const runSharedCollisions =
-      profile.enableSharedCollisions &&
-      this.physicsFrameCounter % Math.max(1, profile.sharedCollisionEveryNFrames) === 0;
+    if (this.pondOrganized) {
+      let moving = false;
+      this.zoneRuntimes.forEach((runtime) => {
+        moving = this.updateOrganizedZone(runtime, dt, timestamp) || moving;
+      });
 
-    this.zoneRuntimes.forEach((runtime) =>
-      this.updateZone(runtime, dt, elapsed, runLocalCollisions),
-    );
-    if (runSharedCollisions) {
-      this.applySharedPondCollisions(elapsed);
+      // Una vez colocados no se toca el DOM: el estanque organizado cuesta ~0 por frame.
+      if (moving) {
+        this.zoneRuntimes.forEach((runtime) => this.applyZoneBodies(runtime.bodies));
+      }
+    } else {
+      const profile = this.performanceProfile;
+      this.physicsFrameCounter += 1;
+      const runLocalCollisions =
+        this.physicsFrameCounter % Math.max(1, profile.localCollisionEveryNFrames) === 0;
+      const runSharedCollisions =
+        profile.enableSharedCollisions &&
+        this.physicsFrameCounter % Math.max(1, profile.sharedCollisionEveryNFrames) === 0;
+
+      // Subpasos de como mucho 20 ms: con frames largos las colisiones siguen siendo estables
+      // (sin atravesarse ni solaparse de golpe). En 60 Hz es un único paso, como antes.
+      const substeps = Math.max(1, Math.ceil(dt / 0.02));
+      const stepDt = dt / substeps;
+      for (let step = 0; step < substeps; step += 1) {
+        this.zoneRuntimes.forEach((runtime) =>
+          this.updateZone(runtime, stepDt, elapsed, runLocalCollisions),
+        );
+        if (runSharedCollisions) {
+          this.applySharedPondCollisions(elapsed);
+        }
+      }
+
+      // Una sola escritura de transform por nenúfar y frame (antes se hacía hasta dos veces).
+      this.zoneRuntimes.forEach((runtime) => this.applyZoneBodies(runtime.bodies));
     }
+
     this.syncTooltipFromHoveredTarget(false, timestamp);
 
     if (!this.firstPondPaintLogged && this.zoneRuntimes.size) {
@@ -1984,8 +2064,9 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      body.element.style.transform =
-        `translate3d(${body.x - body.r}px, ${body.y - body.r}px, 0) rotate(${body.angle}deg)`;
+      body.element.style.transform = body.scale === 1
+        ? `translate3d(${body.x - body.r}px, ${body.y - body.r}px, 0) rotate(${body.angle}deg)`
+        : `translate3d(${body.x - body.r}px, ${body.y - body.r}px, 0) rotate(${body.angle}deg) scale(${body.scale})`;
     });
   }
 
@@ -2134,6 +2215,8 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       vx: this.randomBetween(-runtime.config.maxSpeed * 0.55, runtime.config.maxSpeed * 0.55),
       vy: this.randomBetween(-runtime.config.maxSpeed * 0.55, runtime.config.maxSpeed * 0.55),
       r: this.fallbackRadiusForZone(item.zone),
+      scale: 1,
+      arrangement: null,
       angle: this.randomBetween(-12, 12),
       angVel: this.randomBetween(-0.014, 0.014),
       driftSeed: Math.random() * Math.PI * 2,
@@ -2661,10 +2744,11 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private handleBoundary(runtime: ZoneRuntime, body: LilyBody, elapsed: number): void {
-    const left = body.r;
-    const right = runtime.size.width - body.r;
-    const top = body.r;
-    const bottom = runtime.size.height - body.r;
+    const radius = body.r * body.scale;
+    const left = radius;
+    const right = runtime.size.width - radius;
+    const top = radius;
+    const bottom = runtime.size.height - radius;
     const escapeSpeed = 164;
     const canEscape = elapsed <= body.escapeUntil;
 
@@ -2697,15 +2781,20 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private keepMinimumMotion(body: LilyBody, minSpeed: number, seed: number): void {
+  /**
+   * Antes la velocidad se fijaba de golpe a minSpeed, lo que tras un choque producía
+   * acelerones y vibraciones entre nenúfares en contacto. Ahora se recupera de forma gradual.
+   */
+  private keepMinimumMotion(body: LilyBody, minSpeed: number, seed: number, dt: number): void {
     const speed = Math.hypot(body.vx, body.vy);
     if (speed >= minSpeed) {
       return;
     }
 
     const angle = speed > 0.01 ? Math.atan2(body.vy, body.vx) : seed;
-    body.vx = Math.cos(angle) * minSpeed;
-    body.vy = Math.sin(angle) * minSpeed;
+    const recovery = (minSpeed - speed) * Math.min(1, dt * 2.4);
+    body.vx += Math.cos(angle) * recovery;
+    body.vy += Math.sin(angle) * recovery;
   }
 
   private lerp(min: number, max: number, factor: number): number {
@@ -2811,28 +2900,39 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private resolveCircleCollision(first: LilyBody, second: LilyBody, restitution: number): void {
+    const firstRadius = first.r * first.scale;
+    const secondRadius = second.r * second.scale;
+    const minDistance = firstRadius + secondRadius - 3;
     const dx = second.x - first.x;
     const dy = second.y - first.y;
-    const distance = Math.hypot(dx, dy) || 0.001;
-    const minDistance = first.r + second.r - 3;
 
-    if (distance >= minDistance) {
+    // Descarte barato antes de la raíz cuadrada (la mayoría de pares no se tocan).
+    if (dx >= minDistance || dx <= -minDistance || dy >= minDistance || dy <= -minDistance) {
       return;
     }
 
+    const distanceSq = dx * dx + dy * dy;
+    if (distanceSq >= minDistance * minDistance) {
+      return;
+    }
+
+    const distance = Math.sqrt(distanceSq) || 0.001;
     const nx = dx / distance;
     const ny = dy / distance;
     const overlap = minDistance - distance;
-    const firstMass = Math.max(first.r * first.r, 1);
-    const secondMass = Math.max(second.r * second.r, 1);
+    const firstMass = Math.max(firstRadius * firstRadius, 1);
+    const secondMass = Math.max(secondRadius * secondRadius, 1);
     const firstInvMass = 1 / firstMass;
     const secondInvMass = 1 / secondMass;
     const invMassSum = firstInvMass + secondInvMass;
+    // Corrección parcial con un pequeño margen: separa sin el "temblor" que producía
+    // corregir el 100 % del solape en cada frame mientras la deriva los vuelve a juntar.
+    const correction = Math.max(overlap - 0.5, 0) * 0.82;
 
-    first.x -= nx * overlap * (firstInvMass / invMassSum);
-    first.y -= ny * overlap * (firstInvMass / invMassSum);
-    second.x += nx * overlap * (secondInvMass / invMassSum);
-    second.y += ny * overlap * (secondInvMass / invMassSum);
+    first.x -= nx * correction * (firstInvMass / invMassSum);
+    first.y -= ny * correction * (firstInvMass / invMassSum);
+    second.x += nx * correction * (secondInvMass / invMassSum);
+    second.y += ny * correction * (secondInvMass / invMassSum);
 
     const relVx = second.vx - first.vx;
     const relVy = second.vy - first.vy;
@@ -2875,7 +2975,6 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
 
     runtimes.forEach((runtime) => {
       runtime.bodies.forEach((body) => this.handleBoundary(runtime, body, elapsed));
-      this.applyZoneBodies(runtime.bodies);
     });
   }
 
@@ -2959,6 +3058,19 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    const currentTooltip = this.hoveredTooltip();
+    if (
+      currentTooltip &&
+      currentTooltip.title === nextTooltip.title &&
+      currentTooltip.text === nextTooltip.text &&
+      currentTooltip.placement === nextTooltip.placement &&
+      Math.abs(currentTooltip.x - nextTooltip.x) < 0.5 &&
+      Math.abs(currentTooltip.y - nextTooltip.y) < 0.5
+    ) {
+      // Nada cambió (p. ej. estanque organizado): evitamos una detección de cambios inútil.
+      return;
+    }
+
     this.zone.run(() => {
       this.hoveredTooltip.set(nextTooltip);
       this.changeDetector.markForCheck();
@@ -3027,6 +3139,12 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     this.syncZone('resenas');
     this.syncZone('perfil');
     this.syncZone('crear');
+
+    // Filtros, contador, datos nuevos o resize: si está organizado se recalculan las casillas
+    // sin volver al movimiento libre.
+    if (this.pondOrganized) {
+      this.layoutOrganizedPond();
+    }
   }
 
   private takeInitialLilies(zone: ZoneKey): LilyView[] {
@@ -3046,6 +3164,303 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     return nextItems;
   }
 
+  /**
+   * Entra o sale del modo "estanque organizado". Solo cambia la colocación visual: no toca
+   * filtros, resultados, prioridades ni la lista de nenúfares visibles.
+   */
+  private setPondOrganized(organized: boolean): void {
+    if (organized === this.pondOrganized) {
+      return;
+    }
+
+    this.pondOrganized = organized;
+
+    if (organized) {
+      this.layoutOrganizedPond();
+      return;
+    }
+
+    this.releaseOrganizedPond();
+  }
+
+  /**
+   * Calcula una casilla fija para cada nenúfar, agrupando negocios, reseñas y promociones.
+   * Las columnas salen del ancho disponible y del tamaño real de cada nenúfar; si los grupos
+   * no caben en alto se reduce la escala de forma uniforme para no dejar nada fuera.
+   */
+  private layoutOrganizedPond(): void {
+    const runtimes = this.getSharedPondRuntimes();
+    const reference = runtimes[0];
+    if (!reference) {
+      return;
+    }
+
+    const width = reference.size.width;
+    const height = reference.size.height;
+    if (!width || !height) {
+      return;
+    }
+
+    const reviewBodies = this.zoneRuntimes.get('resenas')?.bodies ?? [];
+    const promoBodies = this.zoneRuntimes.get('promos')?.bodies ?? [];
+    const groups: Array<{ bodies: LilyBody[]; key: OrganizedGroupKey; label: string }> = [
+      {
+        key: 'business' as const,
+        label: 'Negocios',
+        bodies: reviewBodies.filter((body) => body.dataRef.kind === 'business'),
+      },
+      {
+        key: 'review' as const,
+        label: 'Reseñas',
+        bodies: reviewBodies.filter((body) => body.dataRef.kind !== 'business'),
+      },
+      { key: 'promo' as const, label: 'Promociones', bodies: promoBodies },
+    ].filter((group) => group.bodies.length > 0);
+
+    if (!groups.length) {
+      this.setOrganizedGroupLabels([]);
+      return;
+    }
+
+    groups.forEach((group) => group.bodies.forEach((body) => {
+      if (!body.element) {
+        this.attachElement(body, this.zoneRuntimes.get(body.dataRef.zone)?.host ?? reference.host);
+      }
+    }));
+
+    const compact = width < 640;
+    const padX = compact ? 6 : 20;
+    const padY = compact ? 8 : 16;
+    const labelHeight = compact ? 22 : 28;
+    const groupGap = compact ? 12 : 22;
+    const availableWidth = Math.max(1, width - padX * 2);
+    const availableHeight = Math.max(1, height - padY * 2);
+
+    const plan = (scale: number) => {
+      let totalHeight = 0;
+      const blocks = groups.map((group) => {
+        const diameter = Math.max(...group.bodies.map((body) => body.r * 2)) * scale;
+        const gap = Math.max(6, diameter * 0.14);
+        const maxColumns = Math.max(1, Math.floor((availableWidth + gap) / (diameter + gap)));
+        const rows = Math.ceil(group.bodies.length / Math.min(maxColumns, group.bodies.length));
+        // Reparto equilibrado: 7 elementos en 4 columnas quedan 4+3, no 6+1.
+        const columns = Math.ceil(group.bodies.length / rows);
+        const blockHeight = labelHeight + rows * diameter + (rows - 1) * gap;
+        totalHeight += blockHeight;
+        return { ...group, columns, diameter, gap, blockHeight };
+      });
+
+      totalHeight += groupGap * (blocks.length - 1);
+      return { blocks, totalHeight };
+    };
+
+    let scale = 1;
+    let layout = plan(scale);
+    while (layout.totalHeight > availableHeight && scale > 0.36) {
+      scale = Math.max(0.36, scale - 0.04);
+      layout = plan(scale);
+    }
+
+    const now = performance.now();
+    const reducedMotion = this.performanceProfile.reducedMotion;
+    const durationMs = reducedMotion ? 280 : 1050;
+    const staggerMs = reducedMotion ? 0 : 22;
+    const labels: OrganizedGroupLabel[] = [];
+    let cursorY = padY + Math.max(0, (availableHeight - layout.totalHeight) / 2);
+    let order = 0;
+
+    for (const block of layout.blocks) {
+      labels.push({ key: block.key, text: block.label, x: width / 2, y: cursorY + labelHeight / 2 });
+      const rowsTop = cursorY + labelHeight;
+
+      block.bodies.forEach((body, index) => {
+        const row = Math.floor(index / block.columns);
+        const column = index % block.columns;
+        const itemsInRow = Math.min(block.columns, block.bodies.length - row * block.columns);
+        const rowWidth = itemsInRow * block.diameter + (itemsInRow - 1) * block.gap;
+        const toX = (width - rowWidth) / 2 + block.diameter / 2 + column * (block.diameter + block.gap);
+        const toY = rowsTop + block.diameter / 2 + row * (block.diameter + block.gap);
+        this.assignArrangement(body, toX, toY, scale, now, Math.min(order * staggerMs, 320), durationMs);
+        order += 1;
+      });
+
+      cursorY += block.blockHeight + groupGap;
+    }
+
+    this.setOrganizedGroupLabels(labels);
+  }
+
+  private assignArrangement(
+    body: LilyBody,
+    toX: number,
+    toY: number,
+    toScale: number,
+    now: number,
+    delayMs: number,
+    durationMs: number,
+  ): void {
+    const current = body.arrangement;
+    const sameTarget = (x: number, y: number, scale: number) =>
+      Math.abs(x - toX) < 0.5 && Math.abs(y - toY) < 0.5 && Math.abs(scale - toScale) < 0.001;
+
+    // Ya va hacia esa casilla (o ya está en ella): no se reinicia la transición.
+    if (current ? sameTarget(current.toX, current.toY, current.toScale) : sameTarget(body.x, body.y, body.scale)) {
+      return;
+    }
+
+    body.arrangement = {
+      delayUntil: now + delayMs,
+      durationMs,
+      fromAngle: 0,
+      fromScale: body.scale,
+      fromX: body.x,
+      fromY: body.y,
+      startAt: now + delayMs,
+      started: false,
+      tangentX: 0,
+      tangentY: 0,
+      toScale,
+      toX,
+      toY,
+    };
+  }
+
+  /**
+   * Avanza las transiciones del modo organizado. Durante el pequeño retardo escalonado el
+   * nenúfar sigue deslizándose mientras frena; después recorre una curva de Hermite que parte
+   * de su velocidad actual y llega a la casilla con velocidad cero. Devuelve si algo se movió.
+   */
+  private updateOrganizedZone(runtime: ZoneRuntime, dt: number, timestamp: number): boolean {
+    let moving = false;
+    const glideDamping = Math.pow(0.88, dt * 60);
+
+    for (const body of runtime.bodies) {
+      const arrangement = body.arrangement;
+      if (!arrangement) {
+        continue;
+      }
+
+      if (!body.element) {
+        this.attachElement(body, runtime.host);
+      }
+
+      moving = true;
+
+      if (timestamp < arrangement.delayUntil) {
+        body.vx *= glideDamping;
+        body.vy *= glideDamping;
+        body.angVel *= glideDamping;
+        body.x += body.vx * dt;
+        body.y += body.vy * dt;
+        body.angle += body.angVel * 60 * dt;
+        continue;
+      }
+
+      if (!arrangement.started) {
+        const durationSeconds = arrangement.durationMs / 1000;
+        const maxTangent = 160;
+        let tangentX = body.vx * durationSeconds;
+        let tangentY = body.vy * durationSeconds;
+        const tangentLength = Math.hypot(tangentX, tangentY);
+        if (tangentLength > maxTangent) {
+          tangentX *= maxTangent / tangentLength;
+          tangentY *= maxTangent / tangentLength;
+        }
+
+        arrangement.started = true;
+        arrangement.startAt = timestamp;
+        arrangement.fromX = body.x;
+        arrangement.fromY = body.y;
+        arrangement.fromScale = body.scale;
+        // Ángulo normalizado a (-180, 180] para girar por el camino corto hasta quedar recto.
+        arrangement.fromAngle = ((((body.angle + 180) % 360) + 360) % 360) - 180;
+        arrangement.tangentX = tangentX;
+        arrangement.tangentY = tangentY;
+      }
+
+      const t = this.clamp((timestamp - arrangement.startAt) / arrangement.durationMs, 0, 1);
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const h00 = 2 * t3 - 3 * t2 + 1;
+      const h10 = t3 - 2 * t2 + t;
+      const h01 = -2 * t3 + 3 * t2;
+      const eased = 1 - Math.pow(1 - t, 3);
+      const previousX = body.x;
+      const previousY = body.y;
+
+      body.x = h00 * arrangement.fromX + h10 * arrangement.tangentX + h01 * arrangement.toX;
+      body.y = h00 * arrangement.fromY + h10 * arrangement.tangentY + h01 * arrangement.toY;
+      body.angle = arrangement.fromAngle * (1 - eased);
+      body.scale = arrangement.fromScale + (arrangement.toScale - arrangement.fromScale) * eased;
+
+      if (t >= 1) {
+        // Colocado: completamente quieto, sin deriva, rebotes ni colisiones.
+        body.x = arrangement.toX;
+        body.y = arrangement.toY;
+        body.angle = 0;
+        body.scale = arrangement.toScale;
+        body.vx = 0;
+        body.vy = 0;
+        body.angVel = 0;
+        body.arrangement = null;
+        continue;
+      }
+
+      // Velocidad real de la curva: si cambian las casillas a mitad de camino (filtro, resize)
+      // la nueva transición continúa desde aquí sin saltos.
+      if (dt > 0) {
+        body.vx = (body.x - previousX) / dt;
+        body.vy = (body.y - previousY) / dt;
+      }
+      body.angVel = 0;
+    }
+
+    return moving;
+  }
+
+  /** "Soltar estanque": se reanuda la física desde las posiciones actuales, con impulsos suaves. */
+  private releaseOrganizedPond(): void {
+    const nowSeconds = performance.now() * 0.001;
+
+    this.zoneRuntimes.forEach((runtime) => {
+      const minSpeed = runtime.config.minSpeed;
+      const gentleMax = Math.max(minSpeed * 2, runtime.config.maxSpeed * 0.32);
+
+      runtime.bodies.forEach((body) => {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = this.randomBetween(minSpeed * 1.4, gentleMax);
+        body.arrangement = null;
+        body.vx = Math.cos(angle) * speed;
+        body.vy = Math.sin(angle) * speed;
+        body.angVel = this.randomBetween(-0.012, 0.012);
+        body.escapeUntil = 0;
+        body.lastTouchedAt = Math.min(body.lastTouchedAt, nowSeconds - 2);
+      });
+    });
+
+    this.setOrganizedGroupLabels([]);
+  }
+
+  private setOrganizedGroupLabels(labels: OrganizedGroupLabel[]): void {
+    const current = this.organizedGroupLabels();
+    const unchanged =
+      current.length === labels.length &&
+      current.every((label, index) =>
+        label.key === labels[index].key &&
+        Math.abs(label.x - labels[index].x) < 0.5 &&
+        Math.abs(label.y - labels[index].y) < 0.5,
+      );
+
+    if (unchanged) {
+      return;
+    }
+
+    this.zone.run(() => {
+      this.organizedGroupLabels.set(labels);
+      this.changeDetector.markForCheck();
+    });
+  }
+
   private updateZone(
     runtime: ZoneRuntime,
     dt: number,
@@ -3054,32 +3469,58 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
   ): void {
     const frameScale = dt * 60;
     const escapedIds: string[] = [];
+    // Factores calculados una vez por zona y frame (antes 3 Math.pow por nenúfar).
+    const damping = Math.pow(runtime.config.damping, frameScale);
+    const angularDamping = Math.pow(0.98, frameScale);
+    const cruiseDamping = Math.pow(0.97, frameScale);
+    const scaleRecovery = 1 - Math.pow(0.02, dt);
+    const cruiseSpeed = runtime.config.maxSpeed;
+    const hardMaxSpeed = runtime.config.maxSpeed * 4.4;
 
-    runtime.bodies.forEach((body, index) => {
+    for (const body of runtime.bodies) {
       if (!body.element) {
         this.attachElement(body, runtime.host);
       }
 
-      body.vx *= Math.pow(runtime.config.damping, frameScale);
-      body.vy *= Math.pow(runtime.config.damping, frameScale);
-      body.angVel *= Math.pow(0.98, frameScale);
+      body.vx *= damping;
+      body.vy *= damping;
+      body.angVel *= angularDamping;
 
-      body.vx += Math.cos(elapsed * 0.72 + body.driftSeed + index) * 0.22 * frameScale;
-      body.vy += Math.sin(elapsed * 0.68 + body.driftSeed + index * 0.7) * 0.2 * frameScale;
+      // La fase de la deriva depende solo de la semilla del nenúfar. Antes incluía su índice
+      // en el array, que cambia al entrar/salir nenúfares y provocaba tirones bruscos.
+      body.vx += Math.cos(elapsed * 0.72 + body.driftSeed) * 0.22 * frameScale;
+      body.vy += Math.sin(elapsed * 0.68 + body.driftSeed * 1.7) * 0.2 * frameScale;
 
-      this.keepMinimumMotion(body, runtime.config.minSpeed, body.driftSeed + elapsed);
-      this.limitSpeed(body, runtime.config.maxSpeed * 4.4);
+      this.keepMinimumMotion(body, runtime.config.minSpeed, body.driftSeed + elapsed, dt);
+
+      // Las cadenas de choques ya no dejan nenúfares disparados mucho rato: por encima de la
+      // velocidad de crucero frenan suavemente, salvo justo después de un empujón del usuario.
+      const speed = Math.hypot(body.vx, body.vy);
+      if (speed > cruiseSpeed && elapsed - body.lastTouchedAt > 1.2 && elapsed > body.escapeUntil) {
+        const ratio = (cruiseSpeed + (speed - cruiseSpeed) * cruiseDamping) / speed;
+        body.vx *= ratio;
+        body.vy *= ratio;
+      }
+      this.limitSpeed(body, hardMaxSpeed);
 
       body.x += body.vx * dt;
       body.y += body.vy * dt;
       body.angle += body.angVel * 60 * dt;
+
+      // Tras "Soltar estanque" la escala vuelve a 1 progresivamente (y con ella el radio de choque).
+      if (body.scale !== 1) {
+        body.scale += (1 - body.scale) * scaleRecovery;
+        if (Math.abs(1 - body.scale) < 0.002) {
+          body.scale = 1;
+        }
+      }
 
       this.handleBoundary(runtime, body, elapsed);
 
       if (this.isBodyOutside(runtime, body)) {
         escapedIds.push(body.id);
       }
-    });
+    }
 
     if (runCollisions) {
       for (let i = 0; i < runtime.bodies.length; i += 1) {
@@ -3090,7 +3531,6 @@ export class PrincipalComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     runtime.bodies.forEach((body) => this.handleBoundary(runtime, body, elapsed));
-    this.applyZoneBodies(runtime.bodies);
 
     escapedIds.forEach((bodyId) => this.despawnBody(runtime, bodyId));
   }

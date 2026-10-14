@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "computedAt": 1792002674201,
+  "entries": [
+    {
+      "id": "task-nenufar-logros-visual-functional-update",
+      "content": "Task completed: Actualizar sistema de logros del frontend de Nenúfar: saldo de pétalos, iconos por nivel, insignias destacadas, selección de hasta 3, logros de negocio y ajustes visuales de perfil. (agent: coder)",
+      "summary": "nenufar-logros-visual-functional-update",
+      "category": "tasks",
+      "confidence": 0.5,
+      "pageRank": 0.5,
+      "accessCount": 0,
+      "words": [
+        "task",
+        "completed",
+        "actualizar",
+        "sistema",
+        "logros",
+        "del",
+        "frontend",
+        "nen",
+        "far",
+        "saldo",
+        "talos",
+        "iconos",
+        "por",
+        "nivel",
+        "insignias",
+        "destacadas",
+        "selecci",
+        "hasta",
+        "logros",
+        "negocio",
+        "ajustes",
+        "visuales",
+        "perfil",
+        "agent",
+        "coder",
+        "nenufar-logros-visual-functional-update"
+      ]
+    },
+    {
+      "id": "task-nenufar-frontend-auto-close-modals",
+      "content": "Task completed: Angular frontend: auto-close add-to-Nenulista and reservation modals after successful submit; preserve loading/error behavior; build frontend (agent: codex)",
+      "summary": "nenufar-frontend-auto-close-modals",
+      "category": "tasks",
+      "confidence": 0.5,
+      "pageRank": 0.5,
+      "accessCount": 0,
+      "words": [
+        "task",
+        "completed",
+        "angular",
+        "frontend",
+        "auto-close",
+        "add-to-nenulista",
+        "reservation",
+        "modals",
+        "successful",
+        "submit",
+        "preserve",
+        "loading",
+        "error",
+        "behavior",
+        "build",
+        "frontend",
+        "agent",
+        "codex",
+        "nenufar-frontend-auto-close-modals"
+      ]
+    }
+  ]
+}

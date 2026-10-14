@@ -18,6 +18,11 @@ import { AuthService } from '../../servicios/authService/auth.service';
 import { CuentaAtrasService } from '../../servicios/cuentaAtrasServicio/cuenta-atras.service';
 import { getUserErrorMessage, isAppErrorModel } from '../../core/errors/error-parser';
 import { NenufarPerformanceService } from '../../core/performance/nenufar-performance.service';
+import {
+  BUSINESS_ACCESS_DISABLED_MESSAGE,
+  BUSINESS_ACCESS_ENABLED,
+  isBusinessAccount
+} from '../../config/business-access.config';
 
 type ClickRipple = {
   startAt: number;
@@ -556,6 +561,13 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.authService.login(email, password, this.loginRememberMe).subscribe({
       next: () => {
+        // Acceso de cuentas de negocio deshabilitado temporalmente desde la interfaz.
+        // Mantener lógica y rutas para poder reactivarlo más adelante.
+        if (!BUSINESS_ACCESS_ENABLED && isBusinessAccount(this.authService.usuarioActual())) {
+          this.rechazarAccesoNegocio();
+          return;
+        }
+
         this.habilitarAcceso();
         this.loginSubmitting = false;
         this.loginModalOpen = false;
@@ -570,6 +582,18 @@ export class EstanqueComponent implements OnInit, AfterViewInit, OnDestroy {
           isAppErrorModel(error) && error.kind === 'auth'
             ? 'Correo o contraseña incorrectos.'
             : getUserErrorMessage(error, 'El inicio de sesión no se completó. Revisa correo y contraseña.');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private rechazarAccesoNegocio(): void {
+    // Se cierra la sesión recién abierta (cookie + almacenamiento) sin tocar la lógica de negocio.
+    this.authService.logout().subscribe({
+      complete: () => {
+        this.loginSubmitting = false;
+        this.loginPassword = '';
+        this.loginError = BUSINESS_ACCESS_DISABLED_MESSAGE;
         this.cdr.markForCheck();
       }
     });

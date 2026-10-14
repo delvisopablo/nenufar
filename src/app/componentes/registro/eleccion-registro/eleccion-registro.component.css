@@ -150,6 +150,75 @@
   letter-spacing: -0.02em;
 }
 
+/* Acceso de negocio temporalmente cerrado: cintas de obra hechas solo con CSS. */
+.choice-note--dev {
+  position: relative;
+  overflow: hidden;
+  padding-top: 1.35rem;
+  padding-bottom: 1.35rem;
+  border-color: rgba(246, 200, 64, 0.28);
+  background:
+    linear-gradient(180deg, rgba(246, 200, 64, 0.07), rgba(255, 255, 255, 0.04));
+}
+
+.choice-note--dev h2,
+.choice-note--dev p,
+.choice-note--dev .dev-tag {
+  position: relative;
+  z-index: 1;
+}
+
+.choice-note--dev p {
+  font-size: 0.9rem;
+}
+
+.dev-tape {
+  --tape-stripe: repeating-linear-gradient(
+    -45deg,
+    #f6c840 0 12px,
+    #1d1a12 12px 24px
+  );
+  position: absolute;
+  left: -12%;
+  width: 124%;
+  height: 0.62rem;
+  background: var(--tape-stripe);
+  opacity: 0.86;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+.dev-tape--top {
+  top: 0.38rem;
+  transform: rotate(-2.4deg);
+}
+
+.dev-tape--bottom {
+  bottom: 0.38rem;
+  transform: rotate(1.8deg);
+}
+
+.dev-tag {
+  width: fit-content;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #f6c840;
+  color: #2a2208;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.dev-tag--floating {
+  display: inline-block;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(-45deg, #f6c840 0 10px, #e9b520 10px 20px);
+  border: 1px solid rgba(29, 26, 18, 0.55);
+}
+
 .choice-hint {
   margin: 0;
   padding: 0.78rem 0.95rem;
